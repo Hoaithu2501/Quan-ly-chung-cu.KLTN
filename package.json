@@ -1,0 +1,17 @@
+{
+  "name": "qlcc-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local Tailwind CSS build for the QLCC frontend",
+  "scripts": {
+    "build:css": "tailwindcss -i ./frontend/tailwind.css -o ./frontend/styles.css --minify",
+    "watch:css": "tailwindcss -i ./frontend/tailwind.css -o ./frontend/styles.css --watch"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

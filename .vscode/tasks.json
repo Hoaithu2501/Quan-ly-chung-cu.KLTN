@@ -1,0 +1,62 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "QLCC: Docker - build and start",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "up", "--build", "-d"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "dependsOn": "QLCC: Tailwind - build CSS",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": [],
+      "detail": "Start the application at http://localhost:5000. Frontend edits appear after a browser reload."
+    },
+    {
+      "label": "QLCC: Tailwind - build CSS",
+      "type": "process",
+      "command": "npm",
+      "windows": { "command": "npm.cmd" },
+      "args": ["run", "build:css"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "detail": "Compile Tailwind after npm ci. Generated file: frontend/styles.css."
+    },
+    {
+      "label": "QLCC: Tailwind - watch CSS",
+      "type": "process",
+      "command": "npm",
+      "windows": { "command": "npm.cmd" },
+      "args": ["run", "watch:css"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "detail": "Keep this task running while editing frontend files; refresh the browser after saving."
+    },
+    {
+      "label": "QLCC: Docker - status",
+      "type": "process",
+      "command": "docker",
+      "args": ["compose", "ps", "-a"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "QLCC: Database - check Docker database",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["scripts/check_database.py", "--inventory"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "detail": "Read-only audit of the shared Docker database. Local files are listed separately; no data is merged."
+    },
+    {
+      "label": "QLCC: Python - run local services",
+      "type": "process",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["scripts/run.py"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "detail": "Development only: uses a separate Windows database, not Docker Live data. Requires Python setup and free ports 5000-5008."
+    }
+  ]
+}

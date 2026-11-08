@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "An Cư · Quản lý chung cư",
+  "short_name": "An Cư",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f9f6",
+  "theme_color": "#174c3c",
+  "icons": [
+    {"src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

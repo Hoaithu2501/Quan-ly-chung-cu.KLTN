@@ -1,0 +1,111 @@
+# Run built images without bind-mounting the source tree or the local database.
+# Used for CI smoke tests and for downloading a version from GHCR.
+x-common: &common
+  env_file: ${APP_ENV_FILE:-.env}
+  environment: &environment
+    DATABASE_PATH: /app/data/QLCC.db
+    HOST: 0.0.0.0
+    TZ: Asia/Ho_Chi_Minh
+    AUTH_SERVICE_URL: http://auth:5001
+    RESIDENT_SERVICE_URL: http://resident:5002
+    BILLING_SERVICE_URL: http://billing:5003
+    PARKING_SERVICE_URL: http://parking:5004
+    MAINTENANCE_SERVICE_URL: http://maintenance:5005
+    NOTIFICATION_SERVICE_URL: http://notification:5006
+    COMPLAINT_SERVICE_URL: http://complaint:5007
+    CHATBOT_SERVICE_URL: http://chatbot:5008
+  volumes:
+    - qlcc-data:/app/data
+  restart: unless-stopped
+  depends_on:
+    db-init:
+      condition: service_completed_successfully
+
+x-health: &health
+  interval: 5s
+  timeout: 5s
+  retries: 12
+  start_period: 15s
+
+services:
+  db-init:
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/db-init:${IMAGE_TAG:?Set IMAGE_TAG}
+    build:
+      context: .
+      dockerfile: Dockerfile.init
+    env_file: ${APP_ENV_FILE:-.env}
+    environment:
+      DATABASE_PATH: /app/data/QLCC.db
+    volumes:
+      - qlcc-data:/app/data
+    command: ["python", "-c", "import os; from scripts.init_db import initialize; initialize(demo=os.getenv('INIT_DEMO', 'false').lower() == 'true')"]
+  auth:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/auth:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: auth-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health', timeout=3)"]
+  resident:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/resident:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: resident-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health', timeout=3)"]
+  billing:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/billing:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: billing-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)"]
+  parking:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/parking:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: parking-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5004/health', timeout=3)"]
+  maintenance:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/maintenance:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: maintenance-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/health', timeout=3)"]
+  notification:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/notification:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: notification-service/Dockerfile}
+    volumes:
+      - qlcc-data:/app/data
+      - ./secrets:/app/secrets:ro
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5006/health', timeout=3)"]
+  complaint:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/complaint:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: complaint-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5007/health', timeout=3)"]
+  chatbot:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/chatbot:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: chatbot-service/Dockerfile}
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5008/health', timeout=3)"]
+  gateway:
+    <<: *common
+    image: ${IMAGE_PREFIX:?Set IMAGE_PREFIX}/gateway:${IMAGE_TAG:?Set IMAGE_TAG}
+    build: {context: ., dockerfile: gateway/Dockerfile}
+    ports: ["${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-5000}:5000"]
+    healthcheck:
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
+
+volumes:
+  qlcc-data:

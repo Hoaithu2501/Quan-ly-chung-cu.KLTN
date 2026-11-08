@@ -1,0 +1,69 @@
+name: Release Docker images
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish verified images to GHCR
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    env:
+      COMPOSE_PROJECT_NAME: qlcc-ci
+      APP_ENV_FILE: .runtime/ci.env
+      GATEWAY_PORT: '15000'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set release image names
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9][a-zA-Z0-9.-]*)?$ ]]
+          echo "IMAGE_PREFIX=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+      # Test the actual images that will be pushed; do not rebuild after testing.
+      - uses: ./.github/actions/build-smoke
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish version and commit tags
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.release.yml push
+          echo '### Published Docker images' >> "$GITHUB_STEP_SUMMARY"
+          for service in $(docker compose -f docker-compose.release.yml config --services); do
+            version="$IMAGE_PREFIX/$service:$IMAGE_TAG"
+            commit="$IMAGE_PREFIX/$service:sha-$GITHUB_SHA"
+            docker tag "$version" "$commit"
+            docker push "$commit"
+            echo "- \`$version\` (\`sha-$GITHUB_SHA\`)" >> "$GITHUB_STEP_SUMMARY"
+          done
+      - name: Upload Docker diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-diagnostics
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

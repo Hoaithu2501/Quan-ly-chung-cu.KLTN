@@ -1,0 +1,24 @@
+/* Build with npm run build:css; edit this file or theme.css, not styles.css. */
+@import "tailwindcss" source(none);
+@import "./theme.css" layer(components);
+
+/* Explicit sources keep backend/test files out of the generated utility set. */
+@source "./app.js";
+@source "./index.html";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-forest: #143f32;
+  --color-forest-dark: #0e3026;
+  --color-forest-600: #207853;
+  --color-forest-700: #1b654c;
+  --color-forest-900: #143f32;
+  --color-primary: #207853;
+  --color-mint: #e8f5ed;
+  --color-mint-50: #f3faf5;
+  --color-mint-100: #e8f5ed;
+  --color-surface: #f5f8f5;
+  --color-ink: #203f33;
+  --color-muted: #5f7365;
+  --color-line: #e3ebe4;
+}
