@@ -525,6 +525,7 @@ def test_admin_creation_and_resident_payment_in_browser(browser_page):
     admin_row=page.locator('tbody tr').filter(has_text='2098-11')
     assert admin_row.locator('button').first.inner_text().strip()=='Chi tiết'
     admin_row.locator('button').first.click()
+    page.locator('#modal[open] [data-action=invoice-cash]').wait_for(state='visible')
     assert page.locator('#modal [data-action=invoice-pay]').count()==0
     assert page.locator('#modal [data-action=invoice-cash]').count()==1
     assert 'chỉ ghi nhận thu khi đã nhận đủ tiền' in page.locator('#page').inner_text()
