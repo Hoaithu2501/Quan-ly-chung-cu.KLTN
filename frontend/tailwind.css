@@ -6,6 +6,9 @@
 @source "./app.js";
 @source "./index.html";
 
+/* Registered so the occupancy ring can animate; must stay outside any layer. */
+@property --percent { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+
 @theme {
   --font-sans: "Be Vietnam Pro", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --color-forest: #143f32;

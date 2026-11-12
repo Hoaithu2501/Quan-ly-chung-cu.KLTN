@@ -72,6 +72,7 @@ def test_private_apartment_scope_and_no_sensitive_push_body(configured):
 
 def test_all_current_household_members_receive_apartment_push(configured):
     cluster, sent = configured
+    cluster.release_apartments(4)
     with sqlite3.connect(cluster.db_path) as db:
         resident_id = db.execute("SELECT resident_id FROM residents WHERE user_id=4").fetchone()[0]
     response = cluster.call("resident", f"/api/residents/{resident_id}/apartments", "POST",

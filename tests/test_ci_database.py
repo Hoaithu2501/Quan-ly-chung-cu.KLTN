@@ -28,9 +28,7 @@ def test_prepare_never_overwrites_existing_database(tmp_path):
 def test_synthetic_fixture_bootstrap_and_migrations_are_repeatable(tmp_path, monkeypatch):
     from scripts.init_db import initialize
 
-    source = prepare(tmp_path / "source.db")
     target = tmp_path / "application.db"
-    monkeypatch.setenv("DATABASE_SEED_PATH", str(source))
     initialize(target, demo=True)
     initialize(target, demo=True)
     with sqlite3.connect(target) as db:
@@ -45,9 +43,8 @@ def test_fresh_checkout_bootstraps_without_committed_database(tmp_path, monkeypa
 
     shutil.copytree(Path(__file__).resolve().parents[1] / "migrations", tmp_path / "migrations")
     monkeypatch.setattr(initializer, "ROOT", tmp_path)
-    monkeypatch.delenv("DATABASE_SEED_PATH", raising=False)
     destination = initializer.initialize(tmp_path / "data/application.db", demo=True)
-    assert (tmp_path / "QLCC.db").is_file()
+    assert not (tmp_path / "QLCC.db").exists()
     with sqlite3.connect(destination) as db:
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
         assert db.execute("SELECT COUNT(*) FROM users WHERE username='admin'").fetchone()[0] == 1

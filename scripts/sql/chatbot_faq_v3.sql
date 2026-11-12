@@ -3,7 +3,7 @@
 -- Không xóa FAQ, không đặt lại ID, không yêu cầu UNIQUE trên question.
 -- Bên gọi quản lý transaction. DB Browser: Execute SQL rồi Write Changes.
 -- insert_new=0: sửa câu cũ nếu đã có; không chèn thêm biến thể trùng chủ đề.
--- Đọc docs/CHATBOT_DATA.md và sao lưu trước khi áp dụng.
+-- Sao lưu trước khi áp dụng.
 
 CREATE TEMP TABLE chatbot_faq_v3 (
     question TEXT PRIMARY KEY,
@@ -48,9 +48,9 @@ INSERT INTO chatbot_faq_v3 (question, category, answer, insert_new) VALUES
 ('Mỗi căn hộ được đăng ký tối đa bao nhiêu xe?', 'Gửi xe',
  'Hiện không giới hạn số xe mỗi căn hộ. Bạn có thể đăng ký xe máy, xe điện (gồm xe máy điện và xe đạp điện) và xe đạp thường; mỗi xe đều cần đăng ký và đóng phí theo quy định gửi xe.', 1),
 ('Đăng ký thêm, huỷ hoặc thay đổi xe đã đăng ký như thế nào?', 'Gửi xe',
- 'Bạn vào Khiếu nại & đăng ký → Gửi yêu cầu → Đăng ký thủ tục, điền đơn gửi xe rồi gửi Ban quản lý xét duyệt trong vòng 48 giờ. Muốn đổi thông tin hoặc hủy xe, hãy liên hệ Ban quản lý. Bạn chỉ được hủy khi đã gửi đủ thời gian cam kết, ít nhất 2 tháng. Phí tính theo các tháng có đăng ký trong đợt thu; hóa đơn đã lập không tự thay đổi khi bạn thêm hoặc sửa đăng ký xe.', 1),
+ 'Bạn vào Quản lý gửi xe → Gửi đơn đăng ký, điền thông tin xe rồi gửi Ban quản lý xét duyệt trong vòng 48 giờ. Khi đơn được duyệt, xe xuất hiện trong mục Phương tiện đăng ký cùng biển số hoặc mã xe (ví dụ A101-XD-1) và bạn nhận được thông báo. Muốn đổi thông tin hoặc hủy xe, hãy liên hệ Ban quản lý. Bạn chỉ được hủy khi đã gửi đủ thời gian cam kết, ít nhất 2 tháng. Phí tính theo các tháng có đăng ký trong đợt thu; hóa đơn đã lập không tự thay đổi khi bạn thêm hoặc sửa đăng ký xe.', 1),
 ('Căn hộ bị hỏng điện nước thì báo ở đâu?', 'Sửa chữa',
- 'Bạn vào Sửa chữa & bảo trì → Tạo yêu cầu, chọn Sửa chữa hoặc Bảo trì rồi mô tả chỗ bị hỏng. Bạn có thể xem người phụ trách và tiến độ xử lý ngay trong mục này. Nếu cần hỗ trợ gấp, gọi Ban quản lý: 0228913665.', 1),
+ 'Bạn vào Sửa chữa & bảo trì → Tạo yêu cầu, chọn Sửa chữa hoặc Bảo trì rồi mô tả chỗ bị hỏng. Tài khoản cần được Ban quản lý xác nhận liên kết căn hộ trước khi gửi yêu cầu. Bạn có thể xem người phụ trách và tiến độ xử lý ngay trong mục này. Nếu cần hỗ trợ gấp, gọi Ban quản lý: 0228913665.', 1),
 ('Yêu cầu sửa chữa được xử lý trong bao lâu?', 'Sửa chữa',
  'Bạn vào Sửa chữa & bảo trì để xem yêu cầu đang Chờ xử lý, Đang thực hiện hay Đã hoàn thành. Thời gian sửa tùy mức độ hư hỏng và lịch của người phụ trách; hiện chưa có thời hạn chung cho mọi yêu cầu. Nếu cần hỗ trợ gấp, gọi Ban quản lý: 0228913665.', 1),
 ('Gửi khiếu nại như thế nào?', 'Khiếu nại',
@@ -85,7 +85,7 @@ INSERT INTO chatbot_faq_v3 (question, category, answer, insert_new) VALUES
  'Bạn vào mục Thông báo để xem thông báo chung của chung cư và thông báo riêng gửi cho mình, gồm phản hồi khiếu nại từ Ban quản lý. Nếu muốn nhận thông báo bật lên trên thiết bị, bạn cần cho phép trình duyệt gửi thông báo và tính năng này cần được bật cho ứng dụng. Dù chưa nhận được thông báo bật lên, bạn vẫn có thể vào mục Thông báo để kiểm tra.', 0);
 
 -- Các câu khác của v2 (giờ giấc, nội quy, tiện ích, xử phạt...) chưa được bổ sung
--- ở đây. Nếu từng nhập v2, xem danh sách rà soát trong docs/CHATBOT_DATA.md.
+-- ở đây. Nếu từng nhập v2, cần rà soát riêng các câu đó.
 
 UPDATE faq_knowledge_base
 SET category = (SELECT category FROM chatbot_faq_v3 WHERE question = faq_knowledge_base.question),

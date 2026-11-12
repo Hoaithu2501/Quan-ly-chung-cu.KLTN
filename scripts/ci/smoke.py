@@ -1,4 +1,5 @@
 """Run inside the disposable gateway container, against the built images."""
+
 import os
 import sqlite3
 
@@ -22,13 +23,15 @@ def main():
         ("technician", "Tech@12345", "/api/maintenance/tickets"),
     )
     for username, password, path in accounts:
-        response = requests.post(base + "/api/auth/login", json={"username": username, "password": password}, timeout=15)
+        response = requests.post(
+            base + "/api/auth/login", json={"username": username, "password": password}, timeout=15
+        )
         assert response.status_code == 200, (username, response.status_code)
         headers = {"Authorization": "Bearer " + response.json()["token"]}
         response = requests.get(base + path, headers=headers, timeout=15)
         assert response.status_code == 200 and "items" in response.json(), (username, path)
     assert requests.get(base + "/api/billing/invoices/monthly", timeout=10).status_code == 401
-    assert requests.post(base + "/api/billing/sepay/webhook", json={}, timeout=10).status_code == 401
+    assert requests.post(base + "/api/billing/sepay/webhook", json={}, timeout=10).status_code == 403
     with sqlite3.connect("file:/app/data/QLCC.db?mode=ro", uri=True) as db:
         assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []

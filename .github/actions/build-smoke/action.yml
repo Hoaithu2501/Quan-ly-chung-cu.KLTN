@@ -11,27 +11,27 @@ runs:
         test "$APP_ENV_FILE" = ".runtime/ci.env"
         mkdir -p secrets
         python scripts/ci/write_test_env.py
-        docker compose -f docker-compose.release.yml config --quiet
+        docker compose config --quiet
     - name: Build all ten images
       shell: bash
-      run: docker compose -f docker-compose.release.yml build
+      run: docker compose build
     - name: Start isolated services
       shell: bash
-      run: docker compose -f docker-compose.release.yml up --no-build -d --wait --wait-timeout 180
+      run: docker compose up --no-build -d --wait --wait-timeout 180
     - name: Check built application
       shell: bash
-      run: docker compose -f docker-compose.release.yml exec -T gateway python - < scripts/ci/smoke.py
+      run: docker compose exec -T gateway python - < scripts/ci/smoke.py
     - name: Save diagnostics on failure
       if: failure()
       shell: bash
       run: |
         mkdir -p test-results
-        docker compose -f docker-compose.release.yml ps -a > test-results/compose-status.txt
-        docker compose -f docker-compose.release.yml logs --no-color --tail 150 > test-results/compose.log 2>&1
+        docker compose ps -a > test-results/compose-status.txt
+        docker compose logs --no-color --tail 150 > test-results/compose.log 2>&1
     - name: Remove only the disposable CI stack
       if: always()
       shell: bash
       run: |
         test "$COMPOSE_PROJECT_NAME" = "qlcc-ci"
         test "$APP_ENV_FILE" = ".runtime/ci.env"
-        docker compose -f docker-compose.release.yml down --volumes --remove-orphans
+        docker compose down --volumes --remove-orphans

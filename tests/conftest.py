@@ -13,8 +13,12 @@ from werkzeug.security import generate_password_hash
 from werkzeug.serving import make_server
 
 
+from scripts.ci.prepare_database import prepare
+from scripts.init_db import migration_files
+
+
 ROOT = Path(__file__).resolve().parents[1]
-TEST_SECRET = "integration-test-jwt-secret-with-32-characters"
+TEST_SECRET ="integration-test-jwt-secret-with-32-characters"
 TEST_INTERNAL = "integration-test-service-token-with-32-characters"
 TEST_PASSWORD = "TestPassword!2026"
 TEST_SEPAY_KEY = "integration-sepay-key-at-least-32-characters"
@@ -34,6 +38,12 @@ def configure_sepay(monkeypatch):
         monkeypatch.setenv(name, value)
 
 
+@pytest.fixture(autouse=True)
+def test_payment_environment(monkeypatch):
+    """A developer's .env may say SEPAY_ENV=live; tests must never inherit that."""
+    monkeypatch.setenv("SEPAY_ENV", "test")
+
+
 def bank_webhook(order, *, transaction_id=100001, amount=None, **changes):
     payload = {
         "id": transaction_id, "gateway": "Vietcombank", "transactionDate": "2026-11-06 12:00:00",
@@ -49,15 +59,14 @@ def bank_webhook(order, *, transaction_id=100001, amount=None, **changes):
 def service_cluster(tmp_path, monkeypatch):
     """Each test receives isolated data and real inter-service HTTP transport."""
     database = tmp_path / "integration.db"
-    with sqlite3.connect(f"file:{(ROOT / 'QLCC.db').as_posix()}?mode=ro", uri=True) as source:
-        with sqlite3.connect(database) as destination:
-            source.backup(destination)
-            if "area" not in {row[1] for row in destination.execute("PRAGMA table_info(apartments)")}:
-                destination.execute("ALTER TABLE apartments ADD COLUMN area REAL")
-            destination.execute("UPDATE apartments SET area=70 WHERE area IS NULL")
-            for migration in sorted((ROOT / "migrations").glob("*.sql")):
-                destination.executescript(migration.read_text(encoding="utf-8"))
-            destination.execute("UPDATE users SET password_hash=?", (generate_password_hash(TEST_PASSWORD),))
+    prepare(database)
+    with sqlite3.connect(database) as destination:
+        if "area" not in {row[1] for row in destination.execute("PRAGMA table_info(apartments)")}:
+            destination.execute("ALTER TABLE apartments ADD COLUMN area REAL")
+        destination.execute("UPDATE apartments SET area=70 WHERE area IS NULL")
+        for migration in migration_files():
+            destination.executescript(migration.read_text(encoding="utf-8"))
+        destination.execute("UPDATE users SET password_hash=?", (generate_password_hash(TEST_PASSWORD),))
     monkeypatch.setenv("JWT_SECRET", TEST_SECRET)
     monkeypatch.setenv("SERVICE_TOKEN", TEST_INTERNAL)
     configure_sepay(monkeypatch)
@@ -93,7 +102,14 @@ def service_cluster(tmp_path, monkeypatch):
         request_headers = cluster.headers(role, user_id, internal, **(headers or {}))
         return requests.request(method, urls[service] + path, headers=request_headers, json=json, timeout=15, **kwargs)
 
-    cluster = SimpleNamespace(urls=urls, modules=modules, apps=apps, db_path=database, password=TEST_PASSWORD, call=call, headers=headers)
+    def release_apartments(user_id):
+        """Sample accounts already hold an apartment; an account may only hold one at a time."""
+        with sqlite3.connect(database) as db:
+            db.execute("UPDATE apartment_contracts SET status='terminated' WHERE resident_id IN (SELECT resident_id FROM residents WHERE user_id=?)", (user_id,))
+            db.execute("DELETE FROM resident_apartment_memberships WHERE resident_id IN (SELECT resident_id FROM residents WHERE user_id=?)", (user_id,))
+
+    cluster = SimpleNamespace(urls=urls, modules=modules, apps=apps, db_path=database, password=TEST_PASSWORD, call=call, headers=headers,
+                              release_apartments=release_apartments)
     yield cluster
     for server, thread in reversed(servers):
         server.shutdown()

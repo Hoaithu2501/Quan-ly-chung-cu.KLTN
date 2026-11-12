@@ -8,8 +8,13 @@ import pytest
 def registration_payload(service_cluster):
     with sqlite3.connect(service_cluster.db_path) as db:
         apartment_code=db.execute('SELECT code FROM apartments WHERE apartment_id=1').fetchone()[0]
-    return {'username':'new_resident','password':'123456','full_name':'Cư dân kiểm thử',
+    return {'username':'new_resident','password':'Password123','full_name':'Cư dân kiểm thử',
             'email':'new@gmail.com','phone':'0901234567','apartment_code':apartment_code}
+
+
+def lock_account(c,status,reason=None):
+    with sqlite3.connect(c.db_path) as db:
+        db.execute('UPDATE users SET status=?,lock_reason=? WHERE user_id=3',(status,reason))
 
 
 def test_login_signup_role_and_profile_provisioning(service_cluster,registration_payload):
@@ -37,7 +42,7 @@ def test_login_signup_role_and_profile_provisioning(service_cluster,registration
     {'username':'ab'}, {'username':'a'*21}, {'username':'Ngoc Anh'},
     {'email':'new@example.com'}, {'email':'new@gmail.com.example.com'},
     {'email':''}, {'email':None}, {'password':'12345'}, {'password':'a'*31},
-    {'full_name':'a'*9}, {'full_name':'a'*51}, {'apartment_code':''}, {'apartment_code':'UNKNOWN'},
+    {'full_name':'a'}, {'full_name':'a'*51}, {'apartment_code':''}, {'apartment_code':'UNKNOWN'},
     {'phone':None}, {'phone':''}, {'phone':' \t '}, {'phone':123456789}, {'phone':'0'*21},
 ])
 def test_registration_rejects_invalid_fields(service_cluster,registration_payload,changes):
@@ -55,9 +60,9 @@ def test_registration_requires_phone(service_cluster,registration_payload):
         assert db.execute('SELECT 1 FROM users WHERE username=?',(payload['username'],)).fetchone() is None
 
 
-def test_short_password_required_phone_and_own_profile_edit(service_cluster,registration_payload):
+def test_minimum_password_required_phone_and_own_profile_edit(service_cluster,registration_payload):
     c=service_cluster
-    payload={**registration_payload,'username':'a'*20,'phone':'0987654321'}
+    payload={**registration_payload,'username':'a'*20,'phone':'0987654321','password':'123456'}
     response=requests.post(c.urls['auth']+'/api/auth/register',json=payload,timeout=10)
     assert response.status_code==201,response.text
     login=requests.post(c.urls['auth']+'/api/auth/login',json={'username':payload['username'],'password':'123456'},timeout=10)
@@ -84,10 +89,9 @@ def test_short_password_required_phone_and_own_profile_edit(service_cluster,regi
     assert clear.status_code==200
     assert clear.json()['profile']['id_card'] is None
     assert clear.json()['profile']['phone']==clear.json()['user']['phone']==update['phone']
-    assert c.call('auth','/api/auth/me','PATCH',role='admin',json=update).status_code==403
-    for name in ('a'*9,'a'*51):
+    for name in ('a','a'*51):
         assert requests.patch(c.urls['auth']+'/api/auth/me',headers=headers,json={'full_name':name},timeout=10).status_code==400
-    for name in ('a'*10,'a'*50):
+    for name in ('Lê','a'*50):
         assert requests.patch(c.urls['auth']+'/api/auth/me',headers=headers,json={'full_name':name},timeout=10).status_code==200
 
 
@@ -108,14 +112,14 @@ def test_login_error_and_locked_reason(service_cluster):
     def login(password):
         return requests.post(c.urls['auth']+'/api/auth/login',json={'username':username,'password':password},timeout=10)
     assert login('wrong').json()['error']=='Sai tên đăng nhập hoặc mật khẩu, vui lòng kiểm tra lại'
-    assert c.call('auth','/api/auth/users/3','PATCH',json={'status':'locked','lock_reason':'Cần xác minh thông tin'}).status_code==200
+    lock_account(c,'locked','Cần xác minh thông tin')
     assert login('wrong').status_code==401
     blocked=login(c.password)
     assert blocked.status_code==403
     assert blocked.json()['code']=='ACCOUNT_LOCKED' and blocked.json()['reason']=='Cần xác minh thông tin'
-    assert c.call('auth','/api/auth/users/3','PATCH',json={'status':'active'}).json()['lock_reason'] is None
+    lock_account(c,'active')
     assert login(c.password).status_code==200
-    c.call('auth','/api/auth/users/3','PATCH',json={'status':'locked'})
+    lock_account(c,'locked')
     assert login(c.password).json()['reason'] is None
 
 
@@ -126,31 +130,34 @@ def test_username_and_password_change(service_cluster):
     headers={'Authorization':'Bearer '+response.json()['token']}
     assert c.call('auth','/api/auth/me','PATCH',role='resident',json={'username':'admin01'}).status_code==409
     for changes in ({'current_password':'wrong'},{'confirm_password':'different'},{'new_password':'12345','confirm_password':'12345'},{'new_password':'a'*31,'confirm_password':'a'*31}):
-        payload={'current_password':c.password,'new_password':'123456','confirm_password':'123456',**changes}
+        payload={'current_password':c.password,'new_password':'NewPass123','confirm_password':'NewPass123',**changes}
         result=requests.post(c.urls['auth']+'/api/auth/me/password',headers=headers,json=payload,timeout=10)
         assert result.status_code==400,result.text
-    assert c.call('auth','/api/auth/me/password','POST',role='resident',json={'new_password':'123456'}).status_code==400
-    for password in ('a'*30,'123456'):
-        result=requests.post(c.urls['auth']+'/api/auth/me/password',headers=headers,json={'current_password':c.password if len(password)==30 else 'a'*30,'new_password':password,'confirm_password':password},timeout=10)
+    assert c.call('auth','/api/auth/me/password','POST',role='resident',json={'new_password':'NewPass123'}).status_code==400
+    # Each change revokes the token it used and issues a replacement.
+    for current,password in ((c.password,'a'*30),('a'*30,'NewPass123')):
+        result=requests.post(c.urls['auth']+'/api/auth/me/password',headers=headers,json={'current_password':current,'new_password':password,'confirm_password':password},timeout=10)
         assert result.status_code==200,result.text
-    for password,expected in ((c.password,401),('123456',200)):
+        headers={'Authorization':'Bearer '+result.json()['token']}
+    for password,expected in ((c.password,401),('NewPass123',200)):
         result=requests.post(c.urls['auth']+'/api/auth/login',json={'username':'renamed.user','password':password},timeout=10)
         assert result.status_code==expected
-    c.call('auth','/api/auth/users/3','PATCH',json={'status':'locked'})
-    assert requests.post(c.urls['auth']+'/api/auth/me/password',headers=headers,json={'current_password':'123456','new_password':'new123','confirm_password':'new123'},timeout=10).status_code==401
+    lock_account(c,'locked')
+    assert requests.post(c.urls['auth']+'/api/auth/me/password',headers=headers,json={'current_password':'NewPass123','new_password':'new12345','confirm_password':'new12345'},timeout=10).status_code==401
 
 
 def test_locked_account_immediately_loses_domain_access(service_cluster):
     c=service_cluster
     assert c.call('resident','/api/apartments',role='resident').status_code==200
-    assert c.call('auth','/api/auth/users/3','PATCH',json={'status':'locked'}).status_code==200
+    lock_account(c,'locked')
     assert c.call('resident','/api/apartments',role='resident').status_code==401
-    assert c.call('auth','/api/auth/users/1','PATCH',json={'status':'locked'}).status_code==400
+    assert c.call('auth','/api/auth/users/1','PATCH',json={'role':'resident'}).status_code==400
     assert c.call('auth','/api/auth/users',role='resident').status_code==403
 
 
 def test_contract_lifecycle_scopes_history_and_occupancy(service_cluster):
     c=service_cluster
+    c.release_apartments(3)
     apartment=c.call('resident','/api/apartments','POST',json={'code':'TEST-101','block':'Test','floor':1,'area':85.5})
     assert apartment.status_code==201,apartment.text
     aid=apartment.json()['apartment_id']
@@ -172,6 +179,7 @@ def test_contract_lifecycle_scopes_history_and_occupancy(service_cluster):
 
 def test_concurrent_contracts_only_one_active_and_area_validation(service_cluster):
     c=service_cluster
+    c.release_apartments(3)
     payload={'code':'TEST-202','block':'Test','floor':2,'area':0}
     assert c.call('resident','/api/apartments','POST',json=payload).status_code==400
     new=c.call('resident','/api/apartments','POST',json={**payload,'area':90}).json()

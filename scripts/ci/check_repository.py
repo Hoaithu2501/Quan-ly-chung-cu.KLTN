@@ -1,4 +1,5 @@
 """Reject runtime data and private credentials accidentally tracked by Git."""
+
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
@@ -18,7 +19,10 @@ def check_repository():
         name = path.name.lower()
         private = (
             (name.startswith(".env") and name != ".env.example")
-            or any(part in {".venv", "node_modules", "backups", "logs", ".runtime", "test-results", "__pycache__"} for part in path.parts)
+            or any(
+                part in {".venv", "node_modules", "backups", "logs", ".runtime", "test-results", "__pycache__"}
+                for part in path.parts
+            )
             or (path.parts[0] == "secrets" and name != ".gitkeep")
             or name.endswith((".db", ".db-wal", ".db-shm", ".db-journal", ".sqlite", ".sqlite3", ".pem", ".key"))
             or name == "firebase-credentials.json"

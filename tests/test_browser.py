@@ -2,8 +2,11 @@
 import importlib.util
 import os
 from pathlib import Path
+import random
 import sqlite3
+import struct
 import threading
+import zlib
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlsplit
 
@@ -31,7 +34,9 @@ def browser_page(service_cluster):
     try:
         with playwright.sync_playwright() as p:
             browser=p.chromium.launch(headless=True,**({'executable_path':executable} if executable else {}))
-            page=browser.new_page(viewport={'width':1440,'height':1000},locale='vi-VN',reduced_motion='reduce')
+            # wait_for_function polls with eval, which the real policy forbids. The policy
+            # itself is exercised by test_content_security_policy_does_not_block_the_interface.
+            page=browser.new_page(viewport={'width':1440,'height':1000},locale='vi-VN',reduced_motion='reduce',bypass_csp=True)
             page.set_default_timeout(30000)
             errors=[]
             page.on('pageerror',lambda error:errors.append(str(error)))
@@ -138,7 +143,7 @@ def test_registration_login_and_personal_profile(browser_page):
     with sqlite3.connect(cluster.db_path) as db:
         apartment_code=db.execute('SELECT code FROM apartments WHERE apartment_id=1').fetchone()[0]
     page.locator('[data-action=auth-switch]').click()
-    for name,value in {'apartment_code':apartment_code,'full_name':'Cư dân đăng ký mới','username':'new.user-1','email':'new@gmail.com','password':'123456'}.items():
+    for name,value in {'apartment_code':apartment_code,'full_name':'Cư dân đăng ký mới','username':'new.user-1','email':'new@gmail.com','password':'MatKhau123'}.items():
         page.locator(f'#auth-form [name={name}]').fill(value)
     phone=page.locator('#auth-form [name=phone]')
     assert phone.get_attribute('required') is not None
@@ -151,12 +156,12 @@ def test_registration_login_and_personal_profile(browser_page):
     password.fill('12')
     page.locator('#auth-form [type=submit]').click()
     assert password.evaluate('(input)=>input.validationMessage')=='Mật khẩu cần ít nhất 6 ký tự.'
-    password.fill('123456')
+    password.fill('MatKhau123')
     page.locator('#auth-form [type=submit]').click()
     page.wait_for_function("document.querySelector('#auth-form')?.dataset.register === 'false'")
     assert page.evaluate("sessionStorage.getItem('ancu_token')") is None
     assert page.locator('#auth-form [name=username]').input_value()=='new.user-1'
-    page.locator('#auth-form [name=password]').fill('123456')
+    page.locator('#auth-form [name=password]').fill('MatKhau123')
     page.locator('#auth-form [type=submit]').click()
     page.locator('#page .page-heading h1').wait_for()
     assert page.locator('.nav a.active').get_attribute('data-route')=='overview'
@@ -188,24 +193,26 @@ def test_registration_login_and_personal_profile(browser_page):
     page.wait_for_function("!document.querySelector('#modal').open")
     page.locator('#page').get_by_text('renamed.user',exact=True).wait_for()
     page.locator('[data-action=password-edit]').click()
-    for name,value in {'current_password':'wrong','new_password':'new123','confirm_password':'other1'}.items():
+    for name,value in {'current_password':'wrong','new_password':'new12345','confirm_password':'other123'}.items():
         page.locator(f'#modal-form [name={name}]').fill(value)
     page.locator('#modal-form [type=submit]').click()
-    page.locator('#modal-form .form-error').get_by_text('Mật khẩu mới và mật khẩu nhập lại không trùng khớp.').wait_for()
-    page.locator('#modal-form [name=confirm_password]').fill('new123')
-    page.locator('#modal-form [type=submit]').click()
     page.locator('#modal-form .form-error').get_by_text('Mật khẩu hiện tại không đúng.').wait_for()
-    page.locator('#modal-form [name=current_password]').fill('123456')
+    page.locator('#modal-form [name=current_password]').fill('MatKhau123')
+    page.locator('#modal-form [type=submit]').click()
+    page.locator('#modal-form .form-error').get_by_text('Mật khẩu mới và mật khẩu nhập lại không trùng khớp.').wait_for()
+    page.locator('#modal-form [name=confirm_password]').fill('new12345')
     page.locator('#modal-form [type=submit]').click()
     page.wait_for_function("!document.querySelector('#modal').open")
+    # The token was replaced: this tab must still be signed in after the old one is revoked.
+    page.locator('#page').get_by_text('renamed.user',exact=True).wait_for()
     page.locator('[data-action=logout]').click()
     page.locator('#auth-form [name=username]').fill('renamed.user')
-    page.locator('#auth-form [name=password]').fill('123456')
+    page.locator('#auth-form [name=password]').fill('MatKhau123')
     page.locator('#auth-form [type=submit]').click()
     page.locator('#auth-form .form-error').get_by_text('Sai tên đăng nhập hoặc mật khẩu, vui lòng kiểm tra lại').wait_for()
     with sqlite3.connect(cluster.db_path) as db:
         db.execute("UPDATE users SET status='locked',lock_reason=? WHERE username='renamed.user'",('Cần xác minh thông tin',))
-    page.locator('#auth-form [name=password]').fill('new123')
+    page.locator('#auth-form [name=password]').fill('new12345')
     page.locator('#auth-form [type=submit]').click()
     page.locator('#modal-title').get_by_text('Tài khoản đã bị khóa',exact=True).wait_for()
     assert 'Cần xác minh thông tin' in page.locator('#modal').inner_text()
@@ -221,7 +228,10 @@ def test_role_navigation_and_responsive_layout(browser_page,role):
     if role!='admin': assert 'users' not in routes and 'reports' not in routes
     for route in routes:
         visit(page,route)
-    visit(page,'chatbot')
+    assert 'chatbot' not in routes  # the assistant is opened from the sidebar card only
+    page.locator('.support-card [data-route=chatbot]').click()
+    page.wait_for_function("document.querySelector('#page')?.dataset.route === 'chatbot' && document.querySelector('#page')?.getAttribute('aria-busy') !== 'true'")
+    assert 'Giờ yên tĩnh' not in page.locator('.chat-suggestions').inner_text()
     page.locator('#chat-form [name=question]').fill('Hieu thuoc o dau?')
     page.locator('#chat-form [type=submit]').click()
     page.wait_for_function("document.querySelector('#chat-form').dataset.busy === 'false'")
@@ -235,6 +245,99 @@ def test_role_navigation_and_responsive_layout(browser_page,role):
     page.locator('.nav a[href="#notifications"]').click()
     page.wait_for_function("document.querySelector('.sidebar').getBoundingClientRect().right <= 0")
     page.locator('#page .page-heading h1').wait_for()
+    assert not errors,errors
+
+
+@pytest.mark.parametrize('role',['admin','resident'])
+def test_rail_dock_and_today_column_follow_the_agreed_layout(browser_page,role):
+    page,cluster,errors=browser_page
+    login(page,cluster,role)
+    visit(page,'overview')
+    page.set_viewport_size({'width':1440,'height':900})
+    assert page.locator('.nav a[href="#complaints"]').is_visible()
+    assert page.evaluate("document.querySelector('.nav').scrollHeight <= document.querySelector('.nav').clientHeight")
+    assert page.locator('.notification-bell').is_visible() and page.locator('[data-action=logout]').is_visible()
+    assert page.evaluate("document.querySelector('.today-panel').getBoundingClientRect().left >= document.querySelector('.overview-main').getBoundingClientRect().right")
+    page.set_viewport_size({'width':390,'height':844})
+    page.wait_for_function("document.querySelector('.sidebar').getBoundingClientRect().right <= 0")
+    assert page.locator('.notification-bell').is_visible() and page.locator('[data-action=logout]').is_visible()
+    assert page.evaluate("document.querySelector('.today-panel').getBoundingClientRect().top >= document.querySelector('.overview-main').getBoundingClientRect().bottom")
+    if role=='resident':
+        headings=page.locator('#page h2').all_inner_texts()
+        assert headings.index('Hóa đơn cần thanh toán')<headings.index('Hôm nay')
+    page.locator('.dock a[href="#complaints"]').click()
+    page.locator('#page[data-route="complaints"] .page-heading h1').wait_for()
+    assert page.locator('.dock a.active').get_attribute('data-route')=='complaints'
+    assert not errors,errors
+
+
+def test_admin_has_the_wide_sidebar_separate_today_cards_and_can_remove_a_policy(browser_page):
+    page,cluster,errors=browser_page
+    login(page,cluster,'admin')
+    visit(page,'overview')
+    page.set_viewport_size({'width':1440,'height':900})
+    assert page.evaluate("document.querySelector('.sidebar').getBoundingClientRect().width")>=200
+    assert page.locator('.nav a[href="#residents"]').inner_text().strip()=='Cư dân & hợp đồng'
+    assert page.locator('.floor-display').count()==0
+    assert page.evaluate("getComputedStyle(document.querySelector('.today-step'),'::after').content")=='none'
+    question='Sân pickleball trên sân thượng mở cửa lúc mấy giờ?'
+    page.locator('.support-card [data-route=chatbot]').click()
+    page.locator('[data-action=tab][data-tab=faqs]').click()
+    page.locator('[data-action=faq-create]').click()
+    page.locator('#modal-form [name=question]').fill(question)
+    page.locator('#modal-form [name=answer]').fill('Mở từ 6 giờ đến 21 giờ.')
+    page.locator('#modal-form [type=submit]').click()
+    card=page.locator('.notice-card',has_text=question)
+    card.wait_for()
+    card.locator('[data-action=faq-delete]').click()
+    page.locator('#modal-form [type=submit]').click()
+    card.wait_for(state='detached')
+    assert not errors,errors
+
+
+def noisy_png(size=1400):
+    raw=b''.join(b'\x00'+random.randbytes(size*3) for _ in range(size))
+    def chunk(tag,data):
+        return struct.pack('>I',len(data))+tag+data+struct.pack('>I',zlib.crc32(tag+data))
+    return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>IIBBBBB',size,size,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw,1))+chunk(b'IEND',b'')
+
+
+def test_complaint_accepts_a_large_photo_by_shrinking_it(browser_page):
+    page,cluster,errors=browser_page
+    login(page,cluster,'resident')
+    visit(page,'complaints')
+    page.locator('[data-action=complaint-create]').click()
+    page.locator('#modal-form [name=category]').fill('Vệ sinh')
+    page.locator('#modal-form [name=content]').fill('Ảnh chụp hành lang')
+    photo=noisy_png()
+    assert len(photo)>450*1024
+    page.locator('#field-attachments').set_input_files([{'name':'hanh-lang.png','mimeType':'image/png','buffer':photo}])
+    page.locator('#modal-form [type=submit]').click()
+    page.wait_for_function("!document.querySelector('#modal')?.open")
+    saved=cluster.call('complaint','/api/complaints',role='resident',user_id=3).json()['items'][0]
+    assert saved['category']=='Vệ sinh' and saved['attachments'][0]['name']=='hanh-lang.jpg'
+    assert saved['attachments'][0]['type']=='image/jpeg' and len(saved['attachments'][0]['data'])<=600*1024
+    assert not errors,errors
+
+
+def test_resident_opens_policies_from_the_overview_and_the_report_counts_complaints(browser_page):
+    page,cluster,errors=browser_page
+    login(page,cluster,'resident')
+    visit(page,'overview')
+    page.locator('.overview-shortcut[data-tab=faqs]').click()
+    page.locator('#page[data-route=chatbot] .tab.active[data-tab=faqs]').wait_for()
+    page.locator('#page .notice-card').first.wait_for()
+    assert page.locator('[data-action=faq-create]').count()==0
+    page.locator('.support-card [data-route=chatbot]').click(force=True)
+    page.locator('#page .tab.active[data-tab=chat]').wait_for()
+    page.locator('[data-action=logout]').click()
+    login(page,cluster,'admin')
+    visit(page,'reports')
+    stats=page.locator('#page .stat-card').all_inner_texts()
+    assert any('Khiếu nại' in text for text in stats) and any('Thu điện nước' in text for text in stats)
+    assert any('Thu dịch vụ 6 tháng' in text for text in stats)
+    visit(page,'apartments')
+    assert 'Chủ sở hữu' in page.locator('#page thead').inner_text()
     assert not errors,errors
 
 
@@ -270,7 +373,7 @@ def test_parking_registration_rules_preserve_draft_and_submit(browser_page):
     registered_date.fill('2026-11-01')
     with sqlite3.connect(cluster.db_path) as db:
         apartment_code=db.execute('SELECT code FROM apartments WHERE apartment_id=1').fetchone()[0]
-    page.locator('#modal-form [name=apartment_code]').fill(apartment_code)
+    assert page.locator('#modal-form [name=apartment_code]').input_value()==apartment_code
     page.locator('#modal-form [name=notes]').fill('Xe màu xanh, giữ nguyên nội dung đã nhập.')
     draft=page.locator('#modal-form').evaluate('(form)=>Object.fromEntries(new FormData(form))')
     page.evaluate("window.parkingDraftForm=document.querySelector('#modal-form')")
@@ -298,53 +401,41 @@ def test_parking_registration_rules_preserve_draft_and_submit(browser_page):
     assert not errors,errors
 
 
-def test_complaint_type_opens_parking_registration_immediately(browser_page):
+def test_complaint_type_opens_procedure_registration_form(browser_page):
     page,cluster,errors=browser_page
     login(page,cluster,'resident')
     visit(page,'complaints')
-    profile=cluster.call('resident','/api/residents/me',role='resident').json()
-    pending=[]
-    page.route('**/api/residents/me',lambda route:pending.append(route))
-    # Exercise the uncached loading path; navigation now preloads this profile.
-    page.evaluate('state.data.personal = null')
     page.locator('[data-action=complaint-create]').click()
-    with page.expect_request('**/api/residents/me'):
-        page.locator('#modal-form [name=type]').select_option('registration')
-    page.locator('#modal .modal-header [data-action=close-modal]').click()
-    assert not page.evaluate("document.querySelector('#modal').open")
-    assert len(pending)==1
-    with page.expect_response('**/api/residents/me') as delayed_profile:
-        pending[0].fulfill(json=profile)
-    delayed_profile.value.finished()
-    page.evaluate('() => new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
-    assert not page.evaluate("document.querySelector('#modal').open")
-    page.unroute('**/api/residents/me')
-    page.locator('[data-action=complaint-create]').click()
+    page.locator('#modal-form [name=category]').fill('Tiếng ồn')
     page.locator('#modal-form [name=type]').select_option('registration')
-    page.locator('#modal-form [name=vehicle_type]').wait_for()
-    assert page.locator('#modal-form [name=type]').input_value()=='registration'
-    assert page.locator('#modal-form [name=content]').count()==0
-    page.locator('#modal-form [name=type]').select_option('complaint')
-    page.locator('#modal-form [name=content]').wait_for()
+    page.locator('#modal-form [name=attachment_links]').wait_for()
+    # Procedure registration is its own form, not the parking application.
     assert page.locator('#modal-form [name=vehicle_type]').count()==0
+    assert 'Danh mục / Tên thủ tục' in page.locator('#modal-form').inner_text()
+    page.locator('#modal-form [name=type]').select_option('complaint')
+    page.locator('#modal-form [name=attachment_links]').wait_for(state='detached')
+    assert page.locator('#modal-form [name=category]').input_value()=='Tiếng ồn'
+    # Complaints take photos too; only web links are specific to procedures.
+    assert page.locator('#modal-form [name=attachment_files]').count()==1
     page.locator('#modal-form [name=type]').select_option('registration')
-    page.locator('#modal-form [name=vehicle_type]').select_option('bicycle')
-    assert page.locator('#modal-form [name=plate_number]').input_value()==''
-    assert page.locator('#modal-form [name=monthly_fee]').input_value()=='50000'
-    page.locator('#modal-form [name=registration_months]').fill('2')
-    page.locator('#modal-form [name=registered_date]').fill('2026-11-01')
-    with sqlite3.connect(cluster.db_path) as db:
-        apartment_code=db.execute('SELECT code FROM apartments WHERE apartment_id=1').fetchone()[0]
-    page.locator('#modal-form [name=apartment_code]').fill(apartment_code)
-    page.locator('#modal-form [name=notes]').fill('Đăng ký xe đạp từ mục yêu cầu.')
+    page.locator('#modal-form [name=attachment_links]').wait_for()
+    page.locator('#modal-form [name=category]').fill('Đăng ký thi công nội thất')
+    page.locator('#modal-form [name=attachment_files]').set_input_files(files=[{'name':'ban-ve.png','mimeType':'image/png','buffer':b'\x89PNG\r\n\x1a\n'}])
+    page.locator('#modal-form [name=attachment_links]').fill('https://example.com/ho-so')
+    page.locator('#modal-form [name=content]').fill('Thi công từ 08:00 đến 17:00 trong 3 ngày.')
     with page.expect_response(lambda response:response.url.endswith('/api/complaints') and response.request.method=='POST') as submitted:
         page.locator('#modal-form [type=submit]').click()
     assert submitted.value.status==201,submitted.value.text()
     saved=submitted.value.json()
-    assert saved['type']=='registration' and 'Xe đạp' in saved['content']
+    assert saved['type']=='registration' and saved['category']=='Đăng ký thi công nội thất'
+    assert [a['name'] for a in saved['attachments']]==['ban-ve.png','https://example.com/ho-so']
     page.wait_for_function("!document.querySelector('#modal').open && document.querySelector('#page').getAttribute('aria-busy') !== 'true'")
-    page.locator('#toasts .toast').filter(has_text='Đã gửi').last.wait_for()
-    page.locator('tbody tr').filter(has_text=f"#YC{saved['complaint_id']}").wait_for()
+    page.locator('#table-search').fill(f"  YC{saved['complaint_id']}  ")
+    row=page.locator('tbody tr').filter(has_text=f"#YC{saved['complaint_id']}")
+    row.wait_for()
+    assert page.locator('tbody tr:not([hidden])').count()==1
+    row.locator('[data-action=complaint-edit]').last.click()
+    assert 'ban-ve.png' in page.locator('#modal').inner_text()
     assert not errors,errors
 
 
@@ -416,9 +507,9 @@ def test_management_reply_notifies_only_the_complaint_sender(browser_page):
 
 def test_tab_switch_preserves_visible_content_until_response(browser_page):
     page,cluster,errors=browser_page
-    login(page,cluster,'resident')
+    login(page,cluster,'admin')
     visit(page,'parking')
-    vehicles=cluster.call('parking','/api/parking/vehicles',role='resident').json()
+    vehicles=cluster.call('parking','/api/parking/guest-daily').json()
     before=page.locator('#page').inner_text()
     page.evaluate("""() => {
         window.previousParkingPanel=document.querySelector('#page .panel');
@@ -431,9 +522,9 @@ def test_tab_switch_preserves_visible_content_until_response(browser_page):
         window.loadingObserver.observe(document.querySelector('#page'),{childList:true,subtree:true});
     }""")
     pending=[]
-    page.route('**/api/parking/vehicles',lambda route:pending.append(route))
-    with page.expect_request('**/api/parking/vehicles'):
-        page.locator('[data-action=tab][data-tab=summary]').click()
+    page.route('**/api/parking/guest-daily',lambda route:pending.append(route))
+    with page.expect_request('**/api/parking/guest-daily'):
+        page.locator('[data-action=tab][data-tab=guest]').click()
     page.wait_for_function("document.querySelector('#page').getAttribute('aria-busy') === 'true'")
     assert page.locator('#page').inner_text()==before
     assert page.evaluate("document.querySelector('#page .panel')===window.previousParkingPanel")
@@ -441,7 +532,7 @@ def test_tab_switch_preserves_visible_content_until_response(browser_page):
     assert not page.evaluate('window.loadingInserted')
     assert len(pending)==1
     pending[0].fulfill(json=vehicles)
-    page.wait_for_function("document.querySelector('#page').getAttribute('aria-busy') !== 'true' && document.querySelector('#page .tab.active')?.dataset.tab === 'summary'")
+    page.wait_for_function("document.querySelector('#page').getAttribute('aria-busy') !== 'true' && document.querySelector('#page .tab.active')?.dataset.tab === 'guest'")
     assert not page.evaluate('window.loadingInserted')
     assert page.locator('#page .error-box').count()==0
     assert not errors,errors
@@ -557,7 +648,7 @@ def test_admin_creation_and_resident_payment_in_browser(browser_page):
     page.locator('[data-action=receipt]').first.wait_for()
     with page.expect_download() as download:
         page.locator('[data-action=receipt]').first.click()
-    assert download.value.suggested_filename.endswith('.html')
+    assert download.value.suggested_filename.endswith('.png')
     assert not errors,errors
 
 
@@ -568,16 +659,17 @@ def test_invoice_live_times_and_notification_apartment(browser_page, role):
     page.context.new_cdp_session(page).send('Emulation.setTimezoneOverride',{'timezoneId':'America/Los_Angeles'})
     login(page,cluster,role)
     visit(page,'billing')
-    page.locator('#table-search').fill('2098-08')
     response=cluster.call('billing','/api/billing/invoices/monthly',method='POST',json={
         'apartment_id':1,'period':'2098-08','due_date':'2098-09-10','electricity_fee':10000,'water_fee':5000})
     assert response.status_code==201,response.text
     identifier=response.json()['invoice_id']
+    search=f'HD{identifier:04d}'  # search is by invoice code
+    page.locator('#table-search').fill(search)
     with sqlite3.connect(cluster.db_path) as db:
         db.execute('UPDATE monthly_invoices SET created_at=? WHERE invoice_id=?',('2026-11-06 18:30:45',identifier))
     row=page.locator('tbody tr').filter(has_text='2098-08')
     row.wait_for(state='visible',timeout=15000)  # Polling, without navigation/reload.
-    assert page.locator('#table-search').input_value()=='2098-08'
+    assert page.locator('#table-search').input_value()==search
     assert '01:30:45' in row.inner_text() and '07/11/2026' in row.inner_text()
     row.locator('button').first.click()
     created=page.locator('#modal .detail-list > div').filter(has=page.get_by_text('Thời gian lập hóa đơn',exact=True)).locator('dd')
@@ -593,7 +685,7 @@ def test_invoice_live_times_and_notification_apartment(browser_page, role):
     assert page.locator('#modal [data-action=invoice-cash]').count()==0
     page.locator('#modal [data-action=close-modal]').first.click()
     page.wait_for_function("[...document.querySelectorAll('tbody tr')].some(r => r.textContent.includes('2098-08') && r.textContent.includes('Đã thanh toán'))",timeout=15000)
-    assert page.locator('#table-search').input_value()=='2098-08'
+    assert page.locator('#table-search').input_value()==search
     # Ordinary edits must not be replaced by the background refresh.
     if role=='admin':
         page.locator('[data-action=invoice-create]').click()
@@ -773,8 +865,8 @@ def test_sepay_checkout_report_transfer_reconcile_and_receipt_in_browser(browser
         order.update(status='awaiting_confirmation',can_pay=False)
         route.fulfill(json=order)
     page.route('**/api/billing/orders/VQR-ui-checkout/confirm-transfer',report_transfer)
-    page.route('**/api/billing/payments/monthly/812/receipt',lambda route:route.fulfill(
-        body='<html><body>SEPAY TEST - Biên nhận kiểm thử giao diện</body></html>',content_type='text/html'))
+    page.route('**/api/billing/payments/monthly/812/receipt',lambda route:route.fulfill(json={
+        'title':'Biên nhận','issuer':'Chung cư','notice':'SEPAY TEST','rows':[['Mã biên nhận','MONTHLY-812']],'footer':'Nội bộ'}))
     open_browser_payment(page,cluster)
     page.locator('#payment-status').get_by_text('Đang chờ chuyển khoản',exact=True).wait_for()
     if environment=='test':
@@ -799,7 +891,7 @@ def test_sepay_checkout_report_transfer_reconcile_and_receipt_in_browser(browser
     assert page.evaluate("sessionStorage.getItem('ancu_vietqr_order_3')") is None
     with page.expect_download() as download:
         page.locator('#payment-actions [data-action=receipt]').click()
-    assert download.value.suggested_filename=='bien-nhan-monthly-812.html'
+    assert download.value.suggested_filename=='bien-nhan-monthly-812.png'
     assert not errors,errors
 
 
@@ -860,6 +952,95 @@ def test_sepay_expired_session_hides_bank_details_and_cancel_requires_warning(br
     assert cancel_requests==['POST']
     assert page.locator('#payment-actions [data-action=invoice-pay]').inner_text().strip()=='Mở phiên mới'
     assert not errors,errors
+
+
+@pytest.mark.parametrize('role',['admin','technician'])
+def test_staff_edit_their_personal_information(browser_page,role):
+    page,cluster,errors=browser_page
+    login(page,cluster,role)
+    visit(page,'profile')
+    assert page.locator('#modal').evaluate('(modal)=>modal.open') is False
+    page.locator('[data-action=profile-edit]').click()
+    page.locator('#modal-form [name=full_name]').fill('Nhân Sự Cập Nhật')
+    page.locator('#modal-form [name=id_card]').fill('079000000002')
+    assert page.locator('#modal-form [data-action=close-modal]').count()==0
+    page.locator('#modal-form [type=submit]').click()
+    page.wait_for_function("!document.querySelector('#modal').open")
+    page.locator('#page').get_by_text('Nhân Sự Cập Nhật',exact=True).wait_for()
+    assert '079000000002' in page.locator('#page').inner_text()
+    assert 'Nhân Sự Cập Nhật' in page.locator('#header-greeting-title').inner_text()
+    page.locator('[data-action=password-edit]').click()
+    page.locator('#modal-form [name=new_password]').wait_for()
+    assert not errors,errors
+
+
+def test_admin_releases_a_payment_the_bank_never_confirmed(browser_page):
+    page,cluster,errors=browser_page
+    created=cluster.call('billing','/api/billing/invoices/monthly',method='POST',json={
+        'apartment_id':1,'period':'2096-03','electricity_fee':50000,'water_fee':20000,'due_date':'2096-04-15'})
+    assert created.status_code==201,created.text
+    invoice_id=created.json()['invoice_id']
+    order=cluster.call('billing',f'/api/billing/invoices/monthly/{invoice_id}/checkout',method='POST',role='resident',json={}).json()
+    assert cluster.call('billing',f"/api/billing/orders/{order['order_id']}/confirm-transfer",method='POST',role='resident',json={}).status_code==200
+    login(page,cluster,'admin')
+    visit(page,'billing')
+    page.locator('tbody tr').filter(has_text='2096-03').locator('[data-action=invoice-detail]').click()
+    page.locator('[data-action=invoice-release]').click()
+    page.locator('#modal-form [name=note]').fill('Sao kê không có khoản chuyển')
+    page.locator('#modal-form [type=submit]').click()
+    page.wait_for_function("!document.querySelector('#modal').open")
+    assert cluster.call('billing',f'/api/billing/invoices/monthly/{invoice_id}').json()['active_payment_status'] is None
+    assert not errors,errors
+
+
+def test_contract_form_tells_residents_with_the_same_name_apart(browser_page):
+    page,cluster,errors=browser_page
+    ids=[]
+    for phone in ('0900000011','0900000012'):
+        created=cluster.call('resident','/api/residents',method='POST',json={'full_name':'Phạm Trùng Tên','relation_type':'owner','phone':phone})
+        assert created.status_code==201,created.text
+        ids.append(created.json()['resident_id'])
+    apartment=cluster.call('resident','/api/apartments',method='POST',json={'code':'UI-SAME','block':'TEST','floor':1,'area':70}).json()['apartment_id']
+    login(page,cluster,'admin')
+    visit(page,'residents')
+    page.locator('[data-action=tab][data-tab=contracts]').click()
+    page.locator('[data-action=contract-create]').click()
+    page.locator('#modal-form [name=apartment_id]').select_option(str(apartment))
+    page.locator('#modal-form [name=contract_type]').select_option('ownership')
+    page.locator('#modal-form [name=resident_name]').fill('Phạm Trùng Tên')
+    page.locator('#modal-form [type=submit]').click()
+    page.locator('#modal-form .form-error').get_by_text('Có nhiều cư dân trùng tên',exact=False).wait_for()
+    page.locator('#modal-form [name=resident_name]').fill(f'Phạm Trùng Tên (#{ids[1]})')
+    page.locator('#modal-form [type=submit]').click()
+    page.wait_for_function("!document.querySelector('#modal').open")
+    contracts=cluster.call('resident','/api/contracts').json()['items']
+    assert next(row for row in contracts if row['apartment_id']==apartment)['resident_id']==ids[1]
+    assert not errors,errors
+
+
+def test_content_security_policy_does_not_block_the_interface(browser_page):
+    page,cluster,_=browser_page
+    context=page.context.browser.new_context(viewport={'width':1440,'height':1000},locale='vi-VN')
+    strict=context.new_page()
+    problems=[]
+    strict.on('console',lambda message:problems.append(message.text) if 'Content Security Policy' in message.text else None)
+    strict.on('pageerror',lambda error:problems.append(str(error)))
+    strict.goto(page.url)
+    strict.locator('#auth-form').wait_for()
+    strict.wait_for_load_state('networkidle')
+    assert strict.evaluate("[...document.images].every(image=>image.complete&&image.naturalWidth>0)")
+    assert strict.evaluate("document.fonts.ready.then(()=>document.fonts.status)")=='loaded'
+    with sqlite3.connect(cluster.db_path) as db:
+        username=db.execute('SELECT username FROM users WHERE user_id=1').fetchone()[0]
+    strict.locator('#auth-form [name=username]').fill(username)
+    strict.locator('#auth-form [name=password]').fill(cluster.password)
+    strict.locator('#auth-form [type=submit]').click()
+    strict.locator('#page .page-heading h1').wait_for()
+    for route in ('residents','billing','notifications'):
+        strict.locator(f'.nav a[href="#{route}"]').click()
+        strict.locator(f'#page[data-route="{route}"] .page-heading h1').wait_for()
+    context.close()
+    assert not problems,problems
 
 
 def test_sepay_missing_configuration_disables_resident_checkout(browser_page):
@@ -935,4 +1116,23 @@ def test_sepay_admin_tracks_surplus_and_only_records_manual_resolution(browser_p
     page.wait_for_function("!document.querySelector('#modal').open")
     assert resolutions==[{'resolution':'refunded','note':'BQL đã chuyển hoàn 50.000đ, chứng từ BANK-REFUND-91.'}]
     page.locator('#page tbody').get_by_text('Đã hoàn trả',exact=True).wait_for()
+    assert not errors,errors
+
+
+def test_password_toggle_stays_available_and_auth_copy(browser_page):
+    page,cluster,errors=browser_page
+    assert 'Đăng nhập để quản lý không gian sống của bạn.' in page.locator('#auth-form').inner_text()
+    password=page.locator('#auth-form [name=password]')
+    toggle=page.locator('#auth-form [data-action=toggle-password]')
+    password.fill('secret1')
+    page.locator('#auth-form [name=username]').click()  # blur, then come back
+    password.click()
+    assert toggle.is_visible()
+    toggle.click()
+    assert password.get_attribute('type')=='text' and toggle.get_attribute('aria-pressed')=='true'
+    toggle.click()
+    assert password.get_attribute('type')=='password'
+    page.locator('[data-action=auth-switch]').click()
+    assert page.locator('#auth-form [name=apartment_code]').get_attribute('placeholder')=='Ví dụ: A101'
+    assert page.locator('#auth-form [data-action=toggle-password]').is_visible()
     assert not errors,errors

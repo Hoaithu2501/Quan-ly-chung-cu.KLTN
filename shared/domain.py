@@ -1,5 +1,7 @@
 """Small validation helpers shared by the independently deployed domain services."""
+
 from datetime import datetime, timedelta, timezone
+import logging
 
 from flask import g
 
@@ -35,22 +37,26 @@ def resident_profile():
 def apartment_access(apartment_id):
     apartment_id = integer(apartment_id, "apartment_id", min_value=1)
     if g.user["role"] == "resident":
-        prof = resident_profile()
-        apt_ids = prof.get("apartment_ids", [])
-        if apartment_id not in apt_ids:
-            reg_code = prof.get("registered_apartment_code")
-            matched = False
-            if reg_code:
-                try:
-                    apts = call_service("resident", "/api/apartments", internal=True).get("items", [])
-                    matched = any(a["apartment_id"] == apartment_id and str(a["code"]).upper() == str(reg_code).upper() for a in apts)
-                except Exception:
-                    matched = False
-            if not matched:
-                raise APIError("Bạn không có quyền truy cập căn hộ này.", 403)
+        # A self-declared apartment code grants nothing until management confirms it.
+        if apartment_id not in resident_profile().get("apartment_ids", []):
+            raise APIError("Bạn chưa được xác nhận thuộc căn hộ này. Vui lòng liên hệ Ban quản lý.", 403)
     else:
         call_service("resident", f"/api/apartments/{apartment_id}", internal=True)
     return apartment_id
+
+
+def notify(event_id, **fields):
+    """Call after commit, without an open write: a lost notification must not undo the action."""
+    try:
+        call_service(
+            "notification",
+            "/api/notifications/events",
+            method="POST",
+            internal=True,
+            json={"event_id": event_id, "type": "private", **fields},
+        )
+    except APIError:
+        logging.getLogger(__name__).warning("Notification %s was not delivered.", event_id)
 
 
 def one(db, table, key, identifier):

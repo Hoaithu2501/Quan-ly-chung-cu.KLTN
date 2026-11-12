@@ -40,6 +40,7 @@ def test_confirmation_scopes_household_invoices_and_history_and_revocation(servi
     uid,profile=register_resident(c,'MEMBER-101')
     rid=profile['resident_id']
     second_uid,second_profile=register_resident(c,'MEMBER-101','membership.second')
+    c.release_apartments(3)
     contract_resident=c.call('resident','/api/residents/me',role='resident').json()
     response=c.call('resident','/api/contracts','POST',json={
         'apartment_id':aid,'resident_id':contract_resident['resident_id'],'contract_type':'rental',

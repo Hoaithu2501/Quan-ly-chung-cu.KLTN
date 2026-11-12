@@ -1,4 +1,5 @@
 """Optional, bounded paraphrasing via a configured Chat Completions endpoint."""
+
 from datetime import datetime
 import json
 import math
@@ -23,10 +24,18 @@ def configuration():
     try:
         url = urlparse(endpoint)
         timeout = float(os.getenv("LLM_TIMEOUT_SECONDS", "8"))
-        if (url.scheme != "https" or not url.hostname or url.username or url.password
-                or url.query or url.fragment or url.port not in (None, 443)
-                or any(char.isspace() for char in endpoint)
-                or not math.isfinite(timeout) or not 1 <= timeout <= 15):
+        if (
+            url.scheme != "https"
+            or not url.hostname
+            or url.username
+            or url.password
+            or url.query
+            or url.fragment
+            or url.port not in (None, 443)
+            or any(char.isspace() for char in endpoint)
+            or not math.isfinite(timeout)
+            or not 1 <= timeout <= 15
+        ):
             return None
     except ValueError:
         return None
@@ -47,25 +56,40 @@ def rewrite_answer(question, matches):
     effort = os.getenv("LLM_REASONING_EFFORT", "").strip()
     if effort and effort not in {"none", "minimal", "low", "medium", "high", "xhigh", "max"}:
         return None
-    sources = [{"id": f"{item['source']}:{item['source_id']}",
-                "source": item["source"], "source_title": item["source_title"],
-                "answer": item["answer"]} for item in matches[:5]]
+    sources = [
+        {
+            "id": f"{item['source']}:{item['source_id']}",
+            "source": item["source"],
+            "source_title": item["source_title"],
+            "answer": item["answer"],
+        }
+        for item in matches[:5]
+    ]
     # Avoid truncating away an exception/condition halfway through a source.
     if any(len(item["answer"]) > 6000 for item in sources):
         return None
     try:
         prompt = PROMPT_PATH.read_text(encoding="utf-8").format(
-            today=datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date().isoformat())
-        payload = {"model": model, "messages": [
+            today=datetime.now(ZoneInfo("Asia/Ho_Chi_Minh")).date().isoformat()
+        )
+        payload = {
+            "model": model,
+            "messages": [
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": json.dumps(
-                    {"question": question, "sources": sources}, ensure_ascii=False)}],
-                   "response_format": {"type": "json_object"}, "max_completion_tokens": 800}
+                {"role": "user", "content": json.dumps({"question": question, "sources": sources}, ensure_ascii=False)},
+            ],
+            "response_format": {"type": "json_object"},
+            "max_completion_tokens": 800,
+        }
         if effort:
             payload["reasoning_effort"] = effort
         response = requests.post(
-            endpoint, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, json=payload,
-            timeout=(3, timeout), allow_redirects=False)
+            endpoint,
+            headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+            json=payload,
+            timeout=(3, timeout),
+            allow_redirects=False,
+        )
         if response.status_code != 200:
             return None
         result = response.json()
@@ -77,9 +101,14 @@ def rewrite_answer(question, matches):
             return None
         parsed = json.loads(content)
         answer, citations = parsed["answer"], parsed["source_ids"]
-        if (not isinstance(answer, str) or not answer.strip() or len(answer) > 6000
-                or not isinstance(citations, list) or not citations
-                or any(not isinstance(item, str) for item in citations)):
+        if (
+            not isinstance(answer, str)
+            or not answer.strip()
+            or len(answer) > 6000
+            or not isinstance(citations, list)
+            or not citations
+            or any(not isinstance(item, str) for item in citations)
+        ):
             return None
         known = {item["id"]: item for item in sources}
         if any(item not in known for item in citations):
