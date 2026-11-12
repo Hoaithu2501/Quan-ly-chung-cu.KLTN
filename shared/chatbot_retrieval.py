@@ -3,6 +3,7 @@
 Scores reflect the question's specific intent. Sharing a broad topic never grants
 a minimum score, and answer text can only support an already relevant title.
 """
+
 import re
 import unicodedata
 from functools import lru_cache
@@ -18,7 +19,8 @@ def normalize(value):
 # concepts: "gui xe dien" contains both parking and an electric vehicle.
 ALIASES = {
     "parking": ("gui xe", "giu xe", "dau xe", "do xe", "de xe", "trong xe", "bai xe"),
-    "invoice": ("hoa don",), "payment": ("thanh toan", "dong tien", "tra tien", "nop tien"),
+    "invoice": ("hoa don",),
+    "payment": ("thanh toan", "dong tien", "tra tien", "nop tien"),
     "hotline": ("hotline", "so dien thoai", "so dt", "sdt", "duong day nong"),
     "management": ("ban quan ly", "van phong quan ly", "bql"),
     "pet": ("thu cung", "cho meo", "nuoi cho", "nuoi meo", "vat nuoi"),
@@ -26,48 +28,115 @@ ALIASES = {
     "fire": ("phong chay chua chay", "phong chay", "chua chay", "hoa hoan", "pccc", "chay"),
     "noise": ("tieng on", "gay on", "on ao", "yen tinh", "karaoke"),
     "security": ("camera", "giam sat", "an ninh"),
-    "gym": ("phong gym", "phong tap", "the duc"), "pool": ("ho boi", "be boi"),
+    "gym": ("phong gym", "phong tap", "the duc"),
+    "pool": ("ho boi", "be boi"),
     "garbage": ("rac thai", "do rac", "rac sinh hoat", "rac"),
     "repair": ("sua chua", "bao tri", "hong dien nuoc", "hong dien", "hong nuoc"),
-    "complaint": ("khieu nai", "phan anh"), "notice": ("thong bao",),
-    "elevator": ("thang may",), "visitor": ("vang lai", "khach"),
+    "complaint": ("khieu nai", "phan anh"),
+    "notice": ("thong bao",),
+    "elevator": ("thang may",),
+    "visitor": ("vang lai", "khach"),
     "overdue": ("qua han", "tre han", "cham dong", "cham tra", "cham thanh toan"),
     "history": ("lich su", "da dong", "da tra"),
     "methods": ("hinh thuc", "phuong thuc", "bang cach nao"),
     "receipt": ("hoa don dien tu", "bien nhan", "bien lai", "chung tu"),
     "due": ("han thanh toan", "han dong", "han tra", "ngay nao phai dong", "han nop"),
     "issue": ("phat hanh", "lap hoa don", "tao hoa don"),
-    "register": ("dang ky", "dang ki"), "cancel": ("huy", "ngung gui", "dung gui"),
+    "register": ("dang ky", "dang ki"),
+    "cancel": ("huy", "ngung gui", "dung gui"),
     "duration": ("toi thieu", "cam ket", "it nhat"),
     "hours": ("gio lam viec", "gio mo cua", "gio dong cua", "gio hoat dong"),
     "limit": ("toi da", "gioi han", "bao nhieu xe"),
-    "price": ("het bao nhieu tien", "ton bao nhieu tien", "mat bao nhieu tien",
-              "ton may tien", "mat may tien", "het may tien", "het bao nhieu",
-              "ton bao nhieu", "mat bao nhieu", "bao nhieu tien", "bao nhieu dong",
-              "may tien", "nhieu tien", "nhiu tien", "bn tien", "may dong",
-              "bao nhieu", "chi phi", "muc phi", "bang gia", "gia ve", "gia"),
-    "fee": ("phi",), "collection": ("thu khi nao", "thu nhu the nao", "ky thu", "lich thu"),
+    "price": (
+        "het bao nhieu tien",
+        "ton bao nhieu tien",
+        "mat bao nhieu tien",
+        "ton may tien",
+        "mat may tien",
+        "het may tien",
+        "het bao nhieu",
+        "ton bao nhieu",
+        "mat bao nhieu",
+        "bao nhieu tien",
+        "bao nhieu dong",
+        "may tien",
+        "nhieu tien",
+        "nhiu tien",
+        "bn tien",
+        "may dong",
+        "bao nhieu",
+        "chi phi",
+        "muc phi",
+        "bang gia",
+        "gia ve",
+        "gia",
+    ),
+    "fee": ("phi",),
+    "collection": ("thu khi nao", "thu nhu the nao", "ky thu", "lich thu"),
     "motorbike": ("xe may",),
     "electricbike": ("xe may dien", "xe dap dien", "xe chay dien", "xe dien"),
-    "bicycle": ("xe dap thuong", "xe dap",),
-    "car": ("o to", "xe hoi"), "card": ("lam the", "the gui xe",),
+    "bicycle": (
+        "xe dap thuong",
+        "xe dap",
+    ),
+    "car": ("o to", "xe hoi"),
+    "card": (
+        "lam the",
+        "the gui xe",
+    ),
     "servicefee": ("phi dich vu",),
     "acceptedtypes": ("nhung loai xe", "loai xe nao", "loai phuong tien", "nhan gui"),
 }
-REPLACEMENTS = sorted(((phrase, key) for key, phrases in ALIASES.items() for phrase in phrases),
-                      key=lambda item: len(item[0]), reverse=True)
-ALIAS_PATTERNS = [(re.compile(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)"), key)
-                  for phrase, key in REPLACEMENTS]
-STOP_WORDS = set("toi minh ban cho hoi co duoc khong la thi va cua o cac nhung mot nhu the nao gi voi can biet xin hay lam the thuoc chung cu khi neu sao de trong tai den ve nay bao vui long em anh chi a nhe nhi vay chu giup nho muon thac mac".split())
+REPLACEMENTS = sorted(
+    ((phrase, key) for key, phrases in ALIASES.items() for phrase in phrases),
+    key=lambda item: len(item[0]),
+    reverse=True,
+)
+ALIAS_PATTERNS = [(re.compile(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)"), key) for phrase, key in REPLACEMENTS]
+STOP_WORDS = set(
+    "toi minh ban cho hoi co duoc khong la thi va cua o cac nhung mot nhu the nao gi voi can biet xin hay lam the thuoc chung cu khi neu sao de trong tai den ve nay bao vui long em anh chi a nhe nhi vay chu giup nho muon thac mac".split()
+)
 VEHICLES = {"motorbike", "electricbike", "bicycle", "car"}
 TOPICS = {
     "parking": {"parking", "acceptedtypes", *VEHICLES},
     "billing": {"invoice", "payment", "servicefee", "receipt"},
     "contact": {"hotline", "management"},
-    **{name: {name} for name in ("pet", "pharmacy", "fire", "noise", "security", "gym", "pool", "garbage", "repair", "complaint", "notice", "elevator")},
+    **{
+        name: {name}
+        for name in (
+            "pet",
+            "pharmacy",
+            "fire",
+            "noise",
+            "security",
+            "gym",
+            "pool",
+            "garbage",
+            "repair",
+            "complaint",
+            "notice",
+            "elevator",
+        )
+    },
 }
-INTENTS = {"price", "hotline", "overdue", "history", "methods", "receipt", "due", "issue",
-           "register", "cancel", "duration", "hours", "limit", "card", "collection", "acceptedtypes"}
+INTENTS = {
+    "price",
+    "hotline",
+    "overdue",
+    "history",
+    "methods",
+    "receipt",
+    "due",
+    "issue",
+    "register",
+    "cancel",
+    "duration",
+    "hours",
+    "limit",
+    "card",
+    "collection",
+    "acceptedtypes",
+}
 
 
 @lru_cache(maxsize=1024)
@@ -95,9 +164,13 @@ def _features(value):
     normalized = normalize(value)
     if words & VEHICLES:
         # Recognize "duoc de xe" as well as "xe dien duoc de ...".
-        action = "parking" in words or bool(re.search(
-            r"\b(?:gui|giu)\b|\bduoc (?:de|do|dau)\b|"
-            r"\b(?:de|do|dau) (?:o|tai|trong|ngoai|duoi|tren)\b", normalized))
+        action = "parking" in words or bool(
+            re.search(
+                r"\b(?:gui|giu)\b|\bduoc (?:de|do|dau)\b|"
+                r"\b(?:de|do|dau) (?:o|tai|trong|ngoai|duoi|tren)\b",
+                normalized,
+            )
+        )
         if action:
             words.add("parking")
             words -= {"gui", "giu", "dau", "do", "trong"}
@@ -106,8 +179,11 @@ def _features(value):
             words.add("parking")
         permission = bool(re.search(r"\b(?:duoc|cho phep|co the)\b", normalized)) and action
         acceptance = bool(re.search(r"\b(?:co nhan|nhan xe|cho gui|co gui)\b", normalized))
-        if ((permission or acceptance) and "visitor" not in words
-                and not words & {"price", "fee", "register", "cancel", "duration", "limit", "collection"}):
+        if (
+            (permission or acceptance)
+            and "visitor" not in words
+            and not words & {"price", "fee", "register", "cancel", "duration", "limit", "collection"}
+        ):
             words.add("acceptedtypes")
             words -= {"nhan", "phep"}
     intents = words & INTENTS
@@ -128,8 +204,11 @@ def _parking_subjects(value):
         ("purchase", r"\b(?:mua|ban|thue)\s+xe\b"),
         ("repair", r"\b(?:sua|hong|bao tri)\b"),
         ("power", r"\b(?:ma luc|dong co|watt)\b"),
-        ("upstairs", r"\b(?:(?:o|trong|len|vao) can ho|(?:trong|len|vao) (?:nha|phong)|"
-                     r"hanh lang|thang may|san thuong|sanh|loi thoat hiem|cau thang|(?:tren|len) tang)\b"),
+        (
+            "upstairs",
+            r"\b(?:(?:o|trong|len|vao) can ho|(?:trong|len|vao) (?:nha|phong)|"
+            r"hanh lang|thang may|san thuong|sanh|loi thoat hiem|cau thang|(?:tren|len) tang)\b",
+        ),
     ):
         if re.search(pattern, normalized):
             subjects.add(subject)
@@ -188,8 +267,20 @@ def _emergency(question):
     active = any(phrase in value for phrase in ("dang chay", "bi dien giat", "bi ket", "vua phat hien", "cuu toi"))
     if prevention and not active:
         return False
-    incident = ("dang chay", "co chay", "bi chay", "hoa hoan", "phat hien khoi", "khoi day",
-                "ngui thay khoi", "ro dien", "dien giat", "ket thang", "mac ket", "vo ong nuoc")
+    incident = (
+        "dang chay",
+        "co chay",
+        "bi chay",
+        "hoa hoan",
+        "phat hien khoi",
+        "khoi day",
+        "ngui thay khoi",
+        "ro dien",
+        "dien giat",
+        "ket thang",
+        "mac ket",
+        "vo ong nuoc",
+    )
     return any(phrase in value for phrase in incident) or bool(re.search(r"\bchay (?:thi |phai |lam |roi|o )", value))
 
 
@@ -215,7 +306,20 @@ def _location_query(question):
     value = normalize(question)
     position = any(phrase in value for phrase in ("o dau", "vi tri", "tang may", "duong den", "cho nao", "dia diem"))
     # These refer to application actions, not physical places.
-    application = any(phrase in value for phrase in ("hoa don", "lich su", "thong bao", "bao hong", "bao su co", "bao o dau", "khieu nai", "dang ky", "thanh toan"))
+    application = any(
+        phrase in value
+        for phrase in (
+            "hoa don",
+            "lich su",
+            "thong bao",
+            "bao hong",
+            "bao su co",
+            "bao o dau",
+            "khieu nai",
+            "dang ky",
+            "thanh toan",
+        )
+    )
     return position and not application
 
 
@@ -236,10 +340,22 @@ def retrieve(question, faqs, locations, limit=5):
     additionally retains up to five relevant records as grounded LLM context.
     """
     normalized = normalize(question)
-    result = {"matches": [], "selected": [], "needs_clarification": False, "clarification": None, "emergency": _emergency(question)}
+    result = {
+        "matches": [],
+        "selected": [],
+        "needs_clarification": False,
+        "clarification": None,
+        "emergency": _emergency(question),
+    }
     incidents = _incident_types(question)
-    if not result["emergency"] and "tien nha" in normalized and not any(term in normalized for term in ("tien thue", "phi dich vu")):
-        result.update(needs_clarification=True, clarification="Bạn muốn hỏi tiền thuê căn hộ hay phí dịch vụ của chung cư?")
+    if (
+        not result["emergency"]
+        and "tien nha" in normalized
+        and not any(term in normalized for term in ("tien thue", "phi dich vu"))
+    ):
+        result.update(
+            needs_clarification=True, clarification="Bạn muốn hỏi tiền thuê căn hộ hay phí dịch vụ của chung cư?"
+        )
         return result
     fragments = [question]
     for fragment in re.split(r"\s+và\s+|\s+va\s+|\s+đồng thời\s+|[;?]", question, flags=re.I):
@@ -283,8 +399,11 @@ def retrieve(question, faqs, locations, limit=5):
             if score < 0.48:
                 continue
             match = {
-                "source": source, "source_id": row.get("faq_id") if source == "faq" else row.get("location_id"),
-                "source_title": title, "answer": answer, "confidence": round(score, 3),
+                "source": source,
+                "source_id": row.get("faq_id") if source == "faq" else row.get("location_id"),
+                "source_title": title,
+                "answer": answer,
+                "confidence": round(score, 3),
             }
             candidates.append((score, str(row.get("faq_id", row.get("location_id", ""))), match))
             for fragment_score, fragment in scores:

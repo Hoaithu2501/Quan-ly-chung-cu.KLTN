@@ -1,6 +1,6 @@
 # Hướng dẫn test thanh toán hóa đơn bằng VietQR và SePay
 
-File này đọc trực tiếp trong VS Code bằng Ctrl+Shift+V. Không cần tải MoMo Test hoặc mở tài liệu ATM cũ. Source hiện dùng SePay; giữ dữ liệu thanh toán cũ để đối chiếu.
+File này đọc trực tiếp trong VS Code bằng Ctrl+Shift+V.
 
 ## 1. Chọn đúng cách kiểm thử
 
@@ -8,10 +8,10 @@ File này đọc trực tiếp trong VS Code bằng Ctrl+Shift+V. Không cần t
 
 - Đặt PAYMENT_MODE=sepay và SEPAY_ENV=test.
 - Tạo tài khoản ngân hàng mới trong SePay Test, webhook JSON/API Key và URL tunnel HTTPS.
-- Điền thông tin vào .env, nạp lại Billing; xem [hướng dẫn thiết lập từng bước](SEPAY_VIETQR.md).
+- Điền thông tin vào .env, nạp lại Billing; xem [hướng dẫn thiết lập](GETTING_STARTED.md#6-kết-nối-sepay-và-firebase).
 - Dùng hóa đơn riêng cho việc demo. Thanh toán Test vẫn cập nhật trạng thái hóa đơn trong database ứng dụng, nên không dùng hóa đơn công nợ thật đang vận hành.
 
-Test Mode của SePay có mô phỏng QR và giao dịch tại dashboard. Không dùng MoMo, TPBank hoặc ứng dụng ngân hàng thật để thử QR Test. Nếu nhập tài khoản ngân hàng thật vào cấu hình, nhãn test trong .env không ngăn được ứng dụng ngân hàng chuyển tiền thật.
+Test Mode của SePay có mô phỏng QR và giao dịch tại dashboard. Không dùng ứng dụng ngân hàng thật để thử QR Test. Nếu nhập tài khoản ngân hàng thật vào cấu hình, nhãn test trong .env không ngăn được ứng dụng ngân hàng chuyển tiền thật.
 
 ## 2. Kiểm tra Docker và web
 
@@ -21,7 +21,7 @@ Mở PowerShell tại thư mục QLCC:
 docker compose ps
 ~~~
 
-Đăng nhập web tại http://localhost:5000. Hệ thống phải truy cập được các chức năng thông thường. Trong phần hóa đơn, cư dân thấy nhãn **VietQR · SePay Test**. Nếu nút Thanh toán VietQR bị khóa hoặc báo thiếu cấu hình, hoàn tất các bước trong [SEPAY_VIETQR.md](SEPAY_VIETQR.md), không sửa database để bỏ khóa.
+Đăng nhập web tại http://localhost:5000. Hệ thống phải truy cập được các chức năng thông thường. Trong phần hóa đơn, cư dân thấy nhãn **VietQR · SePay Test**. Nếu nút Thanh toán VietQR bị khóa hoặc báo thiếu cấu hình, hoàn tất các bước trong [hướng dẫn thiết lập](GETTING_STARTED.md#6-kết-nối-sepay-và-firebase), không sửa database để bỏ khóa.
 
 Giữ tunnel HTTPS hoạt động để SePay gửi webhook. URL tunnel đổi thì cập nhật trên SePay và .env rồi tạo lại container Billing.
 
@@ -33,7 +33,7 @@ Giữ tunnel HTTPS hoạt động để SePay gửi webhook. URL tunnel đổi t
 4. Chọn căn hộ thử, kỳ chưa có hóa đơn. Nhập điện **4 kWh**, đơn giá **2.000 VNĐ/kWh**; nước **0,2 m³**, đơn giá **10.000 VNĐ/m³**. Đây là số liệu thử; xem trước tổng **10.000đ**, chọn hạn thanh toán rồi phát hành hóa đơn.
 5. Ghi lại mã hóa đơn và căn hộ.
 
-BQL chỉ quản lý hoặc ghi nhận khoản đã thực nhận; không có nút thanh toán online thay cư dân. Mọi thành viên đã được xác nhận trong căn hộ đều có quyền bắt đầu thanh toán hóa đơn chung.
+BQL chỉ quản lý hoặc ghi nhận khoản đã thực nhận. Kỹ thuật viên dùng chung màn Quản lý hóa đơn và các quyền này với BQL, nên các bước về hóa đơn (lập, ghi nhận thu, mở khóa phiên, đối soát) cũng làm được bằng tài khoản kỹ thuật viên; xác nhận thành viên căn hộ vẫn do BQL. Không có nút thanh toán online thay cư dân. Mọi thành viên đã được xác nhận trong căn hộ đều có quyền bắt đầu thanh toán hóa đơn chung.
 
 ## 4. Cư dân mở phiên thanh toán
 
@@ -130,6 +130,6 @@ Không đánh dấu đã thanh toán chỉ vì quét QR thành công, có ảnh 
 
 ## 10. Nếu muốn quét bằng ứng dụng ngân hàng thật
 
-Đó là luồng **Live**, cần tài khoản nhận thật đã kết nối SePay và cấu hình Live riêng. Dùng khoản thử nhỏ sau khi đã kiểm chứng Test; việc xác nhận chuyển khoản sẽ chuyển tiền thật. Xem [chuyển môi trường](SEPAY_VIETQR.md#8-kiểm-thử-và-chuyển-live).
+Đó là luồng **Live**, cần tài khoản nhận thật đã kết nối SePay và cấu hình Live riêng. Dùng khoản thử nhỏ sau khi đã kiểm chứng Test; việc xác nhận chuyển khoản sẽ chuyển tiền thật.
 
 SePay Test giúp demo luồng đối soát tự động mà không cần tiền thật. Việc kiểm thử bằng payload cục bộ của pytest không thay thế lần thử end-to-end từ dashboard SePay của bạn.

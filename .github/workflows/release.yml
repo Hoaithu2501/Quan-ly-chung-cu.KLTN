@@ -27,6 +27,8 @@ jobs:
       COMPOSE_PROJECT_NAME: qlcc-ci
       APP_ENV_FILE: .runtime/ci.env
       GATEWAY_PORT: '15000'
+      # Test the UI inside the image, not this checkout.
+      FRONTEND_MOUNT: /tmp/frontend-not-mounted
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -50,11 +52,11 @@ jobs:
       - name: Publish version and commit tags
         run: |
           set -euo pipefail
-          docker compose -f docker-compose.release.yml push
+          docker compose push
           echo '### Published Docker images' >> "$GITHUB_STEP_SUMMARY"
-          for service in $(docker compose -f docker-compose.release.yml config --services); do
-            version="$IMAGE_PREFIX/$service:$IMAGE_TAG"
-            commit="$IMAGE_PREFIX/$service:sha-$GITHUB_SHA"
+          # db-init and backup share one image, so walk the images rather than the services.
+          for version in $(docker compose config --images | sort -u); do
+            commit="${version%:*}:sha-$GITHUB_SHA"
             docker tag "$version" "$commit"
             docker push "$commit"
             echo "- \`$version\` (\`sha-$GITHUB_SHA\`)" >> "$GITHUB_STEP_SUMMARY"

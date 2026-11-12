@@ -39,27 +39,18 @@ def test_guest_revenue_validated_and_one_entry_per_day(domains):
     assert call("parking", "/api/parking/guest-daily", role="resident", user_id=21).status_code == 403
 
 
-def test_technicians_cannot_change_unassigned_ticket(domains):
+def test_any_technician_can_work_a_ticket_assigned_to_a_colleague(domains):
     call, _, _ = domains
     created = call("maintenance", "/api/maintenance/tickets", "POST", json={"apartment_id": 1, "description": "Test repair", "technician_id": 1})
     assert created.status_code == 201
     path = "/api/maintenance/tickets/" + str(created.json()["ticket_id"])
-    assert call("maintenance", path, "PATCH", role="technician", user_id=12, json={"status": "in_progress"}).status_code == 403
-    assert call("maintenance", path, "PATCH", role="technician", user_id=11, json={"status": "completed"}).status_code == 409
-    assert call("maintenance", path, "PATCH", role="technician", user_id=11, json={"status": "in_progress"}).status_code == 200
+    rows = call("maintenance", "/api/maintenance/tickets", role="technician", user_id=12).json()["items"]
+    assert created.json()["ticket_id"] in {row["ticket_id"] for row in rows}
+    assert call("maintenance", path, "PATCH", role="technician", user_id=12, json={"status": "completed"}).status_code == 409
+    assert call("maintenance", path, "PATCH", role="technician", user_id=12, json={"status": "in_progress"}).status_code == 200
+    assert call("maintenance", path, "PATCH", role="technician", user_id=11, json={"description": "Đổi nội dung"}).status_code == 403
     assert call("maintenance", path, "PATCH", role="technician", user_id=11, json={"status": "completed"}).status_code == 200
     assert call("maintenance", path, "PATCH", json={"status": "pending"}).status_code == 409
-
-
-def test_duplicate_seed_technician_profile_does_not_grant_access(domains):
-    call, _, _ = domains
-    # Source technician 4 is a different person linked to login 11 as a data error.
-    created = call("maintenance", "/api/maintenance/tickets", "POST", json={"apartment_id": 1, "description": "Other technician task", "technician_id": 4})
-    assert created.status_code == 201
-    identifier = created.json()["ticket_id"]
-    rows = call("maintenance", "/api/maintenance/tickets", role="technician", user_id=11).json()["items"]
-    assert identifier not in {row["ticket_id"] for row in rows}
-    assert call("maintenance", f"/api/maintenance/tickets/{identifier}", "PATCH", role="technician", user_id=11, json={"status": "in_progress"}).status_code == 403
 
 
 def test_vehicle_plate_uniqueness_survives_concurrent_requests(domains):
@@ -68,23 +59,6 @@ def test_vehicle_plate_uniqueness_survives_concurrent_requests(domains):
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(lambda _: call("parking", "/api/parking/vehicles", "POST", json=payload).status_code, range(2)))
     assert sorted(results) == [201, 409]
-
-
-def test_settlement_is_idempotent_and_restores_started_cut(domains):
-    call, database, _ = domains
-    with sqlite3.connect(database) as db:
-        db.execute("INSERT INTO maintenance_tickets(apartment_id,type,description,status) VALUES (999,'cut_service','Test debt','pending')")
-        db.execute("INSERT INTO maintenance_tickets(apartment_id,type,description,status) VALUES (999,'cut_service','Test started debt','in_progress')")
-    payload = {"event_id": "settled:monthly:999", "event_type": "invoice_settled", "apartment_id": 999, "all_debts_settled": True}
-    assert call("maintenance", "/api/maintenance/events", "POST", json=payload).status_code == 401
-    first = call("maintenance", "/api/maintenance/events", "POST", json=payload, internal=True)
-    assert first.status_code == 201
-    assert first.json()["cancelled"] == 2
-    assert first.json()["restore_ticket_id"]
-    retry = call("maintenance", "/api/maintenance/events", "POST", json=payload, internal=True)
-    assert retry.status_code == 200 and retry.json()["duplicate"]
-    with sqlite3.connect(database) as db:
-        assert db.execute("SELECT COUNT(*) FROM maintenance_tickets WHERE apartment_id=999 AND type='restore_service'").fetchone()[0] == 1
 
 
 def test_notification_private_scope_and_read_idempotency(domains):

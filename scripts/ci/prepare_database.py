@@ -1,9 +1,5 @@
-"""Create a disposable test/bootstrap database from the public synthetic fixture.
+"""Build a database from the public sample data. Refuses to overwrite an existing file."""
 
-No dependency on .env, Docker, or a running application's database. Refuses to
-overwrite an existing file, including the original local QLCC.db.
-"""
-import argparse
 from contextlib import closing
 from pathlib import Path
 import sqlite3
@@ -29,10 +25,3 @@ def prepare(destination):
         destination.unlink(missing_ok=True)
         raise
     return destination
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / "QLCC.db")
-    args = parser.parse_args()
-    print(f"Synthetic database ready: {prepare(args.output)}")

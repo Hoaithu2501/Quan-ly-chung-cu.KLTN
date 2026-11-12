@@ -42,8 +42,6 @@ jobs:
           python -m pip install -r requirements-dev.txt
           npm ci
           python -m playwright install --with-deps chromium
-      - name: Prepare synthetic database
-        run: python scripts/ci/prepare_database.py
       - name: Build CSS and check JavaScript
         run: |
           npm run build:css
@@ -77,6 +75,8 @@ jobs:
       IMAGE_PREFIX: qlcc-ci
       IMAGE_TAG: check
       GATEWAY_PORT: '15000'
+      # Test the UI inside the image, not this checkout.
+      FRONTEND_MOUNT: /tmp/frontend-not-mounted
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:

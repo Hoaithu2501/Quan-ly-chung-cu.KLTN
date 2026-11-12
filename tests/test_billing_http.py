@@ -12,6 +12,7 @@ def test_real_http_invoice_overdue_payment_and_restoration(service_cluster):
         "code": "HTTP-BILLING-01", "block": "TEST", "floor": 1, "area": 70})
     assert response.status_code == 201, response.text
     apartment_id = response.json()["apartment_id"]
+    cluster.release_apartments(3)
     resident_id = cluster.call("resident", "/api/residents/me", role="resident").json()["resident_id"]
     response = cluster.call("resident", "/api/contracts", method="POST", json={
         "apartment_id": apartment_id, "resident_id": resident_id, "contract_type": "rental",
@@ -34,29 +35,26 @@ def test_real_http_invoice_overdue_payment_and_restoration(service_cluster):
     assert response.status_code == 201, response.text
     monthly = response.json()
     billing = cluster.modules["billing"]
+    # Issued after their due date, so both are overdue at once; a later scan changes nothing.
+    assert halfyear["status"] == monthly["status"] == "overdue"
     with cluster.apps["billing"].app_context():
-        assert billing.mark_overdue("2001-07-02") == 2
-        assert billing.mark_overdue("2001-07-03") == 0
-        assert billing.dispatch_outbox() == 5
+        assert billing.mark_overdue("2001-07-02") == 0
+        while billing.dispatch_outbox():
+            pass
 
     def tickets():
         response = cluster.call("maintenance", "/api/maintenance/tickets")
         assert response.status_code == 200
         return [row for row in response.json()["items"] if row["apartment_id"] == apartment_id]
 
-    cuts = tickets()
-    assert len(cuts) == 2 and all(row["type"] == "cut_service" for row in cuts)
-    technicians = cluster.call("maintenance", "/api/maintenance/technicians").json()["items"]
-    response = cluster.call("maintenance", f"/api/maintenance/tickets/{cuts[0]['ticket_id']}", method="PATCH", json={
-        "technician_id": technicians[0]["technician_id"], "status": "in_progress"})
-    assert response.status_code == 200, response.text
+    # Overdue invoices are handled on the technician's service screen, not as repair tickets.
+    assert tickets() == []
 
     response = cluster.call("billing", f"/api/billing/invoices/semiannual/{halfyear['invoice_id']}/pay",
                             method="POST", json={"payment_method": "cash"})
     assert response.status_code == 201, response.text
     with cluster.apps["billing"].app_context():
-        assert billing.dispatch_outbox() == 3
-    assert all(row["status"] != "completed" for row in tickets())
+        assert billing.dispatch_outbox() == 2
 
     response = cluster.call("billing", f"/api/billing/invoices/monthly/{monthly['invoice_id']}/checkout",
                             method="POST", role="resident", json={})
@@ -68,15 +66,11 @@ def test_real_http_invoice_overdue_payment_and_restoration(service_cluster):
     settled_order = cluster.call("billing", f"/api/billing/orders/{order['order_id']}", role="resident").json()
     payment_id = settled_order["payment_id"]
     with cluster.apps["billing"].app_context():
-        assert billing.dispatch_outbox() == 3
+        assert billing.dispatch_outbox() == 2
         assert billing.dispatch_outbox() == 0
-    settled = tickets()
-    assert len([row for row in settled if row["type"] == "restore_service"]) == 1
-    assert all(row["status"] == "completed" for row in settled if row["type"] == "cut_service")
-    assert {row["outcome"] for row in settled if row["type"] == "cut_service"} == {"cancelled", "restore_requested"}
+    assert tickets() == []
     receipt = cluster.call("billing", f"/api/billing/payments/monthly/{payment_id}/receipt")
-    assert receipt.status_code == 200 and "attachment" in receipt.headers["Content-Disposition"]
-    assert "SEPAY" in receipt.text.upper()
+    assert receipt.status_code == 200 and "SEPAY" in receipt.json()["notice"].upper()
     notices = cluster.call("notification", "/api/notifications").json()["items"]
     assert len([row for row in notices if row["target_apartment_id"] == apartment_id]) == 6
     with sqlite3.connect(cluster.db_path) as db:
@@ -153,6 +147,7 @@ def test_invoice_access_requires_verified_current_contract_not_registered_apartm
         assert not any(row["apartment_id"] == own["apartment_id"] for row in rows)
 
     # The management-approved current contract is the only change that grants access.
+    cluster.release_apartments(3)
     response = cluster.call("resident", "/api/contracts", method="POST", json={
         **contract, "start_date": "2020-01-01", "end_date": "2099-12-31"})
     assert response.status_code == 201, response.text

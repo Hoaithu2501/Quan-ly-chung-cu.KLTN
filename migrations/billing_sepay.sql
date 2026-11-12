@@ -1,5 +1,3 @@
--- Legacy payment_orders and provider state are deliberately retained for audit.
--- They contain old test-provider data, never SePay bank settlements.
 CREATE TABLE IF NOT EXISTS bank_payment_intents (
     order_id TEXT PRIMARY KEY,
     invoice_type TEXT NOT NULL CHECK(invoice_type IN ('monthly','semiannual')),

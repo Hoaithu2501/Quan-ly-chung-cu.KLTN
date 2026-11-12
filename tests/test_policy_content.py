@@ -1,5 +1,6 @@
 """Content migration updates current policy without rewriting event history."""
 import sqlite3
+from scripts.ci.prepare_database import FIXTURE
 from pathlib import Path
 
 
@@ -8,8 +9,7 @@ def test_policy_content_migration_is_repeatable_and_preserves_history():
     script = (root / "migrations/ui_policy_content.sql").read_text(encoding="utf-8")
     with sqlite3.connect(":memory:") as db:
         db.row_factory = sqlite3.Row
-        with sqlite3.connect(f"file:{(root / 'QLCC.db').as_posix()}?mode=ro", uri=True) as source:
-            source.backup(db)
+        db.executescript(FIXTURE.read_text(encoding="utf-8"))
         prose_fields = {"locations": {"name", "description"},
                         "notifications": {"title", "content"},
                         "complaints": {"category", "content", "response"},

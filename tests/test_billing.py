@@ -10,6 +10,7 @@ import jwt
 import pytest
 from flask import g
 
+from scripts.ci.prepare_database import prepare
 from conftest import TEST_SEPAY_KEY, bank_webhook, configure_sepay
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -21,11 +22,12 @@ def billing(tmp_path, monkeypatch):
     monkeypatch.setenv("SERVICE_TOKEN", "test-billing-internal-at-least-32-characters")
     configure_sepay(monkeypatch)
     path = tmp_path / "billing.db"
-    with sqlite3.connect(f"file:{(ROOT / 'QLCC.db').as_posix()}?mode=ro", uri=True) as source:
-        with sqlite3.connect(path) as destination:
-            source.backup(destination)
-            for migration in sorted((ROOT / "migrations").glob("billing*.sql")):
-                destination.executescript(migration.read_text(encoding="utf-8"))
+    prepare(path)
+    with sqlite3.connect(path) as destination:
+        for migration in [*sorted((ROOT / "migrations").glob("billing*.sql")),
+                          ROOT / "migrations/0100_session_revocation_and_audit.sql",
+                          ROOT / "migrations/0150_invoice_service_cuts.sql"]:
+            destination.executescript(migration.read_text(encoding="utf-8"))
     spec = importlib.util.spec_from_file_location("billing_under_test", ROOT / "billing-service/app.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -103,7 +105,7 @@ def test_invoice_times_come_from_server_and_successful_payment(billing, kind):
     for role in ("admin", "resident"):
         listed = client.get(f"/api/billing/invoices/{kind}", headers=headers(role)).json["items"]
         detail = client.get(route, headers=headers(role)).json
-        assert detail == next(r for r in listed if r["invoice_id"] == row["invoice_id"])
+        assert {k: v for k, v in detail.items() if k not in ("services", "vehicles")} == next(r for r in listed if r["invoice_id"] == row["invoice_id"])
         assert detail["created_at"] == "2026-11-06 18:30:45"
         assert detail["paid_at"] == payment["paid_at"] and detail["status"] == "paid"
     assert client.post(route + "/pay", headers=headers(), json={"payment_method": "cash"}).status_code == 409
@@ -144,7 +146,7 @@ def test_utility_invoice_calculation_edit_and_receipt(billing):
     assert client.patch(route, json={"electricity_fee": 1}, headers=headers()).status_code == 400
     updated = client.patch(route, json={"due_date": "2099-06-02"}, headers=headers()).json
     assert updated["total_amount"] == 1263 and updated["electricity_usage"] == .145
-    assert client.get(route, headers=headers("resident")).json == updated
+    assert {k: v for k, v in client.get(route, headers=headers("resident")).json.items() if k != "services"} == updated
     # Once QR details exist, its amount/calculation cannot be changed.
     response = client.post(route + "/checkout", json={}, headers=headers("resident"))
     assert response.status_code == 201, response.json
@@ -154,7 +156,8 @@ def test_utility_invoice_calculation_edit_and_receipt(billing):
     assert response.status_code == 201
     paid_order = client.get(f"/api/billing/orders/{order['order_id']}", headers=headers("resident")).json
     receipt = client.get(paid_order["receipt_url"], headers=headers("resident"))
-    assert "0.145 kWh" in receipt.text and "1.234 m³" in receipt.text
+    formulas = " ".join(value for _, value in receipt.json["rows"])
+    assert "0.145 kWh" in formulas and "1.234 m³" in formulas
     assert paid_order["paid_at"] == client.get(route, headers=headers()).json["paid_at"]
 
 
@@ -207,12 +210,16 @@ def test_roles_and_resident_ownership_enforced(billing):
     other = invoice(client, apartment_id=2)
     path = f"/api/billing/invoices/monthly/{other['invoice_id']}"
     assert client.get(path).status_code == 401
-    assert client.get(path, headers=headers("technician")).status_code == 403
+    # Technicians inherit management's invoice rights; only the reports stay with admin.
+    assert client.get(path, headers=headers("technician")).status_code == 200
+    assert client.patch(path, json={"due_date": "2099-12-01"}, headers=headers("technician")).status_code == 200
+    assert client.get("/api/billing/reports", headers=headers("technician")).status_code == 403
     assert client.get(path, headers=headers("resident")).status_code == 403
     assert client.post(path + "/checkout", json={}, headers=headers("resident")).status_code == 403
     assert client.post(path + "/pay", json={}, headers=headers("resident")).status_code == 403
     rows = client.get("/api/billing/invoices/monthly", headers=headers("resident")).json["items"]
     assert all(row["apartment_id"] == 1 for row in rows)
+    assert client.post(path + "/pay", json={}, headers=headers("technician")).status_code == 201
 
 
 
@@ -232,8 +239,7 @@ def test_manual_payment_amount_idempotency_and_receipt(billing):
     assert client.post(path, json={"payment_method": "cash"}, headers=auth).status_code == 409
     receipt = client.get(response.json["receipt_url"], headers=headers("resident"))
     assert receipt.status_code == 200
-    assert "attachment" in receipt.headers["Content-Disposition"]
-    assert b"500,000 VND" in receipt.data
+    assert dict(receipt.json["rows"])["Số tiền"] == "500,000 VND"
     with sqlite3.connect(database) as db:
         notices = db.execute("SELECT payload FROM billing_outbox WHERE event_id=?",
                              (f"billing:paid-admin:monthly:{item['invoice_id']}",)).fetchall()
@@ -245,16 +251,16 @@ def test_manual_payment_amount_idempotency_and_receipt(billing):
 def test_overdue_transition_idempotent_and_settlement_outbox(billing):
     module, app, path, _ = billing
     client = app.test_client()
+    # Issued after its due date, so it is overdue at once; a later scan changes nothing.
     item = invoice(client, period="2001-01", due_date="2001-02-01", apartment_id=99)
+    assert item["status"] == "overdue"
     with app.app_context():
-        assert module.mark_overdue("2001-02-02") == 1
-        assert module.mark_overdue("2001-02-03") == 0
-    with sqlite3.connect(path) as db:
-        assert db.execute("SELECT COUNT(*) FROM maintenance_tickets WHERE apartment_id=99 AND type='cut_service'").fetchone()[0] == 1
+        assert module.mark_overdue("2001-02-02") == 0
+        assert module.mark_overdue() == 0
     result = client.post(f"/api/billing/invoices/monthly/{item['invoice_id']}/pay", json={}, headers=headers())
     assert result.status_code == 201
     with sqlite3.connect(path) as db:
-        assert db.execute("SELECT COUNT(*) FROM billing_outbox WHERE event_id=?", (f"settled:monthly:{item['invoice_id']}",)).fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM billing_outbox WHERE destination='maintenance'").fetchone()[0] == 0
     with app.app_context():
         assert module.dispatch_outbox() >= 3
 
@@ -292,20 +298,6 @@ def test_report_distinguishes_billed_and_collected(billing):
     assert report["totals"]["collected_amount"] == 0
     assert report["items"][0]["invoice_count"] == 2
     assert client.get("/api/billing/reports", headers=headers("resident")).status_code == 403
-
-
-
-def test_settlement_does_not_restore_when_another_due_debt_is_not_yet_scanned(billing):
-    module, app, path, _ = billing
-    client = app.test_client()
-    first = invoice(client, apartment_id=99, period="2001-01", due_date="2001-02-01")
-    with app.app_context():
-        module.mark_overdue("2001-02-02")
-    invoice(client, apartment_id=99, period="2001-02", due_date="2001-03-01")
-    assert client.post(f"/api/billing/invoices/monthly/{first['invoice_id']}/pay", json={}, headers=headers()).status_code == 201
-    with sqlite3.connect(path) as db:
-        payload = db.execute("SELECT payload FROM billing_outbox WHERE event_id=?", (f"settled:monthly:{first['invoice_id']}",)).fetchone()[0]
-    assert json.loads(payload)["all_debts_settled"] is False
 
 
 
@@ -389,25 +381,6 @@ def test_bank_intent_reserves_invoice_amount_until_resolved(billing):
     route = f"/api/billing/invoices/monthly/{item['invoice_id']}"
     assert client.patch(route, json={"water_fee": 1}, headers=headers()).status_code == 409
     assert client.post(route + "/pay", json={"payment_method": "cash"}, headers=headers()).status_code == 409
-
-
-def test_legacy_test_order_does_not_block_sepay_and_is_preserved(billing):
-    _, app, database, _ = billing
-    client = app.test_client()
-    item = invoice(client)
-    with sqlite3.connect(database) as db:
-        db.execute("INSERT INTO payment_orders(order_id,request_id,invoice_type,invoice_id,user_id,amount,mode,order_info) "
-                   "VALUES ('LEGACY-TEST','LEGACY-REQUEST','monthly',?,1,500000,'sandbox','Prior provider test')",
-                   (item["invoice_id"],))
-    created = client.post(f"/api/billing/invoices/monthly/{item['invoice_id']}/checkout", json={}, headers=headers("resident"))
-    assert created.status_code == 201, created.json
-    assert created.json["order_id"] != "LEGACY-TEST" and created.json["mode"] == "sepay"
-    with sqlite3.connect(database) as db:
-        assert db.execute("SELECT status,payment_id FROM payment_orders WHERE order_id='LEGACY-TEST'").fetchone() == ("pending", None)
-    assert deliver(client, created.json).status_code == 201
-    assert payment_count(database, item) == 1
-    with sqlite3.connect(database) as db:
-        assert db.execute("SELECT status,payment_id FROM payment_orders WHERE order_id='LEGACY-TEST'").fetchone() == ("pending", None)
 
 
 def test_qr_image_is_only_available_to_current_payer(billing, monkeypatch):
@@ -524,8 +497,7 @@ def test_verified_webhook_settles_once_and_emits_one_admin_notification(billing,
     final = client.get(f"/api/billing/orders/{order['order_id']}", headers=headers("resident")).json
     assert final["status"] == "success" and final["payment_id"]
     receipt = client.get(final["receipt_url"], headers=headers("resident", user_id=3))
-    assert receipt.status_code == 200 and "attachment" in receipt.headers["Content-Disposition"]
-    assert "SEPAY" in receipt.text.upper()
+    assert receipt.status_code == 200 and "SEPAY" in receipt.json["notice"].upper()
     with sqlite3.connect(database) as db:
         assert db.execute("SELECT COUNT(*) FROM billing_outbox WHERE event_id=?",
                           (f"billing:paid-admin:{kind}:{item['invoice_id']}",)).fetchone()[0] == 1
@@ -684,7 +656,7 @@ def test_absent_mode_defaults_to_sepay_test_and_rejects_unsupported_modes(billin
     module, app, _, _ = billing
     monkeypatch.delenv("PAYMENT_MODE")
     assert module.payment_mode() == "sepay"
-    for month, mode in enumerate(("demo", "sandbox", "momo", "production"), start=1):
+    for month, mode in enumerate(("demo", "sandbox", "production"), start=1):
         monkeypatch.setenv("PAYMENT_MODE", mode)
         assert module.payment_configuration()["ready"] is False
         item = invoice(app.test_client(), period=f"2099-{month:02}")

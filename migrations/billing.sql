@@ -1,24 +1,4 @@
 -- Billing owns these records; identifiers of other services are logical references.
-CREATE TABLE IF NOT EXISTS payment_orders (
-    order_id TEXT PRIMARY KEY,
-    request_id TEXT NOT NULL UNIQUE,
-    invoice_type TEXT NOT NULL CHECK(invoice_type IN ('monthly','semiannual')),
-    invoice_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    amount INTEGER NOT NULL CHECK(amount > 0),
-    mode TEXT NOT NULL CHECK(mode IN ('demo','sandbox')),
-    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','success','failed')),
-    order_info TEXT NOT NULL,
-    extra_data TEXT NOT NULL DEFAULT '',
-    pay_url TEXT,
-    qr_code_url TEXT,
-    transaction_code TEXT,
-    payment_id INTEGER,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_active_payment_order
-ON payment_orders(invoice_type, invoice_id) WHERE status = 'pending';
 CREATE TABLE IF NOT EXISTS billing_payment_keys (
     request_key TEXT PRIMARY KEY,
     invoice_type TEXT NOT NULL,

@@ -1,4 +1,5 @@
 """Retry saved management-reply notifications after transient delivery failures."""
+
 import atexit
 import logging
 import os
@@ -7,8 +8,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 
 def start_scheduler(app):
-    if (os.getenv("DISABLE_SCHEDULER", "false").lower() in ("1", "true", "yes")
-            or os.getenv("SCHEDULER_ENABLED", "true").lower() in ("0", "false", "no")):
+    if os.getenv("DISABLE_SCHEDULER", "false").lower() in ("1", "true", "yes") or os.getenv(
+        "SCHEDULER_ENABLED", "true"
+    ).lower() in ("0", "false", "no"):
         return None
     if app.extensions.get("complaint_scheduler"):
         return app.extensions["complaint_scheduler"]

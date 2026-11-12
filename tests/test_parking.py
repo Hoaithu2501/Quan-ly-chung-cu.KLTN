@@ -1,5 +1,6 @@
 """Parking policy and its six-month billing contract over real HTTP."""
 import sqlite3
+from scripts.ci.prepare_database import FIXTURE
 from datetime import date
 from pathlib import Path
 
@@ -7,8 +8,7 @@ from pathlib import Path
 def test_parking_migration_preserves_existing_rows_and_deleted_identifiers():
     root = Path(__file__).resolve().parents[1]
     with sqlite3.connect(":memory:") as db:
-        with sqlite3.connect(f"file:{(root / 'QLCC.db').as_posix()}?mode=ro", uri=True) as source:
-            source.backup(db)
+        db.executescript(FIXTURE.read_text(encoding="utf-8"))
         highest = db.execute("SELECT COALESCE(MAX(vehicle_id),0)+100 FROM vehicles").fetchone()[0]
         db.execute("INSERT INTO vehicles(vehicle_id,apartment_id,vehicle_type,monthly_fee,registered_date) "
                    "VALUES (?,1,'bicycle',30000,'2026-01-01')", (highest,))

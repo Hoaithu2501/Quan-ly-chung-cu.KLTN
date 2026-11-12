@@ -1,4 +1,5 @@
 """Preview or apply the curated FAQ seed; never replaces the application DB."""
+
 import argparse
 from contextlib import closing
 from datetime import datetime, timezone
@@ -26,8 +27,10 @@ def _rows(db):
     columns = {row[1] for row in db.execute("PRAGMA table_info(faq_knowledge_base)")}
     if not {"faq_id", "category", "question", "answer"} <= columns:
         raise ValueError("Missing or incompatible faq_knowledge_base table; initialize the application DB first.")
-    return {row[0]: row[1:] for row in db.execute(
-        "SELECT faq_id, category, question, answer FROM faq_knowledge_base ORDER BY faq_id")}
+    return {
+        row[0]: row[1:]
+        for row in db.execute("SELECT faq_id, category, question, answer FROM faq_knowledge_base ORDER BY faq_id")
+    }
 
 
 def execute_seed(db, script=None):
@@ -45,15 +48,27 @@ def execute_seed(db, script=None):
     after = _rows(db)
     inserted = [key for key in after if key not in before]
     updated = [key for key in before if before[key] != after.get(key)]
-    duplicates = [dict(question=row[0], count=row[1]) for row in db.execute(
-        "SELECT question, COUNT(*) FROM faq_knowledge_base GROUP BY question HAVING COUNT(*) > 1")]
-    return {"inserted": len(inserted), "updated": len(updated),
-            "unchanged": len(before) - len(updated), "total": len(after),
-            "changes": [{"faq_id": key, "action": "insert" if key in inserted else "update",
-                         "question": after[key][1],
-                         "previous_answer": before[key][2] if key in before else None,
-                         "answer": after[key][2]} for key in [*updated, *inserted]],
-            "duplicate_questions": duplicates}
+    duplicates = [
+        dict(question=row[0], count=row[1])
+        for row in db.execute("SELECT question, COUNT(*) FROM faq_knowledge_base GROUP BY question HAVING COUNT(*) > 1")
+    ]
+    return {
+        "inserted": len(inserted),
+        "updated": len(updated),
+        "unchanged": len(before) - len(updated),
+        "total": len(after),
+        "changes": [
+            {
+                "faq_id": key,
+                "action": "insert" if key in inserted else "update",
+                "question": after[key][1],
+                "previous_answer": before[key][2] if key in before else None,
+                "answer": after[key][2],
+            }
+            for key in [*updated, *inserted]
+        ],
+        "duplicate_questions": duplicates,
+    }
 
 
 def seed_database(database, *, apply=False, backup_dir=None):
@@ -61,8 +76,9 @@ def seed_database(database, *, apply=False, backup_dir=None):
     sources = [(ROOT / "QLCC.db").resolve()]
     if os.getenv("DATABASE_SEED_PATH"):
         sources.append(_path(os.environ["DATABASE_SEED_PATH"]))
-    if any(target == source or (target.is_file() and source.is_file() and target.samefile(source))
-           for source in sources):
+    if any(
+        target == source or (target.is_file() and source.is_file() and target.samefile(source)) for source in sources
+    ):
         raise ValueError("Do not target source QLCC.db. Use the runtime database or a separate working copy.")
     if not target.is_file():
         raise ValueError(f"Database does not exist: {target}")
@@ -109,7 +125,9 @@ def main(argv=None):
     from shared.config import database_path
 
     parser = argparse.ArgumentParser(description="Preview FAQ v3 in memory; --apply creates a backup and saves it.")
-    parser.add_argument("--database", default=str(database_path()), help="Runtime database path; default DATABASE_PATH.")
+    parser.add_argument(
+        "--database", default=str(database_path()), help="Runtime database path; default DATABASE_PATH."
+    )
     parser.add_argument("--apply", action="store_true", help="Create a backup and commit the FAQ changes.")
     parser.add_argument("--backup-dir", help="Backup directory; default <database directory>/backups.")
     args = parser.parse_args(argv)

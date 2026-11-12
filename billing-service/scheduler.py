@@ -1,4 +1,5 @@
 """Run one scheduler per Billing process (one replica in the demo compose file)."""
+
 import atexit
 import logging
 import os
@@ -7,8 +8,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 
 def start_scheduler(app):
-    if (os.getenv("DISABLE_SCHEDULER", "false").lower() in ("1", "true", "yes")
-            or os.getenv("SCHEDULER_ENABLED", "true").lower() in ("0", "false", "no")):
+    if os.getenv("DISABLE_SCHEDULER", "false").lower() in ("1", "true", "yes") or os.getenv(
+        "SCHEDULER_ENABLED", "true"
+    ).lower() in ("0", "false", "no"):
         return None
     if app.extensions.get("billing_scheduler"):
         return app.extensions["billing_scheduler"]
@@ -39,7 +41,16 @@ def start_scheduler(app):
     scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
     # A laptop may sleep overnight. Run a missed daily scan on resume instead
     # of leaving invoices unpaid until the following day; coalesce catches up once.
-    scheduler.add_job(overdue_job, "cron", hour=0, minute=5, id="overdue-daily", max_instances=1, coalesce=True, misfire_grace_time=None)
+    scheduler.add_job(
+        overdue_job,
+        "cron",
+        hour=0,
+        minute=5,
+        id="overdue-daily",
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=None,
+    )
     scheduler.add_job(outbox_job, "interval", seconds=30, id="billing-outbox", max_instances=1, coalesce=True)
     scheduler.add_job(sepay_job, "interval", seconds=60, id="billing-sepay", max_instances=1, coalesce=True)
     scheduler.start()

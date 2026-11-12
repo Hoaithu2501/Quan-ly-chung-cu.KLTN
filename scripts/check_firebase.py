@@ -1,4 +1,5 @@
 """Check Firebase configuration without sending any push notification."""
+
 import argparse
 from pathlib import Path
 import sys
@@ -25,10 +26,13 @@ def main():
             print("Google OAuth: OK (chưa kiểm tra quyền gửi FCM hoặc việc nhận trên thiết bị).")
         else:
             from google.auth import load_credentials_from_file
+
             load_credentials_from_file(settings["credential_path"])
             print("Định dạng khóa service account: OK")
     except Exception:
-        print("Firebase: không xác thực được service account. Kiểm tra khóa, Internet và giờ hệ thống; không dán private key vào log/chat.")
+        print(
+            "Firebase: không xác thực được service account. Kiểm tra khóa, Internet và giờ hệ thống; không dán private key vào log/chat."
+        )
         return 1
     print("Không gửi thông báo, không sửa database. Bước cuối: bật quyền và thử trên trình duyệt.")
     return 0

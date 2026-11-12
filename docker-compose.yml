@@ -1,154 +1,233 @@
-x-common: &common
-  env_file: .env
-  environment: &environment
-    DATABASE_PATH: /app/data/QLCC.db
-    HOST: 0.0.0.0
-    TZ: Asia/Ho_Chi_Minh
-    AUTH_SERVICE_URL: http://auth:5001
-    RESIDENT_SERVICE_URL: http://resident:5002
-    BILLING_SERVICE_URL: http://billing:5003
-    PARKING_SERVICE_URL: http://parking:5004
-    MAINTENANCE_SERVICE_URL: http://maintenance:5005
-    NOTIFICATION_SERVICE_URL: http://notification:5006
-    COMPLAINT_SERVICE_URL: http://complaint:5007
-    CHATBOT_SERVICE_URL: http://chatbot:5008
+# The whole system: eight business services, the gateway, database setup and daily backups.
+#
+# A clean checkout starts with just "docker compose up --build -d": no .env is required.
+# .env adds private settings such as SePay, Firebase and Gemini.
+#
+# The defaults below are for running on this machine. CI and releases override them with:
+#   IMAGE_PREFIX, IMAGE_TAG      names of the built images
+#   APP_ENV_FILE                 settings file (default: .env)
+#   GATEWAY_BIND, GATEWAY_PORT   where the website is published (default: this machine only)
+#   FRONTEND_MOUNT               replaced so that the UI inside the image is the one tested
+
+x-environment: &environment
+  DATABASE_PATH: /app/data/QLCC.db
+  HOST: 0.0.0.0
+  TZ: Asia/Ho_Chi_Minh
+  AUTH_SERVICE_URL: http://auth:5001
+  RESIDENT_SERVICE_URL: http://resident:5002
+  BILLING_SERVICE_URL: http://billing:5003
+  PARKING_SERVICE_URL: http://parking:5004
+  MAINTENANCE_SERVICE_URL: http://maintenance:5005
+  NOTIFICATION_SERVICE_URL: http://notification:5006
+  COMPLAINT_SERVICE_URL: http://complaint:5007
+  CHATBOT_SERVICE_URL: http://chatbot:5008
+
+# The settings file holds every credential. Each service blanks the ones it has no use for.
+x-no-sepay: &no-sepay
+  SEPAY_API_TOKEN: ""
+  SEPAY_WEBHOOK_API_KEY: ""
+  SEPAY_BANK_ACCOUNT_ID: ""
+  SEPAY_ACCOUNT_NUMBER: ""
+  SEPAY_ACCOUNT_NAME: ""
+x-no-llm: &no-llm
+  LLM_API_KEY: ""
+x-no-firebase: &no-firebase
+  GOOGLE_APPLICATION_CREDENTIALS: ""
+  FIREBASE_WEB_CONFIG: ""
+  FIREBASE_VAPID_KEY: ""
+x-no-internal: &no-internal
+  JWT_SECRET: ""
+  SERVICE_TOKEN: ""
+
+x-core-environment: &core-environment
+  <<: [*environment, *no-sepay, *no-llm, *no-firebase]
+
+x-service: &service
+  env_file: &settings-file
+    - path: ${APP_ENV_FILE:-.env}
+      required: false
   volumes:
     - qlcc-data:/app/data
+    - qlcc-generated:/app/generated:ro
   restart: unless-stopped
   networks: [qlcc]
   depends_on:
     db-init:
       condition: service_completed_successfully
+
+x-health: &health
+  interval: 10s
+  timeout: 5s
+  retries: 6
+  start_period: 15s
+
+x-init-image: &init-image
+  image: ${IMAGE_PREFIX:-qlcc}/db-init:${IMAGE_TAG:-local}
+  build:
+    context: .
+    target: init
+
 services:
   db-init:
-    build:
-      context: .
-      dockerfile: Dockerfile.init
-    env_file: .env
+    <<: *init-image
+    env_file: *settings-file
     environment:
+      <<: [*no-sepay, *no-llm, *no-firebase, *no-internal]
       DATABASE_PATH: /app/data/QLCC.db
     volumes:
       - qlcc-data:/app/data
-      - ./data:/seed:ro
+      - qlcc-generated:/app/generated
     networks: [qlcc]
-    command: ["python", "-c", "from scripts.init_db import initialize; initialize(demo=True)"]
+    # Set INIT_DEMO=true in the settings file only for a throwaway local database.
+    command: ["python", "scripts/init_db.py", "--container"]
+
+  backup:
+    <<: *init-image
+    environment:
+      DATABASE_PATH: /app/data/QLCC.db
+      TZ: Asia/Ho_Chi_Minh
+    volumes:
+      - qlcc-data:/app/data
+      - ./backups:/backups
+    command: ["python", "scripts/backup_db.py", "--loop", "--output", "/backups"]
+    restart: unless-stopped
+    networks: [qlcc]
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+
   auth:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/auth:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: auth-service/Dockerfile
+      target: service
+      args: { SERVICE: auth }
+    environment: *core-environment
     ports: ["127.0.0.1:5001:5001"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5001/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5001/health', timeout=3)"]
+
   resident:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/resident:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: resident-service/Dockerfile
+      target: service
+      args: { SERVICE: resident }
+    environment: *core-environment
     ports: ["127.0.0.1:5002:5002"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5002/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5002/health', timeout=3)"]
+
   billing:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/billing:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: billing-service/Dockerfile
+      target: service
+      args: { SERVICE: billing }
+    environment:
+      <<: [*environment, *no-llm, *no-firebase]
     ports: ["127.0.0.1:5003:5003"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5003/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5003/health', timeout=3)"]
+
   parking:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/parking:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: parking-service/Dockerfile
+      target: service
+      args: { SERVICE: parking }
+    environment: *core-environment
     ports: ["127.0.0.1:5004:5004"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5004/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5004/health', timeout=3)"]
+
   maintenance:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/maintenance:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: maintenance-service/Dockerfile
+      target: service
+      args: { SERVICE: maintenance }
+    environment: *core-environment
     ports: ["127.0.0.1:5005:5005"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5005/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5005/health', timeout=3)"]
+
   notification:
-    <<: *common
-    volumes:
-      - qlcc-data:/app/data
-      - ./secrets:/app/secrets:ro
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/notification:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: notification-service/Dockerfile
+      target: service
+      args: { SERVICE: notification }
+    environment:
+      <<: [*environment, *no-sepay, *no-llm]
+    volumes:
+      - qlcc-data:/app/data
+      - qlcc-generated:/app/generated:ro
+      - ./secrets:/app/secrets:ro
     ports: ["127.0.0.1:5006:5006"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5006/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5006/health', timeout=3)"]
+
   complaint:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/complaint:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: complaint-service/Dockerfile
+      target: service
+      args: { SERVICE: complaint }
+    environment: *core-environment
     ports: ["127.0.0.1:5007:5007"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5007/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5007/health', timeout=3)"]
+
   chatbot:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/chatbot:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: chatbot-service/Dockerfile
+      target: service
+      args: { SERVICE: chatbot }
+    environment:
+      <<: [*environment, *no-sepay, *no-firebase]
     ports: ["127.0.0.1:5008:5008"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5008/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5008/health', timeout=3)"]
+
   gateway:
-    <<: *common
+    <<: *service
+    image: ${IMAGE_PREFIX:-qlcc}/gateway:${IMAGE_TAG:-local}
     build:
       context: .
-      dockerfile: gateway/Dockerfile
-    # Serve the current workspace UI when editing in VS Code or Antigravity.
+      target: gateway
+    environment:
+      <<: [*environment, *no-sepay, *no-llm, *no-firebase, *no-internal]
     volumes:
       - qlcc-data:/app/data
-      - ./frontend:/app/frontend:ro
-    ports: ["0.0.0.0:5000:5000"]
+      # Serves the working copy of the UI, so edits show up after a browser reload.
+      - ${FRONTEND_MOUNT:-./frontend:/app/frontend:ro}
+    ports: ["${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-5000}:5000"]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=3)"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+      <<: *health
+      test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5000/health', timeout=3)"]
+
 networks:
   qlcc:
     driver: bridge
+
 volumes:
   qlcc-data:
+  qlcc-generated:
