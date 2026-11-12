@@ -1,0 +1,22 @@
+@startuml H3_14_hd_vang_lai
+!include _style.iuml
+title Biểu đồ hoạt động – Ghi nhận doanh thu gửi xe vãng lai
+|Kỹ thuật viên / BQL|
+start
+:Vào "Quản lý gửi xe" → tab Vãng lai;
+:Nhập ngày và tổng tiền thu trong ngày;
+:Chọn "Lưu";
+|Parking Service|
+if (Ngày ở tương lai hoặc tiền âm?) then (Có)
+  :Báo lỗi dữ liệu;
+  stop
+endif
+if (Ngày đã có bản ghi?) then (Có)
+  :Từ chối tạo mới (409),
+  yêu cầu sửa bản ghi hiện có;
+  stop
+endif
+:Lưu guest_parking_daily;
+:Cập nhật tổng doanh thu vãng lai theo tháng;
+stop
+@enduml

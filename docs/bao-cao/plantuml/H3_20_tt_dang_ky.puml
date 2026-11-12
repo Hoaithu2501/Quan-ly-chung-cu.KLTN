@@ -1,0 +1,29 @@
+@startuml H3_20_tt_dang_ky
+!include _style.iuml
+title Biểu đồ tuần tự – Đăng ký tài khoản cư dân
+actor "Cư dân" as U
+participant "Giao diện web" as UI
+participant "Gateway :5000" as GW
+participant "Auth Service" as AUTH
+participant "Resident Service" as RES
+database "SQLite" as DB
+U -> UI : Nhập thông tin, chọn Đăng ký
+UI -> GW : POST /api/auth/register
+GW -> AUTH : chuyển tiếp
+AUTH -> AUTH : kiểm tra định dạng dữ liệu
+AUTH -> RES : GET /api/apartments (X-Service-Token)
+RES -> DB : SELECT apartments
+RES --> AUTH : danh sách căn hộ
+alt không tìm thấy mã căn hộ
+  AUTH --> UI : 400 "Không tìm thấy căn hộ"
+else căn hộ hợp lệ
+  AUTH -> DB : INSERT users (role=resident, status=locked)
+  AUTH -> RES : POST /api/residents/provision
+  RES -> DB : INSERT residents (registered_apartment_code)
+  RES --> AUTH : 201 hồ sơ cư dân
+  AUTH -> DB : UPDATE users SET status='active'
+  AUTH --> GW : 201 {token, user}
+  GW --> UI : 201
+  UI --> U : chuyển tới Thông tin cá nhân
+end
+@enduml

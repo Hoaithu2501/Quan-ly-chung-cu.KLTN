@@ -1,0 +1,256 @@
+## 3.7. Thiết kế kiến trúc hệ thống
+### 3.7.1. Kiến trúc tổng thể
+@fig: H3_39_kien_truc_soa|Hình 3.39. Kiến trúc hướng dịch vụ của hệ thống
+Hệ thống gồm ba lớp. Lớp trình diễn là giao diện web chạy trên trình duyệt. Lớp dịch vụ gồm gateway và tám service nghiệp vụ, mỗi service là một ứng dụng Flask độc lập chạy ở một cổng riêng. Lớp dữ liệu là tệp SQLite dùng chung, trong đó mỗi service chỉ đọc ghi nhóm bảng mình sở hữu. Các hệ thống ngoài gồm SePay, dịch vụ tạo ảnh VietQR, Firebase Cloud Messaging và Google Gemini.
+@tab: Bảng 3.11. Danh sách service và chức năng
+|Service|Cổng|Chức năng chính|
+|Gateway|5000|Phục vụ giao diện web, chuyển tiếp /api/* tới service tương ứng, trang trạng thái hệ thống|
+|Auth|5001|Đăng nhập, đăng ký cư dân, JWT, hồ sơ tài khoản, đổi mật khẩu, quản lý tài khoản và khóa tài khoản|
+|Resident|5002|Căn hộ, cư dân, hợp đồng, xác nhận cư dân thuộc căn hộ, phạm vi căn hộ của tài khoản|
+|Billing|5003|Hóa đơn tháng và sáu tháng, thanh toán VietQR/SePay, ghi nhận tiền mặt, đối soát, biên nhận, báo cáo, quét quá hạn|
+|Parking|5004|Đăng ký xe tháng, phí gửi xe theo kỳ, phí thẻ, doanh thu vãng lai theo ngày|
+|Maintenance|5005|Hồ sơ kỹ thuật viên, phiếu sửa chữa, bảo trì, tạm ngưng và khôi phục dịch vụ|
+|Notification|5006|Thông báo chung và riêng, trạng thái đã đọc, token và gửi push Firebase|
+|Complaint|5007|Khiếu nại, đơn đăng ký, phản hồi và gửi lại thông báo phản hồi|
+|Chatbot|5008|Hỏi đáp, quản lý FAQ và danh bạ địa điểm, tích hợp LLM tùy chọn|
+### 3.7.2. Nguyên tắc giao tiếp giữa các service
+- Mỗi service sở hữu một nhóm bảng; tham chiếu trong cùng service dùng khóa ngoại vật lý, tham chiếu sang service khác chỉ lưu mã định danh (tham chiếu logic) và được kiểm tra qua API khi tạo dữ liệu. Mã ứng dụng không JOIN bảng của service khác.
+- Giao tiếp đồng bộ dùng REST qua thư viện requests với thời gian chờ giới hạn; lỗi từ service đích được chuyển thành thông báo lỗi tiếng Việt thống nhất.
+- Giao tiếp bất đồng bộ dùng outbox: Billing và Complaint lưu sự kiện trong cùng giao dịch rồi gửi đi; service đích chống trùng theo event_id.
+- Lời gọi nội bộ dùng X-Service-Token và chỉ được chấp nhận ở endpoint khai báo nội bộ; lời gọi từ người dùng dùng JWT.
+- Mỗi service có /health, /openapi.json và /docs (Swagger UI) để kiểm tra và thử API độc lập.
+Một ngoại lệ được giữ lại có chủ đích là trigger CSDL gốc tự tạo phiếu tạm ngưng dịch vụ (bảng của Maintenance) khi hóa đơn (bảng của Billing) chuyển sang quá hạn. Ngoại lệ này được ghi nhận như một giới hạn của việc dùng chung một tệp CSDL.
+@tab: Bảng 3.12. Quyền sở hữu dữ liệu của từng service
+|Service|Bảng, view sở hữu|
+|Auth|users|
+|Resident|apartments, residents, apartment_contracts, resident_apartment_memberships, vw_apartment_overview|
+|Billing|monthly_invoices, monthly_payments, semiannual_invoices, semiannual_payments, bank_payment_intents, bank_transactions, bank_transaction_aliases, bank_transaction_resolutions, billing_payment_keys, billing_outbox, các view hóa đơn, thanh toán, doanh thu, quá hạn|
+|Parking|vehicles, guest_parking_daily, vw_vehicle_summary_by_apartment, vw_guest_parking_monthly|
+|Maintenance|technicians, maintenance_tickets, maintenance_events, cut_service_resolutions|
+|Notification|notifications, notification_logs, notification_events, notification_audience, notification_resident_audience, notification_billing_context, notification_push_tokens, notification_push_roles|
+|Complaint|complaints, complaint_outbox|
+|Chatbot|faq_knowledge_base, locations|
+### 3.7.3. Kiến trúc triển khai
+@fig: H3_40_trien_khai|Hình 3.40. Biểu đồ triển khai bằng Docker Compose
+Toàn bộ hệ thống chạy bằng Docker Compose. Container db-init chạy một lần để tạo CSDL từ dữ liệu nguồn nếu chưa có và áp dụng các migration còn thiếu; các container còn lại chỉ khởi động khi db-init hoàn tất. Các service dùng chung volume qlcc-data chứa /app/data/QLCC.db và đọc cấu hình bí mật từ tệp .env. Để SePay gọi được webhook và điện thoại truy cập qua HTTPS khi demo, gateway được công khai qua Cloudflare Tunnel.
+### 3.7.4. Cấu trúc mã nguồn
+@tab: Bảng 3.13. Cấu trúc thư mục mã nguồn
+|Thư mục / tệp|Nội dung|
+|auth-service, resident-service, billing-service, parking-service, maintenance-service, notification-service, complaint-service, chatbot-service|Mỗi thư mục là một service: app.py, Dockerfile, requirements.txt; Billing và Complaint có thêm scheduler.py|
+|gateway|Ứng dụng gateway chuyển tiếp API và phục vụ giao diện|
+|shared|Hạ tầng dùng chung: kết nối CSDL, xác thực, gọi HTTP, kiểm tra dữ liệu, OpenAPI, Firebase, truy xuất chatbot|
+|frontend|index.html, app.js, styles.css (Tailwind), push.js, firebase-messaging-sw.js, manifest, phông chữ và hình ảnh|
+|migrations|Các tệp SQL nâng cấp CSDL áp dụng tuần tự|
+|scripts|Khởi tạo CSDL, chạy local, kiểm tra CSDL, SePay, Firebase, xuất dữ liệu, script CI|
+|tests|Bộ kiểm thử pytest và Playwright, dữ liệu mẫu|
+|docker-compose.yml, .github/workflows|Triển khai container và quy trình CI/CD|
+## 3.8. Thiết kế cơ sở dữ liệu
+### 3.8.1. Biểu đồ thực thể liên kết
+@fig: H3_41_erd|Hình 3.41. Biểu đồ thực thể liên kết của cơ sở dữ liệu
+CSDL hiện có 37 bảng ứng dụng. Biểu đồ trên trình bày các bảng nghiệp vụ chính; đường liền là khóa ngoại vật lý trong cùng service, đường đứt là tham chiếu logic giữa các service. Các bảng tiếp theo mô tả chi tiết những bảng quan trọng.
+### 3.8.2. Mô tả các bảng dữ liệu
+@tab: Bảng 3.14. Bảng users (tài khoản)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|user_id|INTEGER|Khóa chính, tự tăng|Mã tài khoản|
+|username|TEXT|Duy nhất, bắt buộc|Tên đăng nhập|
+|password_hash|TEXT|Bắt buộc|Mật khẩu đã băm|
+|email|TEXT|Duy nhất|Email (@gmail.com với cư dân tự đăng ký)|
+|phone|TEXT||Số điện thoại|
+|role|TEXT|admin / resident / technician|Vai trò|
+|status|TEXT|active / locked|Trạng thái tài khoản|
+|lock_reason|TEXT||Lý do khóa|
+|created_at|TEXT|Mặc định thời điểm tạo|Ngày tạo|
+@tab: Bảng 3.15. Bảng apartments (căn hộ)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|apartment_id|INTEGER|Khóa chính|Mã căn hộ nội bộ|
+|code|TEXT|Duy nhất, bắt buộc|Mã căn hộ hiển thị, ví dụ A101|
+|block|TEXT||Tòa nhà|
+|floor|INTEGER||Tầng|
+|area|REAL|> 0|Diện tích (m²)|
+|status|TEXT|vacant / occupied|Còn trống / đã có cư dân, đồng bộ theo hợp đồng hiệu lực|
+@tab: Bảng 3.16. Bảng residents (cư dân)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|resident_id|INTEGER|Khóa chính|Mã cư dân|
+|user_id|INTEGER|Tham chiếu logic tới users|Tài khoản đăng nhập|
+|full_name|TEXT|Bắt buộc|Họ tên|
+|id_card|TEXT||Số CCCD|
+|phone|TEXT||Số điện thoại|
+|relation_type|TEXT|owner / tenant|Chủ sở hữu / người thuê|
+|registered_apartment_code|TEXT||Mã căn hộ tự khai khi đăng ký|
+@tab: Bảng 3.17. Bảng apartment_contracts (hợp đồng)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|contract_id|INTEGER|Khóa chính|Mã hợp đồng|
+|apartment_id|INTEGER|Khóa ngoại apartments|Căn hộ|
+|resident_id|INTEGER|Khóa ngoại residents|Cư dân đứng tên|
+|contract_type|TEXT|ownership / rental|Sở hữu / thuê|
+|start_date|TEXT|Bắt buộc|Ngày bắt đầu|
+|end_date|TEXT|Bắt buộc với hợp đồng thuê|Ngày kết thúc|
+|status|TEXT|active / expired / terminated|Trạng thái|
+@tab: Bảng 3.18. Bảng resident_apartment_memberships (xác nhận cư trú)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|resident_id|INTEGER|Khóa chính, khóa ngoại|Cư dân|
+|apartment_id|INTEGER|Khóa chính, khóa ngoại|Căn hộ|
+|confirmed_by_user_id|INTEGER|Bắt buộc|Người xác nhận (Ban quản lý)|
+|confirmed_at|TEXT|Mặc định thời điểm tạo|Thời điểm xác nhận|
+@tab: Bảng 3.19. Bảng monthly_invoices (hóa đơn điện nước tháng)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|invoice_id|INTEGER|Khóa chính|Mã hóa đơn|
+|apartment_id|INTEGER|Tham chiếu logic; duy nhất cùng period|Căn hộ|
+|period|TEXT|YYYY-MM|Kỳ thu|
+|electricity_usage, water_usage|REAL|0–1.000.000, tối đa 3 chữ số thập phân|Lượng điện (kWh), nước (m³)|
+|electricity_unit_price, water_unit_price|INTEGER|> 0|Đơn giá|
+|electricity_fee, water_fee|INTEGER|Trigger kiểm tra = lượng × đơn giá|Tiền điện, tiền nước|
+|total_amount|INTEGER|Trigger tự tính|Tổng tiền|
+|due_date|TEXT|Bắt buộc|Hạn thanh toán|
+|status|TEXT|unpaid / paid / overdue|Trạng thái|
+|created_at|TEXT||Thời điểm lập|
+@tab: Bảng 3.20. Bảng semiannual_invoices (hóa đơn dịch vụ sáu tháng)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|invoice_id|INTEGER|Khóa chính|Mã hóa đơn|
+|apartment_id|INTEGER|Duy nhất cùng period|Căn hộ|
+|period|TEXT|YYYY-H1 / YYYY-H2|Kỳ sáu tháng|
+|service_fee|INTEGER|≥ 0|Phí dịch vụ chung|
+|parking_fee|INTEGER|≥ 0|Phí gửi xe trong kỳ|
+|total_amount|INTEGER|Trigger tự tính|Tổng tiền|
+|due_date, status, created_at|TEXT||Như hóa đơn tháng|
+@tab: Bảng 3.21. Bảng monthly_payments / semiannual_payments (khoản thanh toán)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|payment_id|INTEGER|Khóa chính|Mã khoản thanh toán|
+|invoice_id|INTEGER|Khóa ngoại; duy nhất khi status = success|Hóa đơn|
+|amount|INTEGER|Bắt buộc|Số tiền|
+|payment_method|TEXT|QR / cash / bank_transfer|Phương thức|
+|transaction_code|TEXT||Mã giao dịch|
+|paid_at|TEXT||Thời điểm ghi nhận đủ tiền (UTC+7)|
+|status|TEXT|success / failed / pending|Trạng thái|
+@tab: Bảng 3.22. Bảng bank_payment_intents (phiên thanh toán VietQR)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|order_id|TEXT|Khóa chính (VQR-…)|Mã phiên|
+|invoice_type, invoice_id|TEXT, INTEGER|Một phiên mở mỗi hóa đơn và môi trường|Hóa đơn được thanh toán|
+|payer_user_id|INTEGER|Bắt buộc|Người giữ phiên|
+|environment|TEXT|test / live|Môi trường SePay|
+|amount|INTEGER|> 0|Số tiền|
+|transfer_content|TEXT|Duy nhất|Nội dung chuyển khoản dùng để đối soát|
+|bank_code, bank_name, account_number, account_name|TEXT||Tài khoản nhận|
+|status|TEXT|pending / awaiting_confirmation / success / expired / cancelled|Trạng thái phiên|
+|expires_at, created_at, updated_at, last_checked_at, last_error|TEXT||Thời điểm và kết quả đối soát|
+@tab: Bảng 3.23. Bảng bank_transactions (sổ giao dịch ngân hàng)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|transaction_id|INTEGER|Khóa chính|Mã giao dịch nội bộ|
+|environment, provider_id|TEXT|Duy nhất theo cặp|Mã giao dịch phía SePay, chống ghi lặp|
+|account_number, bank_name, bank_reference, reference|TEXT||Thông tin ngân hàng, mã tham chiếu|
+|direction|TEXT|in / out|Chiều tiền|
+|amount, allocated_amount, unallocated_amount|INTEGER|0 ≤ phân bổ ≤ amount|Số nhận, đã phân bổ, chưa phân bổ|
+|status|TEXT|matched / partial / overpaid / duplicate / unmatched / ignored|Kết quả đối soát|
+|invoice_type, invoice_id|TEXT, INTEGER||Hóa đơn được phân bổ|
+|resolution, resolution_note, resolved_by_user_id, resolved_at|||Kết quả xử lý của Ban quản lý|
+@tab: Bảng 3.24. Bảng billing_outbox (sự kiện chờ gửi)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|event_id|TEXT|Khóa chính|Mã sự kiện, ví dụ billing:paid:monthly:19|
+|destination, path|TEXT||Service và đường dẫn đích|
+|payload|TEXT|JSON|Nội dung sự kiện|
+|attempts, last_error|INTEGER, TEXT||Số lần thử, lỗi gần nhất|
+|delivered_at, created_at|TEXT||Thời điểm gửi thành công, tạo|
+@tab: Bảng 3.25. Bảng vehicles (xe gửi tháng)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|vehicle_id|INTEGER|Khóa chính|Mã đăng ký xe|
+|apartment_id|INTEGER|Tham chiếu logic|Căn hộ|
+|plate_number|TEXT|Duy nhất khi đang hoạt động|Biển số hoặc mã xe đạp|
+|vehicle_type|TEXT|bicycle / motorbike / electric_bike|Loại xe|
+|monthly_fee|INTEGER|50.000 / 100.000|Phí tháng|
+|registered_date|TEXT||Ngày bắt đầu gửi|
+|registration_months|INTEGER|≥ 2|Số tháng cam kết|
+|status, cancelled_date|TEXT|active / cancelled|Trạng thái, ngày hủy|
+|card_fee|INTEGER|0 / 100.000|Phí làm thẻ một lần|
+@tab: Bảng 3.26. Bảng guest_parking_daily (doanh thu vãng lai)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|record_id|INTEGER|Khóa chính|Mã bản ghi|
+|parking_date|TEXT|Duy nhất, không ở tương lai|Ngày|
+|daily_revenue|INTEGER|≥ 0|Tổng tiền thu trong ngày|
+@tab: Bảng 3.27. Bảng technicians và maintenance_tickets
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|technicians.technician_id|INTEGER|Khóa chính|Mã kỹ thuật viên|
+|technicians.user_id|INTEGER|Tham chiếu logic|Tài khoản đăng nhập|
+|technicians.full_name, specialty|TEXT|parking / payment / general|Họ tên, chuyên môn|
+|maintenance_tickets.ticket_id|INTEGER|Khóa chính|Mã phiếu|
+|maintenance_tickets.apartment_id|INTEGER|Có thể rỗng (khu vực chung)|Căn hộ|
+|maintenance_tickets.technician_id|INTEGER|Khóa ngoại technicians|Người được giao|
+|maintenance_tickets.type|TEXT|repair / maintenance / cut_service / restore_service|Loại phiếu|
+|maintenance_tickets.priority|TEXT|low / medium / high|Mức ưu tiên|
+|maintenance_tickets.status|TEXT|pending / in_progress / completed|Trạng thái|
+|maintenance_tickets.created_at, completed_at|TEXT||Thời điểm tạo, hoàn thành|
+@tab: Bảng 3.28. Bảng notifications và notification_logs
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|notifications.notification_id|INTEGER|Khóa chính|Mã thông báo|
+|notifications.type|TEXT|general / private|Chung / riêng|
+|notifications.title, content|TEXT||Tiêu đề, nội dung|
+|notifications.target_apartment_id|INTEGER|Rỗng với thông báo chung|Căn hộ nhận|
+|notifications.created_by, created_at|INTEGER, TEXT||Người gửi, thời điểm|
+|notification_logs.notification_id|INTEGER|Khóa ngoại|Thông báo|
+|notification_logs.resident_id, is_read, sent_at|INTEGER, INTEGER, TEXT||Cư dân đã đọc|
+@tab: Bảng 3.29. Bảng complaints (khiếu nại, đơn đăng ký)
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|complaint_id|INTEGER|Khóa chính|Mã yêu cầu|
+|resident_id|INTEGER|Tham chiếu logic|Người gửi|
+|type|TEXT|complaint / registration|Khiếu nại / đơn đăng ký|
+|category|TEXT||Danh mục (gửi xe, tiếng ồn…)|
+|content|TEXT|Bắt buộc|Nội dung|
+|status|TEXT|pending / processing / resolved / rejected|Trạng thái|
+|response|TEXT|Bắt buộc khi đóng|Phản hồi của Ban quản lý|
+|created_at, resolved_at|TEXT||Thời điểm gửi, đóng|
+@tab: Bảng 3.30. Bảng faq_knowledge_base và locations
+|Tên trường|Kiểu|Ràng buộc|Mô tả|
+|faq_knowledge_base.faq_id|INTEGER|Khóa chính|Mã câu hỏi|
+|faq_knowledge_base.category, question, answer|TEXT|question, answer bắt buộc|Danh mục, câu hỏi, câu trả lời|
+|locations.location_id|INTEGER|Khóa chính|Mã địa điểm|
+|locations.name, block, floor, description|TEXT|name bắt buộc|Tên, tòa, tầng, mô tả|
+### 3.8.3. View và trigger
+@tab: Bảng 3.31. Các view và trigger chính
+|Đối tượng|Loại|Chức năng|
+|vw_billing_all_invoices|View|Gộp hóa đơn tháng và sáu tháng, quy kỳ H1/H2 về tháng báo cáo|
+|vw_billing_all_payments|View|Gộp các khoản thanh toán kèm căn hộ, kỳ|
+|vw_monthly_revenue_report|View|Tổng tiền điện, nước, doanh thu, số hóa đơn đã trả theo kỳ|
+|vw_overdue_invoices|View|Danh sách hóa đơn quá hạn|
+|vw_vehicle_summary_by_apartment|View|Số xe máy, xe đạp và tổng phí tháng theo căn hộ|
+|vw_guest_parking_monthly|View|Doanh thu vãng lai theo tháng|
+|trg_calc_monthly_total_*, trg_calc_semiannual_total_*|Trigger|Tự tính total_amount khi thêm, sửa hóa đơn|
+|validate_monthly_calculation_*|Trigger|Từ chối hóa đơn có tiền điện, nước sai công thức hoặc thiếu dữ liệu|
+|trg_update_*_invoice_status_*|Trigger|Chuyển hóa đơn sang đã thanh toán khi có khoản thanh toán thành công đủ tiền|
+|trg_auto_ticket_*_overdue|Trigger|Tạo phiếu cut_service khi hóa đơn chuyển sang quá hạn|
+## 3.9. Thiết kế API
+Các API tuân theo quy ước thống nhất: danh sách trả về dạng {"items": [...]}, tạo mới trả mã 201, lỗi trả {"error": "thông báo tiếng Việt"}. Bảng dưới tóm tắt các nhóm endpoint chính; chi tiết từng tham số có trong tài liệu OpenAPI của từng service.
+@tab: Bảng 3.32. Tóm tắt các API chính
+|Service|Phương thức và đường dẫn|Quyền|Chức năng|
+|Auth|POST /api/auth/login, /register|Công khai|Đăng nhập, đăng ký cư dân|
+|Auth|GET, PATCH /api/auth/me; POST /api/auth/me/password|Đã đăng nhập|Hồ sơ, đổi mật khẩu|
+|Auth|GET, POST /api/auth/users; PATCH /api/auth/users/{id}|Ban quản lý|Quản lý tài khoản, khóa, đặt lại mật khẩu|
+|Resident|GET /api/apartments; POST, PATCH /api/apartments|Ba vai trò (đọc); Ban quản lý (ghi)|Xem, quản lý căn hộ|
+|Resident|GET /api/residents/me; POST, DELETE /api/residents/{id}/apartments/{apartment_id}|Cư dân; Ban quản lý|Phạm vi căn hộ, xác nhận cư trú|
+|Resident|GET, POST, PATCH /api/contracts|Ban quản lý|Hợp đồng sở hữu, thuê|
+|Billing|GET, POST, PATCH /api/billing/invoices/{monthly,semiannual}|Ban quản lý, cư dân (đọc)|Lập, sửa, xem hóa đơn|
+|Billing|POST /api/billing/invoices/{kind}/{id}/pay|Ban quản lý|Ghi nhận tiền mặt, chuyển khoản thực nhận|
+|Billing|POST /api/billing/invoices/{kind}/{id}/checkout; GET /api/billing/orders/{id}, /qr; POST /confirm-transfer, /cancel, /reconcile|Cư dân|Phiên thanh toán VietQR|
+|Billing|POST /api/billing/sepay/webhook|SePay (Apikey)|Nhận giao dịch ngân hàng|
+|Billing|GET /api/billing/sepay/transactions; POST /{id}/resolve|Ban quản lý|Sổ đối soát|
+|Billing|GET /api/billing/payments, /receipt, /summary, /reports; POST /overdue/run|Theo vai trò|Lịch sử, biên nhận, báo cáo|
+|Parking|GET, POST, PATCH /api/parking/vehicles; GET /summary|Theo vai trò|Xe tháng, phí theo kỳ|
+|Parking|GET, POST, PUT /api/parking/guest-daily|Ban quản lý, kỹ thuật viên|Doanh thu vãng lai|
+|Maintenance|GET, POST, PATCH /api/maintenance/technicians, /tickets; POST /events|Theo vai trò; nội bộ|Kỹ thuật viên, phiếu, sự kiện thanh toán|
+|Notification|GET, POST /api/notifications; POST /{id}/read; GET /{id}/receipts; POST /events; push-config, push-tokens|Theo vai trò; nội bộ|Thông báo, đã đọc, push|
+|Complaint|GET, POST, PATCH /api/complaints|Cư dân, Ban quản lý|Khiếu nại, đơn đăng ký|
+|Chatbot|POST /api/chatbot/ask; GET, POST, PATCH, DELETE /faqs, /locations|Đã đăng nhập; Ban quản lý quản trị|Hỏi đáp, kho kiến thức|
+## 3.10. Các quy tắc nghiệp vụ chính
+@tab: Bảng 3.33. Quy tắc nghiệp vụ và nơi kiểm tra
+|Quy tắc|Nơi kiểm tra|
+|Đăng ký công khai chỉ tạo tài khoản cư dân|Auth|
+|Cư dân chỉ xem hóa đơn, xe, phiếu, thông báo của căn hộ có hợp đồng hiệu lực hoặc được xác nhận|Từng service gọi Resident|
+|Một căn hộ không có hai hợp đồng hoạt động chồng thời gian; hợp đồng thuê bắt buộc có ngày kết thúc|Resident|
+|Mỗi căn hộ chỉ có một hóa đơn cho mỗi kỳ và mỗi loại|SQLite UNIQUE + Billing|
+|Mỗi hóa đơn chỉ có một khoản thanh toán thành công; webhook lặp không cộng tiền lần hai|SQLite partial index + Billing|
+|Chỉ Ban quản lý ghi nhận tiền mặt; cư dân không thể tự đánh dấu đã thanh toán|Billing|
+|Webhook SePay phải có API Key đúng, đúng tài khoản, ngân hàng, chiều tiền vào|Billing|
+|Phí xe: xe đạp 50.000đ/tháng; xe máy, xe điện 100.000đ/tháng; phí thẻ 100.000đ một lần; cam kết tối thiểu 2 tháng; không nhận ô tô|Parking|
+|Mỗi ngày chỉ có một bản ghi doanh thu vãng lai; không ghi ngày tương lai, tiền âm|SQLite UNIQUE + Parking|
+|Kỹ thuật viên chỉ cập nhật trạng thái phiếu được giao; trạng thái chỉ tiến, không lùi|Maintenance|
+|Đóng khiếu nại bắt buộc có phản hồi; phản hồi chỉ gửi tới người gửi đơn|Complaint, Notification|
+|Số tiền là số nguyên VND không âm, không nhận số thực hay giá trị logic|Billing, Parking|
+|Tài khoản bị khóa mất quyền ngay ở mọi service|Auth và middleware xác thực|

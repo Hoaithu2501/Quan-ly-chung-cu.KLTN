@@ -1,0 +1,77 @@
+@startuml H3_01_usecase_tong_quat
+!include _style.iuml
+left to right direction
+title Biểu đồ use case tổng quát hệ thống quản lý chung cư
+actor "Ban quản lý" as BQL
+actor "Cư dân" as CD
+actor "Kỹ thuật viên" as KTV
+actor "SePay" as SEPAY <<hệ thống ngoài>>
+actor "Firebase FCM" as FCM <<hệ thống ngoài>>
+actor "Gemini (LLM)" as LLM <<hệ thống ngoài>>
+actor "Bộ lập lịch\n(APScheduler)" as SCH <<hệ thống>>
+
+rectangle "Hệ thống quản lý chung cư An Cư" {
+  usecase "Đăng nhập / đăng xuất" as UC_LOGIN
+  usecase "Đăng ký tài khoản cư dân" as UC_REG
+  usecase "Quản lý thông tin cá nhân,\nđổi mật khẩu" as UC_PROFILE
+  usecase "Quản lý căn hộ" as UC_APT
+  usecase "Quản lý cư dân, hợp đồng,\nxác nhận căn hộ" as UC_RES
+  usecase "Quản lý hóa đơn\n(điện nước, dịch vụ 6 tháng)" as UC_INV
+  usecase "Thanh toán hóa đơn qua VietQR" as UC_PAY
+  usecase "Tra cứu lịch sử thanh toán,\ntải biên nhận" as UC_HIS
+  usecase "Đối soát chuyển khoản" as UC_REC
+  usecase "Quản lý gửi xe tháng" as UC_PARK
+  usecase "Ghi nhận doanh thu\ngửi xe vãng lai" as UC_GUEST
+  usecase "Yêu cầu sửa chữa, bảo trì" as UC_TICKET_REQ
+  usecase "Phân công kỹ thuật viên" as UC_ASSIGN
+  usecase "Xử lý phiếu công việc" as UC_TICKET_DO
+  usecase "Gửi khiếu nại / đơn đăng ký" as UC_COMP
+  usecase "Giải quyết khiếu nại / đơn" as UC_COMP_DO
+  usecase "Gửi thông báo chung / riêng" as UC_NOTI
+  usecase "Nhận và xem thông báo" as UC_NOTI_VIEW
+  usecase "Báo cáo, thống kê doanh thu" as UC_REPORT
+  usecase "Quản lý nhân sự, tài khoản" as UC_USER
+  usecase "Quản lý nội quy (FAQ), địa điểm" as UC_KB
+  usecase "Hỏi đáp với trợ lý An Cư" as UC_CHAT
+  usecase "Xử lý hóa đơn quá hạn,\nnhắc hạn thanh toán" as UC_OVERDUE
+}
+
+CD --> UC_REG
+CD --> UC_LOGIN
+CD --> UC_PROFILE
+CD --> UC_PAY
+CD --> UC_HIS
+CD --> UC_PARK
+CD --> UC_TICKET_REQ
+CD --> UC_COMP
+CD --> UC_NOTI_VIEW
+CD --> UC_CHAT
+
+BQL --> UC_LOGIN
+BQL --> UC_APT
+BQL --> UC_RES
+BQL --> UC_INV
+BQL --> UC_REC
+BQL --> UC_PARK
+BQL --> UC_GUEST
+BQL --> UC_ASSIGN
+BQL --> UC_COMP_DO
+BQL --> UC_NOTI
+BQL --> UC_REPORT
+BQL --> UC_USER
+BQL --> UC_KB
+BQL --> UC_CHAT
+
+KTV --> UC_LOGIN
+KTV --> UC_TICKET_DO
+KTV --> UC_GUEST
+KTV --> UC_NOTI
+KTV --> UC_NOTI_VIEW
+KTV --> UC_CHAT
+
+UC_PAY --> SEPAY
+UC_REC --> SEPAY
+UC_NOTI --> FCM
+UC_CHAT --> LLM
+SCH --> UC_OVERDUE
+@enduml

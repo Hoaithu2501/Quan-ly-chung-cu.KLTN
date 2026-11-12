@@ -1,0 +1,222 @@
+@startuml H3_41_erd
+!include _style.iuml
+title Biểu đồ thực thể liên kết (rút gọn) – CSDL QLCC
+hide circle
+skinparam linetype ortho
+package "Auth" {
+entity users {
+  * user_id : INTEGER <<PK>>
+  --
+  username : TEXT <<UNIQUE>>
+  password_hash : TEXT
+  email : TEXT <<UNIQUE>>
+  phone : TEXT
+  role : admin|resident|technician
+  status : active|locked
+  lock_reason : TEXT
+  created_at : TEXT
+}
+}
+package "Resident" {
+entity apartments {
+  * apartment_id : INTEGER <<PK>>
+  --
+  code : TEXT <<UNIQUE>>
+  block : TEXT
+  floor : INTEGER
+  area : REAL
+  status : vacant|occupied
+}
+entity residents {
+  * resident_id : INTEGER <<PK>>
+  --
+  user_id : INTEGER (ref logic)
+  full_name : TEXT
+  id_card : TEXT
+  phone : TEXT
+  relation_type : owner|tenant
+  registered_apartment_code : TEXT
+}
+entity apartment_contracts {
+  * contract_id : INTEGER <<PK>>
+  --
+  apartment_id : <<FK>>
+  resident_id : <<FK>>
+  contract_type : ownership|rental
+  start_date, end_date : TEXT
+  status : active|expired|terminated
+}
+entity resident_apartment_memberships {
+  * resident_id : <<PK,FK>>
+  * apartment_id : <<PK,FK>>
+  --
+  confirmed_by_user_id : INTEGER
+  confirmed_at : TEXT
+}
+}
+package "Billing" {
+entity monthly_invoices {
+  * invoice_id : INTEGER <<PK>>
+  --
+  apartment_id : (ref logic)
+  period : YYYY-MM
+  electricity_usage, electricity_unit_price
+  water_usage, water_unit_price
+  electricity_fee, water_fee, total_amount
+  due_date : TEXT
+  status : unpaid|paid|overdue
+  created_at : TEXT
+}
+entity semiannual_invoices {
+  * invoice_id : INTEGER <<PK>>
+  --
+  apartment_id : (ref logic)
+  period : YYYY-H1|H2
+  service_fee, parking_fee, total_amount
+  due_date, status, created_at
+}
+entity monthly_payments {
+  * payment_id : <<PK>>
+  --
+  invoice_id : <<FK>>
+  amount, payment_method
+  transaction_code, paid_at, status
+}
+entity semiannual_payments {
+  * payment_id : <<PK>>
+  --
+  invoice_id : <<FK>>
+  amount, payment_method
+  transaction_code, paid_at, status
+}
+entity bank_payment_intents {
+  * order_id : TEXT <<PK>>
+  --
+  invoice_type, invoice_id
+  payer_user_id, environment
+  amount, transfer_content <<UNIQUE>>
+  bank_code, account_number
+  status, expires_at
+}
+entity bank_transactions {
+  * transaction_id : <<PK>>
+  --
+  environment, provider_id
+  amount, allocated_amount
+  unallocated_amount, status
+  invoice_type, invoice_id
+  resolution, resolution_note
+}
+entity billing_outbox {
+  * event_id : TEXT <<PK>>
+  --
+  destination, path, payload
+  attempts, delivered_at
+}
+}
+package "Parking" {
+entity vehicles {
+  * vehicle_id : <<PK>>
+  --
+  apartment_id : (ref logic)
+  plate_number
+  vehicle_type : bicycle|motorbike|electric_bike
+  monthly_fee : 50000|100000
+  registered_date, registration_months
+  status, cancelled_date, card_fee
+}
+entity guest_parking_daily {
+  * record_id : <<PK>>
+  --
+  parking_date <<UNIQUE>>
+  daily_revenue
+}
+}
+package "Maintenance" {
+entity technicians {
+  * technician_id : <<PK>>
+  --
+  user_id : (ref logic)
+  full_name
+  specialty : parking|payment|general
+}
+entity maintenance_tickets {
+  * ticket_id : <<PK>>
+  --
+  apartment_id : (ref logic)
+  technician_id : <<FK>>
+  type : repair|maintenance|cut_service|restore_service
+  description, priority, status
+  created_at, completed_at
+}
+entity cut_service_resolutions {
+  * ticket_id : <<PK,FK>>
+  --
+  event_id, outcome
+}
+}
+package "Notification" {
+entity notifications {
+  * notification_id : <<PK>>
+  --
+  type : general|private
+  title, content
+  target_apartment_id : (ref logic)
+  created_by, created_at
+}
+entity notification_logs {
+  * log_id : <<PK>>
+  --
+  notification_id : <<FK>>
+  resident_id, is_read, sent_at
+}
+entity notification_push_tokens {
+  * token : <<PK>>
+  --
+  user_id, resident_id
+}
+}
+package "Complaint" {
+entity complaints {
+  * complaint_id : <<PK>>
+  --
+  resident_id : (ref logic)
+  type : complaint|registration
+  category, content, status
+  response, created_at, resolved_at
+}
+entity complaint_outbox {
+  * event_id : <<PK>>
+  --
+  complaint_id : <<FK>>
+  payload, attempts, delivered_at
+}
+}
+package "Chatbot" {
+entity faq_knowledge_base {
+  * faq_id : <<PK>>
+  --
+  category, question, answer
+}
+entity locations {
+  * location_id : <<PK>>
+  --
+  name, block, floor, description
+}
+}
+apartments ||--o{ apartment_contracts
+residents ||--o{ apartment_contracts
+residents ||--o{ resident_apartment_memberships
+apartments ||--o{ resident_apartment_memberships
+monthly_invoices ||--o{ monthly_payments
+semiannual_invoices ||--o{ semiannual_payments
+technicians |o--o{ maintenance_tickets
+maintenance_tickets ||--o| cut_service_resolutions
+notifications ||--o{ notification_logs
+complaints ||--o{ complaint_outbox
+users ||..o{ residents : ref logic
+apartments ||..o{ monthly_invoices : ref logic
+apartments ||..o{ semiannual_invoices : ref logic
+apartments ||..o{ vehicles : ref logic
+users ||..o{ technicians : ref logic
+@enduml

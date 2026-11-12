@@ -1,0 +1,24 @@
+@startuml H3_26_tt_ghi_nhan_tien_mat
+!include _style.iuml
+title Biểu đồ tuần tự – Ban quản lý ghi nhận tiền mặt
+actor "Ban quản lý" as A
+participant "Giao diện web" as UI
+participant "Billing Service" as BILL
+database "SQLite" as DB
+A -> UI : Chọn hóa đơn → Ghi nhận thanh toán
+UI -> BILL : POST /invoices/{kind}/{id}/pay\nIdempotency-Key, {payment_method: cash}
+BILL -> DB : BEGIN IMMEDIATE
+BILL -> DB : tra billing_payment_keys
+alt khóa đã dùng cho cùng yêu cầu
+  BILL --> UI : trả payment cũ
+else
+  BILL -> DB : kiểm tra phiên QR đang chờ / tiền SePay đã phân bổ
+  alt có
+    BILL --> UI : 409 tránh thu trùng
+  else
+    BILL -> DB : INSERT payment success; hóa đơn = paid
+    BILL -> DB : INSERT billing_payment_keys, outbox
+    BILL --> UI : 201 payment
+  end
+end
+@enduml

@@ -1,0 +1,31 @@
+#! KẾT LUẬN
+Khóa luận "Xây dựng hệ thống quản lý chung cư" đã hoàn thành mục tiêu đặt ra: phân tích nghiệp vụ quản lý chung cư, thiết kế và xây dựng hệ thống An Cư theo kiến trúc hướng dịch vụ, phục vụ Ban quản lý, cư dân và kỹ thuật viên.
+Về mặt phân tích thiết kế, khóa luận đã xác định các tác nhân, xây dựng biểu đồ use case tổng quát và phân rã, đặc tả các use case chính, mô hình hóa luồng xử lý bằng 15 biểu đồ hoạt động, 15 biểu đồ tuần tự, 4 biểu đồ trạng thái, cùng biểu đồ kiến trúc, triển khai và thực thể liên kết. Toàn bộ biểu đồ được lưu dưới dạng mã PlantUML cùng mã nguồn.
+Về mặt cài đặt, hệ thống gồm gateway và tám service Flask độc lập (Auth, Resident, Billing, Parking, Maintenance, Notification, Complaint, Chatbot) giao tiếp qua REST, triển khai bằng Docker Compose. Hệ thống tích hợp thanh toán VietQR với đối soát tự động qua SePay, thông báo đẩy qua Firebase Cloud Messaging và trợ lý hỏi đáp dựa trên kho kiến thức kết hợp mô hình ngôn ngữ lớn. Các cơ chế outbox, khóa chống trùng và giao dịch tuần tự giúp mỗi hóa đơn chỉ được ghi nhận thu một lần trong các tình huống phức tạp như webhook lặp, chuyển thiếu, chuyển dư hay nhiều thành viên cùng thanh toán.
+Về mặt kiểm chứng, hệ thống có bộ kiểm thử tự động chạy trong quy trình CI với 333 ca kiểm thử backend và tích hợp đều đạt, cùng các ca kiểm thử giao diện đầu cuối; luồng thanh toán đã được nghiệm thu bằng giao dịch ngân hàng thật và thông báo đẩy đã được kiểm tra trên máy tính và điện thoại.
+Thông qua đề tài, tôi có cơ hội vận dụng kiến thức về phân tích thiết kế hệ thống thông tin, cơ sở dữ liệu, lập trình web và kiểm thử phần mềm vào một bài toán thực tế; đồng thời tìm hiểu cách tích hợp với các dịch vụ thanh toán, thông báo và trí tuệ nhân tạo.
+Hướng phát triển trong tương lai:
+- Tách CSDL vật lý cho từng service hoặc chuyển sang PostgreSQL, thay trigger liên miền bằng sự kiện, bổ sung hàng đợi thông điệp (message queue) và khóa phân tán cho bộ lập lịch để có thể chạy nhiều bản sao.
+- Cấp định danh và khóa riêng cho từng service, bổ sung quản lý bí mật tập trung.
+- Phát triển ứng dụng di động cho cư dân, hỗ trợ phân trang và tìm kiếm nâng cao cho dữ liệu lớn.
+- Tích hợp phát hành hóa đơn điện tử, biểu giá điện bậc thang và phí phạt chậm trả theo quy định của từng tòa nhà.
+- Mở rộng chatbot với lịch sử hội thoại, đánh giá chất lượng câu trả lời và gợi ý cập nhật kho kiến thức.
+Mặc dù đã cố gắng, khóa luận chắc chắn không tránh khỏi những thiếu sót. Tôi rất mong nhận được ý kiến đóng góp của quý thầy cô để hoàn thiện đề tài hơn.
+#! TÀI LIỆU THAM KHẢO
+[1] T. Erl, Service-Oriented Architecture: Analysis and Design for Services and Microservices, 2nd ed. Boston, MA, USA: Prentice Hall, 2016.
+[2] Pallets Projects, "Flask Documentation (3.1.x)," 2025. [Trực tuyến]. Có sẵn: https://flask.palletsprojects.com/en/stable/. [Truy cập ngày: 10-Nov-2026].
+[3] SQLite Consortium, "Write-Ahead Logging," SQLite Documentation. [Trực tuyến]. Có sẵn: https://www.sqlite.org/wal.html. [Truy cập ngày: 10-Nov-2026].
+[4] M. Jones, J. Bradley, and N. Sakimura, "JSON Web Token (JWT)," RFC 7519, IETF, May 2015. [Trực tuyến]. Có sẵn: https://www.rfc-editor.org/rfc/rfc7519.
+[5] OWASP Foundation, "Password Storage Cheat Sheet," OWASP Cheat Sheet Series. [Trực tuyến]. Có sẵn: https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html. [Truy cập ngày: 10-Nov-2026].
+[6] A. Grönholm, "APScheduler 3.x User Guide." [Trực tuyến]. Có sẵn: https://apscheduler.readthedocs.io/en/3.x/userguide.html. [Truy cập ngày: 10-Nov-2026].
+[7] C. Richardson, "Pattern: Transactional outbox," microservices.io. [Trực tuyến]. Có sẵn: https://microservices.io/patterns/data/transactional-outbox.html. [Truy cập ngày: 10-Nov-2026].
+[8] NAPAS, "VietQR – Chuẩn mã QR thanh toán liên ngân hàng." [Trực tuyến]. Có sẵn: https://vietqr.net. [Truy cập ngày: 10-Nov-2026].
+[9] SePay, "Tích hợp Webhooks" và "Test Mode," Tài liệu SePay. [Trực tuyến]. Có sẵn: https://docs.sepay.vn/tich-hop-webhooks.html. [Truy cập ngày: 10-Nov-2026].
+[10] Google, "Firebase Cloud Messaging – Set up a JavaScript client," Firebase Documentation. [Trực tuyến]. Có sẵn: https://firebase.google.com/docs/cloud-messaging/js/client. [Truy cập ngày: 10-Nov-2026].
+[11] Google, "OpenAI compatibility – Gemini API," Google AI for Developers. [Trực tuyến]. Có sẵn: https://ai.google.dev/gemini-api/docs/openai. [Truy cập ngày: 10-Nov-2026].
+[12] Tailwind Labs, "Tailwind CSS Documentation." [Trực tuyến]. Có sẵn: https://tailwindcss.com/docs. [Truy cập ngày: 10-Nov-2026].
+[13] Docker Inc., "Docker Compose overview," Docker Docs. [Trực tuyến]. Có sẵn: https://docs.docker.com/compose/. [Truy cập ngày: 10-Nov-2026].
+[14] H. Krekel et al., "pytest Documentation." [Trực tuyến]. Có sẵn: https://docs.pytest.org/en/stable/. [Truy cập ngày: 10-Nov-2026].
+[15] Microsoft, "Playwright for Python." [Trực tuyến]. Có sẵn: https://playwright.dev/python/. [Truy cập ngày: 10-Nov-2026].
+[16] Object Management Group, "Unified Modeling Language Specification, Version 2.5.1," Dec. 2017. [Trực tuyến]. Có sẵn: https://www.omg.org/spec/UML/2.5.1.
+[17] PlantUML, "PlantUML Language Reference Guide." [Trực tuyến]. Có sẵn: https://plantuml.com/guide. [Truy cập ngày: 10-Nov-2026].

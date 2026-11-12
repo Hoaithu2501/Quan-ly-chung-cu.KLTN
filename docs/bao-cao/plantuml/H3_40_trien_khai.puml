@@ -1,0 +1,36 @@
+@startuml H3_40_trien_khai
+!include _style.iuml
+title Biểu đồ triển khai bằng Docker Compose
+node "Máy chủ / máy tính chạy Docker" {
+  node "Mạng ảo qlcc (bridge)" {
+    node "db-init\n(chạy một lần)" as INIT
+    node "gateway :5000" as GW
+    node "auth :5001" as A
+    node "resident :5002" as R
+    node "billing :5003" as B
+    node "parking :5004" as P
+    node "maintenance :5005" as M
+    node "notification :5006" as N
+    node "complaint :5007" as C
+    node "chatbot :5008" as CH
+  }
+  database "Volume qlcc-data\n/app/data/QLCC.db" as VOL
+  file ".env\n(JWT_SECRET, SERVICE_TOKEN,\nSEPAY_*, FIREBASE_*, LLM_*)" as ENV
+}
+node "Cloudflare Tunnel (HTTPS)" as TUN
+cloud "SePay" as SEPAY
+cloud "Firebase" as FCM
+INIT --> VOL : khởi tạo + migration
+A --> VOL
+R --> VOL
+B --> VOL
+P --> VOL
+M --> VOL
+N --> VOL
+C --> VOL
+CH --> VOL
+ENV ..> GW
+TUN --> GW : public URL
+SEPAY --> TUN : webhook
+N --> FCM
+@enduml

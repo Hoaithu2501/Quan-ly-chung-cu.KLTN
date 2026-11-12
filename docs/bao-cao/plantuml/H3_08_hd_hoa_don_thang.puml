@@ -1,0 +1,35 @@
+@startuml H3_08_hd_hoa_don_thang
+!include _style.iuml
+title Biểu đồ hoạt động – Lập hóa đơn điện nước hàng tháng
+|Ban quản lý|
+start
+:Vào "Quản lý hóa đơn" → tab Hàng tháng;
+:Chọn "Lập hóa đơn";
+|Hệ thống|
+:Hiển thị form: căn hộ, kỳ (YYYY-MM), hạn thanh toán,
+điện tiêu thụ (kWh), nước tiêu thụ (m³), đơn giá;
+|Ban quản lý|
+:Nhập dữ liệu;
+|Hệ thống|
+:Xem trước tổng tiền ngay trên form;
+|Ban quản lý|
+:Chọn "Lưu";
+|Hệ thống|
+if (Kỳ, ngày, số liệu hợp lệ?) then (Không)
+  :Báo lỗi dữ liệu (400);
+  stop
+endif
+:Gọi Resident kiểm tra căn hộ;
+:Tính tiền điện = kWh × đơn giá,
+tiền nước = m³ × đơn giá (làm tròn đến đồng);
+:Tổng = tiền điện + tiền nước;
+if (Căn hộ đã có hóa đơn kỳ này?) then (Có)
+  :Báo trùng hóa đơn (409);
+  stop
+endif
+:Lưu hóa đơn trạng thái "Chưa thanh toán"
+(trigger CSDL kiểm tra lại công thức);
+:Ghi sự kiện "Hóa đơn mới" vào outbox;
+:Gửi thông báo riêng tới căn hộ;
+stop
+@enduml

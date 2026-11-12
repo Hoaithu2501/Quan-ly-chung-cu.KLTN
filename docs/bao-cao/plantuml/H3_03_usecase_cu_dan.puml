@@ -1,0 +1,49 @@
+@startuml H3_03_usecase_cu_dan
+!include _style.iuml
+left to right direction
+title Biểu đồ use case phân rã – Cư dân
+actor "Cư dân" as CD
+actor "SePay" as SEPAY
+rectangle "Chức năng Cư dân" {
+  usecase "Đăng ký tài khoản" as REG
+  usecase "Đăng nhập" as L
+  usecase "Cập nhật thông tin cá nhân" as P1
+  usecase "Đổi mật khẩu" as P2
+  usecase "Xem căn hộ, hợp đồng của mình" as P3
+  usecase "Xem hóa đơn căn hộ" as B1
+  usecase "Thanh toán qua VietQR" as B2
+  usecase "Báo đã chuyển khoản /\nhủy phiên" as B3
+  usecase "Kiểm tra trạng thái thanh toán" as B4
+  usecase "Xem lịch sử, tải biên nhận" as B5
+  usecase "Xem xe đã đăng ký, phí gửi xe" as V1
+  usecase "Tạo yêu cầu sửa chữa / bảo trì" as T1
+  usecase "Theo dõi tiến độ phiếu" as T2
+  usecase "Gửi khiếu nại / đơn đăng ký" as C1
+  usecase "Xem phản hồi của BQL" as C2
+  usecase "Xem thông báo, đánh dấu đã đọc" as N1
+  usecase "Bật thông báo đẩy trên trình duyệt" as N2
+  usecase "Hỏi trợ lý An Cư" as CH
+}
+CD --> REG
+CD --> P1
+CD --> P2
+CD --> P3
+CD --> B1
+CD --> B5
+CD --> V1
+CD --> T1
+CD --> T2
+CD --> C1
+CD --> C2
+CD --> N1
+CD --> N2
+CD --> CH
+B2 .> B1 : <<extend>>
+B3 .> B2 : <<extend>>
+B4 .> B2 : <<extend>>
+B2 --> SEPAY
+P1 ..> L : <<include>>
+B1 ..> L : <<include>>
+T1 ..> L : <<include>>
+C1 ..> L : <<include>>
+@enduml

@@ -1,0 +1,26 @@
+@startuml H3_31_tt_khieu_nai
+!include _style.iuml
+title Biểu đồ tuần tự – Khiếu nại và phản hồi của Ban quản lý
+actor "Cư dân" as U
+actor "Ban quản lý" as A
+participant "Complaint Service" as COMP
+participant "Resident Service" as RES
+participant "Notification Service" as NOTI
+database "SQLite" as DB
+U -> COMP : POST /api/complaints {type, category, content}
+COMP -> RES : GET /api/residents/me
+COMP -> DB : INSERT complaints (pending)
+COMP --> U : 201
+A -> COMP : PATCH /api/complaints/{id} {status, response}
+COMP -> DB : BEGIN; UPDATE complaints
+COMP -> DB : INSERT complaint_outbox (phản hồi mới); COMMIT
+COMP -> NOTI : POST /api/notifications/events\n{type: private, target_resident_id}
+alt Notification lỗi
+  COMP -> DB : attempts+1, last_error
+  note right : scheduler thử lại mỗi 30 giây
+else
+  NOTI -> DB : INSERT notifications, notification_resident_audience
+  COMP -> DB : delivered_at = now
+end
+COMP --> A : 200
+@enduml

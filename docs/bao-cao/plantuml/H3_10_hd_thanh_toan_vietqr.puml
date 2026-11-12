@@ -1,0 +1,52 @@
+@startuml H3_10_hd_thanh_toan_vietqr
+!include _style.iuml
+title Biểu đồ hoạt động – Cư dân thanh toán hóa đơn qua VietQR (SePay)
+|Cư dân|
+start
+:Mở hóa đơn chưa thanh toán, chọn "Thanh toán";
+|Hệ thống|
+if (Hóa đơn đã thanh toán?) then (Có)
+  :Báo hóa đơn đã thanh toán;
+  stop
+endif
+if (Đã có phiên của thành viên khác?) then (Có)
+  :Chỉ hiển thị trạng thái "đang có người thanh toán",
+  không cấp QR;
+  stop
+endif
+:Tạo/dùng lại phiên (15 phút),
+sinh nội dung chuyển khoản duy nhất;
+:Hiển thị ảnh VietQR với số tiền còn thiếu;
+|Cư dân|
+:Quét QR bằng ứng dụng ngân hàng, chuyển tiền;
+:Chọn "Tôi đã chuyển khoản";
+|Hệ thống|
+:Phiên → "Chờ ngân hàng xác nhận";
+|SePay|
+:Phát hiện tiền vào tài khoản;
+:Gọi webhook kèm Apikey;
+|Hệ thống|
+if (API Key, tài khoản, ngân hàng,\nchiều tiền hợp lệ?) then (Không)
+  :Từ chối webhook;
+  stop
+endif
+if (Giao dịch đã ghi nhận?) then (Có)
+  :Trả kết quả cũ, không cộng tiền lần hai;
+  stop
+endif
+:Tìm phiên theo mã chuyển khoản;
+:Phân bổ tối đa số còn nợ,
+phần dư lưu sổ đối soát;
+if (Đã nhận đủ tiền?) then (Có)
+  :Tạo một khoản thanh toán thành công,
+  hóa đơn → "Đã thanh toán";
+  :Outbox: thông báo cư dân + BQL,
+  sự kiện invoice_settled cho Maintenance;
+else (Chưa đủ)
+  :Lưu phần đã nhận, QR mới chỉ chứa số còn thiếu;
+endif
+|Cư dân|
+:Giao diện tự cập nhật (polling 4 giây),
+tải biên nhận;
+stop
+@enduml

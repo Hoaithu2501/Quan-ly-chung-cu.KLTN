@@ -1,0 +1,22 @@
+@startuml H3_28_tt_dang_ky_xe
+!include _style.iuml
+title Biểu đồ tuần tự – Đăng ký gửi xe tháng
+actor "Ban quản lý" as A
+participant "Giao diện web" as UI
+participant "Parking Service" as PARK
+participant "Resident Service" as RES
+database "SQLite" as DB
+A -> UI : Nhập căn hộ, loại xe, biển số, số tháng cam kết
+UI -> PARK : POST /api/parking/vehicles
+PARK -> RES : GET /api/apartments/{id}
+RES --> PARK : 200
+PARK -> PARK : kiểm tra loại xe, biển số, registration_months ≥ 2
+PARK -> DB : tìm biển số từng có thẻ → card_fee = 0 / 100.000
+PARK -> DB : INSERT vehicles
+alt trùng biển số đang hoạt động
+  DB --> PARK : vi phạm uq_active_vehicle_plate
+  PARK --> UI : 409
+else
+  PARK --> UI : 201 {minimum_end_date, card_fee}
+end
+@enduml

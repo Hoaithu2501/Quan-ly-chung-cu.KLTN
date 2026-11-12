@@ -1,0 +1,35 @@
+@startuml H3_11_hd_ghi_nhan_doi_soat
+!include _style.iuml
+title Biểu đồ hoạt động – Ghi nhận tiền mặt và đối soát chuyển khoản
+|Ban quản lý|
+start
+if (Nghiệp vụ?) then (Ghi nhận tiền mặt)
+  :Chọn hóa đơn → "Ghi nhận thanh toán";
+  :Chọn tiền mặt / chuyển khoản, nhập mã giao dịch;
+  |Hệ thống|
+  if (Có phiên QR đang chờ\nhoặc đã nhận tiền SePay?) then (Có)
+    :Từ chối để tránh thu trùng (409);
+    stop
+  endif
+  if (Idempotency-Key đã dùng?) then (Có)
+    :Trả lại kết quả lần trước;
+    stop
+  endif
+  :Ghi payment thành công đúng tổng hóa đơn;
+  :Hóa đơn → "Đã thanh toán", ghi outbox thông báo;
+else (Đối soát chuyển khoản)
+  |Ban quản lý|
+  :Mở tab "Đối soát chuyển khoản";
+  |Hệ thống|
+  :Liệt kê giao dịch: đã đối soát, chuyển thiếu,
+  chuyển dư, chuyển lặp, chưa xác định;
+  |Ban quản lý|
+  :Kiểm tra chứng từ, chọn kết quả
+  (đã kiểm tra / đã hoàn trả / thống nhất giữ lại),
+  nhập ghi chú;
+  |Hệ thống|
+  :Lưu kết quả xử lý, người và thời điểm
+  (không tự chuyển hay hoàn tiền);
+endif
+stop
+@enduml

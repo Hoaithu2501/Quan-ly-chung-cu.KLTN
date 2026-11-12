@@ -1,0 +1,32 @@
+@startuml H3_07_hd_xac_nhan_can_ho
+!include _style.iuml
+title Biểu đồ hoạt động – Ban quản lý xác nhận cư dân thuộc căn hộ
+|Ban quản lý|
+start
+:Vào "Cư dân & hợp đồng";
+|Hệ thống|
+:Hiển thị danh sách cư dân, mã căn hộ đã khai,
+căn hộ đã có quyền;
+|Ban quản lý|
+:Đối chiếu giấy tờ, chọn "Xác nhận căn hộ";
+:Chọn căn hộ cần xác nhận;
+|Hệ thống|
+if (Cư dân và căn hộ tồn tại?) then (Không)
+  :Báo không tìm thấy (404);
+  stop
+endif
+if (Đã xác nhận trước đó?) then (Có)
+  :Trả hồ sơ hiện tại (200), không tạo trùng;
+else (Không)
+  :Ghi resident_apartment_memberships
+  (người xác nhận, thời điểm);
+endif
+:Tính lại phạm vi căn hộ =
+hợp đồng còn hiệu lực ∪ căn hộ được xác nhận;
+:Cập nhật danh sách trên giao diện;
+note right
+  Cư dân từ nay xem được hóa đơn,
+  xe, phiếu, thông báo của căn hộ.
+end note
+stop
+@enduml

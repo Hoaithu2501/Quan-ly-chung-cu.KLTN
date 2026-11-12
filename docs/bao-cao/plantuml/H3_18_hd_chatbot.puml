@@ -1,0 +1,34 @@
+@startuml H3_18_hd_chatbot
+!include _style.iuml
+title Biểu đồ hoạt động – Hỏi đáp với trợ lý An Cư
+|Người dùng|
+start
+:Mở "Trợ lý An Cư", nhập câu hỏi;
+|Chatbot Service|
+:Chuẩn hóa tiếng Việt (bỏ dấu, từ đồng nghĩa),
+xác định ý định;
+if (Hỏi hóa đơn của chính mình\nvà tính năng đã bật?) then (Có)
+  :Gọi Billing bằng JWT của cư dân;
+  :Dựng câu trả lời từ dữ liệu hóa đơn
+  (không gửi cho LLM);
+  stop
+endif
+:Chấm điểm và chọn FAQ / địa điểm phù hợp;
+if (Có nguồn phù hợp?) then (Không)
+  :Trả lời "chưa có thông tin" hoặc hỏi lại cho rõ;
+  stop
+endif
+if (Đã cấu hình LLM và\nkhông phải câu khẩn cấp?) then (Có)
+  :Gửi câu hỏi + tối đa 5 nguồn tới Gemini;
+  if (Kết quả hợp lệ?\n(JSON, trích nguồn có thật,\nsố liệu có trong nguồn)) then (Có)
+    :Trả câu diễn đạt lại (engine = llm);
+  else (Không)
+    :Trả nội dung gốc từ kho kiến thức;
+  endif
+else (Không)
+  :Trả nội dung gốc (engine = knowledge_base);
+endif
+|Người dùng|
+:Đọc câu trả lời kèm nguồn tham chiếu;
+stop
+@enduml

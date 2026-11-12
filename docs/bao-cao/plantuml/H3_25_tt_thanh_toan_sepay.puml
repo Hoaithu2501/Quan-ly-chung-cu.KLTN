@@ -1,0 +1,44 @@
+@startuml H3_25_tt_thanh_toan_sepay
+!include _style.iuml
+title Biểu đồ tuần tự – Thanh toán hóa đơn qua VietQR và webhook SePay
+actor "Cư dân" as U
+participant "Giao diện web" as UI
+participant "Billing Service" as BILL
+participant "Resident Service" as RES
+participant "vietqr.app" as QR
+participant "Ngân hàng / SePay" as SEPAY
+participant "Notification" as NOTI
+participant "Maintenance" as MAIN
+database "SQLite" as DB
+U -> UI : Chọn Thanh toán
+UI -> BILL : POST /invoices/{kind}/{id}/checkout
+BILL -> RES : GET /api/residents/me (phạm vi căn hộ)
+BILL -> DB : BEGIN IMMEDIATE; tìm phiên đang mở
+alt chưa có phiên
+  BILL -> DB : INSERT bank_payment_intents (pending, 15 phút,\nnội dung QLCCxxxxxxxxxxxx)
+end
+BILL --> UI : 201/200 phiên
+UI -> BILL : GET /orders/{id}/qr
+BILL -> QR : GET img (tài khoản, số còn thiếu, nội dung)
+QR --> BILL : PNG
+BILL --> UI : ảnh VietQR
+U -> SEPAY : quét QR, chuyển khoản
+U -> UI : "Tôi đã chuyển khoản"
+UI -> BILL : POST /orders/{id}/confirm-transfer
+BILL -> DB : status = awaiting_confirmation
+SEPAY -> BILL : POST /sepay/webhook (Authorization: Apikey)
+BILL -> BILL : xác thực khóa, tài khoản, ngân hàng, chiều tiền
+BILL -> DB : BEGIN IMMEDIATE; INSERT bank_transactions (chống lặp)
+BILL -> DB : phân bổ ≤ số còn nợ
+alt đủ tiền
+  BILL -> DB : INSERT payment success; hóa đơn = paid;\nINSERT outbox (paid, paid-admin, settled)
+end
+BILL --> SEPAY : 201 {success: true}
+BILL -> NOTI : POST /api/notifications/events
+BILL -> MAIN : POST /api/maintenance/events (invoice_settled)
+loop mỗi 4 giây
+  UI -> BILL : GET /orders/{id}
+  BILL --> UI : success, paid_amount
+end
+UI --> U : Đã thanh toán, tải biên nhận
+@enduml

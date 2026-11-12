@@ -1,0 +1,129 @@
+#! CHƯƠNG 4: KẾT QUẢ VÀ THẢO LUẬN
+## 4.1. Môi trường cài đặt và triển khai
+@tab: Bảng 4.1. Môi trường phát triển và triển khai
+|Thành phần|Công nghệ, phiên bản|
+|Ngôn ngữ backend|Python 3.11 (CI), Flask 3.1.2, Waitress 3.0.2|
+|Cơ sở dữ liệu|SQLite (chế độ WAL), 37 bảng ứng dụng|
+|Giao diện|HTML, JavaScript thuần, Tailwind CSS 4, phông Be Vietnam Pro|
+|Thanh toán|VietQR, SePay (Test Mode và Live, tài khoản ngân hàng MB)|
+|Thông báo đẩy|Firebase Cloud Messaging (HTTP v1), service worker|
+|Chatbot|Kho FAQ, danh bạ địa điểm; Google Gemini Flash-Lite (tùy chọn)|
+|Triển khai|Docker Desktop, Docker Compose, Cloudflare Tunnel|
+|Kiểm thử, CI/CD|pytest 8.4.2, Playwright 1.56, GitHub Actions, GitHub Container Registry|
+|Công cụ phát triển|Visual Studio Code, Git, DB Browser for SQLite|
+Các bước chạy hệ thống:
+- Sao chép tệp .env.example thành .env và điền khóa bí mật (JWT_SECRET, SERVICE_TOKEN tối thiểu 32 ký tự), thông tin SePay, Firebase, LLM nếu sử dụng.
+- Chạy lệnh docker compose up --build -d (hoặc script start.ps1 trên Windows). Container db-init tạo CSDL và áp dụng migration, sau đó gateway và tám service khởi động.
+- Truy cập http://localhost:5000; tài liệu API của từng service tại http://localhost:500x/docs.
+- Khi cần SePay gọi webhook hoặc thử trên điện thoại, mở Cloudflare Tunnel tới cổng 5000 và cập nhật URL webhook trên SePay.
+## 4.2. Giao diện chung
+### 4.2.1. Đăng nhập và đăng ký
+@img: Hình 4.1. Màn hình đăng nhập|Màn hình đăng nhập (trang chủ http://localhost:5000)
+@img: Hình 4.2. Màn hình đăng ký tài khoản cư dân|Form đăng ký: họ tên, tên đăng nhập, mật khẩu, email, số điện thoại, số căn hộ, kèm thông báo lỗi khi nhập sai
+Màn hình đăng nhập là trang đầu tiên của hệ thống. Người dùng chưa có tài khoản chọn Đăng ký để tạo tài khoản cư dân. Các trường được kiểm tra ngay trên giao diện và kiểm tra lại ở máy chủ; khi đăng nhập thành công, menu bên trái hiển thị theo vai trò.
+### 4.2.2. Trang tổng quan
+@img: Hình 4.3. Trang tổng quan của Ban quản lý|Thẻ chỉ số hóa đơn, biểu đồ doanh thu đã thu theo tháng, tỷ lệ lấp đầy căn hộ, thông báo mới
+@img: Hình 4.4. Trang tổng quan của cư dân|Căn hộ của tôi, hóa đơn cần thanh toán, thông báo mới, lối tắt tới trợ lý
+## 4.3. Giao diện dành cho Ban quản lý
+### 4.3.1. Quản lý căn hộ
+@img: Hình 4.5. Danh sách căn hộ|Bảng căn hộ: mã căn, tòa, tầng, diện tích, trạng thái, cư dân hiện tại, hợp đồng, số ngày còn lại; nút thêm, sửa
+### 4.3.2. Cư dân và hợp đồng
+@img: Hình 4.6. Danh sách cư dân và xác nhận căn hộ|Tab cư dân với mã căn hộ đã khai, căn hộ đã có quyền và nút Xác nhận căn hộ
+@img: Hình 4.7. Quản lý hợp đồng|Tab hợp đồng: loại sở hữu / thuê, ngày bắt đầu, kết thúc, trạng thái hiệu lực
+### 4.3.3. Quản lý hóa đơn
+@img: Hình 4.8. Lập hóa đơn điện nước hằng tháng|Form nhập kWh, m³, đơn giá với phần xem trước tổng tiền
+@img: Hình 4.9. Lập hóa đơn dịch vụ sáu tháng|Form phí dịch vụ, phí gửi xe để trống để hệ thống tự tính
+@img: Hình 4.10. Danh sách và chi tiết hóa đơn|Danh sách hóa đơn theo trạng thái; chi tiết có công thức tính, thời gian lập, thời gian thanh toán
+@img: Hình 4.11. Đối soát chuyển khoản|Sổ giao dịch SePay: tiền nhận, đã phân bổ, phần cần xử lý, trạng thái và ghi chú xử lý
+### 4.3.4. Quản lý gửi xe
+@img: Hình 4.12. Đăng ký xe tháng|Danh sách xe theo căn hộ, form đăng ký xe với loại xe, biển số, số tháng cam kết
+@img: Hình 4.13. Doanh thu gửi xe vãng lai|Sổ doanh thu theo ngày và tổng theo tháng
+### 4.3.5. Sửa chữa, bảo trì và nhân sự
+@img: Hình 4.14. Quản lý phiếu sửa chữa, bảo trì|Danh sách phiếu với loại, ưu tiên, trạng thái, người được giao; form phân công kỹ thuật viên
+@img: Hình 4.15. Nhân sự và tài khoản|Tab tài khoản hệ thống (vai trò, trạng thái, khóa có lý do) và tab nhân sự kỹ thuật
+### 4.3.6. Khiếu nại, thông báo, báo cáo
+@img: Hình 4.16. Giải quyết khiếu nại, đơn đăng ký|Danh sách yêu cầu và hộp thoại phản hồi, chọn trạng thái
+@img: Hình 4.17. Gửi thông báo chung, riêng|Form tạo thông báo, chọn đối tượng nhận; danh sách kèm trạng thái đã đọc
+@img: Hình 4.18. Báo cáo, thống kê doanh thu|Thẻ tổng phát hành, đã thu, công nợ; biểu đồ cột theo tháng, quý; nút Xuất CSV
+## 4.4. Giao diện dành cho cư dân
+### 4.4.1. Thông tin cá nhân
+@img: Hình 4.19. Thông tin cá nhân và đổi mật khẩu|Hồ sơ cư dân, căn hộ được liên kết, form cập nhật và đổi mật khẩu
+### 4.4.2. Thanh toán hóa đơn
+@img: Hình 4.20. Danh sách hóa đơn của căn hộ|Hóa đơn tháng, sáu tháng với trạng thái và nút Thanh toán
+@img: Hình 4.21. Màn hình thanh toán VietQR|Mã VietQR, số tiền còn thiếu, nội dung chuyển khoản, nhãn Test/Live, nút Tôi đã chuyển khoản
+@img: Hình 4.22. Thanh toán thành công và biên nhận|Hóa đơn đã thanh toán, lịch sử thanh toán và biên nhận tải về
+Khi một thành viên đang giữ phiên thanh toán, thành viên khác cùng căn hộ chỉ thấy trạng thái đang chờ, không thấy mã QR. Nếu cư dân chuyển thiếu, màn hình hiển thị riêng số đã nhận và số còn thiếu, mã QR mới chỉ chứa phần còn thiếu.
+### 4.4.3. Yêu cầu, khiếu nại và thông báo
+@img: Hình 4.23. Tạo yêu cầu sửa chữa|Form chọn căn hộ, loại yêu cầu, mức ưu tiên, mô tả; danh sách phiếu và tiến độ
+@img: Hình 4.24. Gửi khiếu nại, đơn đăng ký|Form gửi yêu cầu và chi tiết phản hồi của Ban quản lý
+@img: Hình 4.25. Thông báo chung và riêng|Hộp thông báo hai tab, chuông báo số chưa đọc
+@img: Hình 4.26. Thông báo đẩy trên trình duyệt và điện thoại|Thông báo hệ điều hành nhận qua Firebase trên máy tính và iPhone
+### 4.4.4. Trợ lý An Cư
+@img: Hình 4.27. Trợ lý An Cư trả lời câu hỏi về phí gửi xe|Hội thoại hỏi "Phí gửi xe điện bao nhiêu?" kèm nguồn tham chiếu
+@img: Hình 4.28. Trợ lý An Cư chỉ đường tới địa điểm|Hội thoại hỏi vị trí hiệu thuốc, văn phòng Ban quản lý
+## 4.5. Giao diện dành cho kỹ thuật viên
+@img: Hình 4.29. Công việc được giao|Danh sách phiếu được giao, thống kê chờ xử lý, đang xử lý, hoàn thành; nút Nhận xử lý, Hoàn thành
+@img: Hình 4.30. Nhập doanh thu vãng lai|Form nhập ngày và tổng tiền
+## 4.6. Kiểm thử hệ thống
+### 4.6.1. Chiến lược kiểm thử
+Hệ thống được kiểm thử ở ba mức:
+- Kiểm thử đơn vị và nghiệp vụ: gọi trực tiếp ứng dụng Flask bằng test client để kiểm tra công thức tính tiền, phân quyền, chuyển trạng thái và ràng buộc dữ liệu.
+- Kiểm thử tích hợp: fixture service_cluster khởi chạy tám service thật trên các cổng ngẫu nhiên với CSDL tạm, kiểm tra các lời gọi HTTP giữa service, outbox và gửi lại khi service đích lỗi. SePay, Firebase và LLM được giả lập để không phát sinh giao dịch hay thông báo thật.
+- Kiểm thử giao diện đầu cuối: Playwright điều khiển trình duyệt Chromium thực hiện thao tác của từng vai trò trên các service thật.
+Mỗi lần đẩy mã lên GitHub, quy trình CI chạy lại toàn bộ kiểm thử trên dữ liệu mẫu tổng hợp (không dùng dữ liệu thật hay khóa bí mật), sau đó dựng thử image Docker.
+@tab: Bảng 4.2. Thống kê bộ kiểm thử tự động
+|Tệp kiểm thử|Số hàm kiểm thử|Phạm vi|
+|test_billing.py|47|Tính tiền, phân quyền, quá hạn, outbox, phiên VietQR, webhook, chuyển thiếu, dư, lặp|
+|test_billing_http.py, test_billing_household_regressions.py|3|Thanh toán qua HTTP, nhiều thành viên một căn hộ|
+|test_sepay_check.py|8|Công cụ kiểm tra cấu hình SePay|
+|test_auth_resident.py, test_resident_memberships.py|14|Đăng ký, hồ sơ, đổi mật khẩu, hợp đồng, xác nhận căn hộ|
+|test_domains.py, test_parking.py|13|Gửi xe, sửa chữa, thông báo, khiếu nại liên service|
+|test_complaint_notifications.py|5|Phản hồi khiếu nại, gửi đúng người, gửi lại|
+|test_firebase_push.py, test_firebase_worker.cjs|9 + kiểm thử Node|Cấu hình và gửi push, service worker|
+|test_chatbot_*.py (4 tệp)|48|Truy xuất tiếng Việt, LLM giả lập, dữ liệu FAQ, tích hợp|
+|test_database_*.py, test_ci_database.py, test_policy_content.py|20|Toàn vẹn, xuất, làm mới CSDL, dữ liệu CI, nội quy|
+|test_browser.py|20|Kiểm thử giao diện đầu cuối theo vai trò|
+|Tổng cộng|187|Nhiều hàm được tham số hóa thành nhiều ca chạy|
+Kết quả chạy lại ngày 12/11/2026 trên mã nguồn mới nhất: phần backend và tích hợp chạy 333 ca kiểm thử (sau khi mở rộng tham số), đạt 333/333 trong khoảng 55 giây. Phần kiểm thử giao diện chạy 24 ca, đạt 23/24; ca còn lại (QR cập nhật sau khi nhận một phần tiền) đạt ở 2 trong 3 lần chạy lại, cho thấy đây là ca phụ thuộc thời gian chờ của trình duyệt cần được làm ổn định thêm.
+### 4.6.2. Một số ca kiểm thử tiêu biểu
+@tab: Bảng 4.3. Các ca kiểm thử nghiệp vụ tiêu biểu
+|STT|Tình huống|Kết quả mong đợi|Kết quả|
+|1|Lập hóa đơn 4 kWh × 2.000đ và 0,2 m³ × 10.000đ|Tổng 10.000đ; sửa tiền điện sai công thức bị từ chối|Đạt|
+|2|Lập hai hóa đơn cùng căn hộ, cùng kỳ|Lần hai trả 409|Đạt|
+|3|Cư dân xem hóa đơn của căn hộ khác|Trả 403 / không có trong danh sách|Đạt|
+|4|Hai thành viên mở thanh toán đồng thời|Chỉ một người nhận QR|Đạt|
+|5|Bấm "Tôi đã chuyển khoản" khi chưa có tiền|Hóa đơn vẫn chưa thanh toán|Đạt|
+|6|Webhook gửi lặp cùng giao dịch|Không cộng tiền lần hai|Đạt|
+|7|Webhook không có hoặc sai API Key|Bị từ chối|Đạt|
+|8|Hai lần chuyển thiếu cộng dồn đủ tiền|Chỉ đánh dấu đã thanh toán khi đủ|Đạt|
+|9|Chuyển dư hoặc chuyển lần hai|Hóa đơn ghi một lần, phần dư vào sổ đối soát|Đạt|
+|10|Hóa đơn quá hạn, chạy quét hai lần|Một phiếu cut_service, không thông báo trùng|Đạt|
+|11|Notification lỗi khi gửi sự kiện|Outbox giữ sự kiện và gửi lại thành công|Đạt|
+|12|Trả hết nợ khi phiếu cắt chưa bắt đầu / đã làm|Phiếu bị hủy / tạo phiếu khôi phục|Đạt|
+|13|Đăng ký xe máy trùng biển số đang hoạt động|Trả 409|Đạt|
+|14|Kỹ thuật viên cập nhật phiếu không được giao|Trả 403|Đạt|
+|15|Đóng khiếu nại không có phản hồi|Báo lỗi|Đạt|
+|16|Tài khoản bị khóa dùng token cũ|Mất quyền ngay|Đạt|
+|17|Hỏi chatbot không dấu "phi gui xe dien bao nhieu"|Trả FAQ phí gửi xe điện|Đạt|
+|18|LLM trả số liệu không có trong nguồn|Trả nội dung gốc|Đạt|
+### 4.6.3. Nghiệm thu thực tế
+Ngoài kiểm thử tự động, hệ thống được nghiệm thu với các dịch vụ thật:
+- Thanh toán SePay Test Mode: hóa đơn #HD0018 trị giá 15.000đ được thanh toán bằng giao dịch mô phỏng, ghi nhận đúng một khoản thu.
+- Thanh toán SePay Live ngày 07/11/2026: hóa đơn #HD0019 của căn hộ A101, kỳ 2026-06, 10.000đ, được thanh toán bằng chuyển khoản thật qua tài khoản MB. CSDL ghi nhận đúng một khoản thanh toán lúc 09:22:55, giao dịch ngân hàng ở trạng thái đã đối soát, tiền chưa phân bổ bằng 0; cư dân và Ban quản lý đều nhận thông báo. API đối soát dự phòng của SePay cũng đọc đúng giao dịch này.
+- Thông báo đẩy Firebase: nhận thành công trên trình duyệt máy tính và trên iPhone sau khi thêm ứng dụng vào màn hình chính.
+- Gateway và tám service đều ở trạng thái healthy; CSDL 37 bảng, kiểm tra toàn vẹn đạt, không có lỗi khóa ngoại.
+## 4.7. Đánh giá kết quả
+### 4.7.1. Kết quả đạt được
+- Hệ thống đáp ứng đầy đủ các nhóm chức năng đặt ra cho Ban quản lý, cư dân, kỹ thuật viên và trợ lý tự động.
+- Kiến trúc tám service độc lập giao tiếp qua REST, có tài liệu OpenAPI, health check và container riêng, thể hiện đúng nguyên tắc của SOA.
+- Luồng thanh toán xử lý được các tình huống thực tế khó: nhiều thành viên cùng thanh toán, webhook lặp, chuyển thiếu, chuyển dư, tiền đến trễ; đã nghiệm thu bằng giao dịch thật.
+- Các tác vụ định kỳ (quá hạn, nhắc hạn, tạm ngưng và khôi phục dịch vụ) được tự động hóa với cơ chế outbox và chống trùng.
+- Chatbot trả lời dựa trên kho kiến thức, vẫn hoạt động khi không có LLM.
+- Bộ kiểm thử tự động lớn chạy trong CI giúp phát hiện lỗi hồi quy khi thay đổi mã.
+### 4.7.2. Hạn chế
+- Tám service dùng chung một tệp SQLite nên chưa độc lập lưu trữ vật lý và bị giới hạn một tiến trình ghi; trigger tạo phiếu tạm ngưng dịch vụ là điểm liên kết chéo giữa Billing và Maintenance.
+- Lời gọi nội bộ dùng một khóa bí mật chung cho mọi service; chưa có định danh riêng từng service.
+- Bộ lập lịch chạy trong tiến trình Billing nên chưa thể chạy nhiều bản sao Billing.
+- Gửi thông báo đẩy là best-effort, chưa có hàng đợi gửi lại riêng; danh sách chưa phân trang.
+- Chưa có ứng dụng di động gốc; chưa phát hành hóa đơn điện tử theo quy định thuế; chưa tính biểu giá điện bậc thang.
+- Địa chỉ công khai phụ thuộc Cloudflare Tunnel tạm thời, cần cập nhật URL webhook khi tunnel thay đổi.

@@ -1,0 +1,36 @@
+@startuml H3_16_hd_khieu_nai
+!include _style.iuml
+title Biểu đồ hoạt động – Gửi và giải quyết khiếu nại, đơn đăng ký
+|Cư dân|
+start
+:Vào "Khiếu nại & đăng ký" → "Gửi yêu cầu";
+:Chọn loại (khiếu nại / đơn đăng ký),
+danh mục, nhập nội dung;
+|Hệ thống|
+:Lưu yêu cầu trạng thái "Chờ xử lý";
+|Ban quản lý|
+:Mở yêu cầu, chọn "Phản hồi";
+:Nhập nội dung phản hồi, chọn trạng thái
+(đang xử lý / đã giải quyết / từ chối);
+|Hệ thống|
+if (Đóng đơn mà không có phản hồi?) then (Có)
+  :Báo lỗi bắt buộc phản hồi;
+  stop
+endif
+:Lưu phản hồi; ghi resolved_at khi đóng;
+if (Nội dung phản hồi mới/thay đổi?) then (Có)
+  :Ghi complaint_outbox (cùng transaction);
+  :Gửi thông báo riêng tới người gửi đơn;
+  if (Notification lỗi?) then (Có)
+    :Giữ outbox, thử lại mỗi 30 giây;
+  endif
+endif
+if (Là khiếu nại cần kỹ thuật?) then (Có)
+  |Ban quản lý|
+  :Tạo phiếu sửa chữa và phân công kỹ thuật viên;
+endif
+|Cư dân|
+:Đọc phản hồi tại Thông báo riêng
+hoặc chi tiết yêu cầu;
+stop
+@enduml

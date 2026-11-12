@@ -1,0 +1,18 @@
+@startuml H3_34_tt_bao_cao
+!include _style.iuml
+title Biểu đồ tuần tự – Xem báo cáo, thống kê
+actor "Ban quản lý" as A
+participant "Giao diện web" as UI
+participant "Billing Service" as BILL
+database "SQLite" as DB
+A -> UI : Chọn năm, nhóm theo tháng/quý
+UI -> BILL : GET /api/billing/reports?year=2026&group=month
+BILL -> DB : SELECT vw_billing_all_invoices (theo report_period)
+BILL -> DB : SELECT vw_billing_all_payments (status=success)
+BILL -> DB : SELECT vw_monthly_revenue_report
+BILL -> BILL : gom nhóm, tính totals
+BILL --> UI : {items, totals, monthly_breakdown}
+UI -> UI : vẽ biểu đồ, bảng
+A -> UI : Xuất CSV
+UI --> A : file CSV
+@enduml

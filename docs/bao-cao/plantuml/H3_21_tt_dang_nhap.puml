@@ -1,0 +1,34 @@
+@startuml H3_21_tt_dang_nhap
+!include _style.iuml
+title Biểu đồ tuần tự – Đăng nhập và gọi API có xác thực
+actor "Người dùng" as U
+participant "Giao diện web" as UI
+participant "Gateway" as GW
+participant "Auth Service" as AUTH
+participant "Service nghiệp vụ" as SV
+database "SQLite" as DB
+U -> UI : Nhập tên đăng nhập, mật khẩu
+UI -> GW : POST /api/auth/login
+GW -> AUTH : chuyển tiếp
+AUTH -> AUTH : kiểm tra giới hạn số lần thử
+AUTH -> DB : SELECT users WHERE username=?
+AUTH -> AUTH : check_password_hash()
+alt sai thông tin
+  AUTH --> UI : 401
+else tài khoản khóa
+  AUTH --> UI : 403 ACCOUNT_LOCKED + lý do
+else hợp lệ
+  AUTH -> AUTH : jwt.encode(sub, role, exp=8h)
+  AUTH --> UI : 200 {token, user}
+  UI -> UI : lưu token, dựng menu theo vai trò
+end
+== Lần gọi API tiếp theo ==
+UI -> GW : GET /api/... (Authorization: Bearer)
+GW -> SV : chuyển tiếp
+SV -> SV : jwt.decode()
+SV -> AUTH : GET /api/auth/me
+AUTH -> DB : kiểm tra trạng thái tài khoản
+AUTH --> SV : user hiện tại
+SV -> SV : kiểm tra vai trò được phép
+SV --> UI : dữ liệu hoặc 403
+@enduml

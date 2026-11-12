@@ -1,0 +1,82 @@
+#! CHƯƠNG 1: TỔNG QUAN ĐỀ TÀI
+## 1.1. Thực trạng công tác quản lý chung cư
+Ban quản lý chung cư là bộ phận chịu trách nhiệm vận hành tòa nhà thay mặt chủ đầu tư hoặc Ban quản trị. Công việc hằng ngày của bộ phận này gồm nhiều nhóm nghiệp vụ khác nhau:
+- Quản lý căn hộ và cư dân: lưu thông tin căn hộ (mã căn, tòa, tầng, diện tích), chủ sở hữu, người thuê, thời hạn hợp đồng thuê và trạng thái căn hộ đang ở hay còn trống.
+- Thu phí: tiền điện, nước tính theo chỉ số tiêu thụ hằng tháng; phí dịch vụ chung và phí gửi xe thu theo kỳ sáu tháng; theo dõi khoản quá hạn và nhắc nợ.
+- Quản lý gửi xe: đăng ký xe tháng cho từng căn hộ, cấp thẻ, thu tiền gửi xe vãng lai theo ngày.
+- Sửa chữa và bảo trì: tiếp nhận yêu cầu của cư dân, phân công kỹ thuật viên, theo dõi tiến độ; tạm ngưng hoặc khôi phục dịch vụ điện nước khi căn hộ nợ phí.
+- Tiếp nhận và giải quyết khiếu nại, đơn đăng ký dịch vụ.
+- Thông báo chung tới toàn bộ cư dân và thông báo riêng tới từng căn hộ.
+- Giải đáp nội quy, mức phí, vị trí các tiện ích trong tòa nhà.
+Qua tìm hiểu tại một số chung cư quy mô vừa, phần lớn các nghiệp vụ trên vẫn được thực hiện thủ công. Danh sách căn hộ, cư dân và chỉ số điện nước được lưu trong nhiều file bảng tính; hóa đơn được in và dán tại bảng tin hoặc gửi qua nhóm chat; cư dân nộp tiền mặt tại văn phòng hoặc chuyển khoản tự ghi nội dung. Kế toán phải mở sao kê ngân hàng và đối chiếu từng khoản với từng căn hộ. Yêu cầu sửa chữa và khiếu nại được tiếp nhận qua điện thoại hoặc tin nhắn nên khó theo dõi ai đang xử lý và đã xử lý đến đâu.
+## 1.2. Các vấn đề tồn tại và nhu cầu ứng dụng công nghệ
+Từ thực trạng trên, có thể nhận diện các vấn đề chính sau:
+- Đối soát thanh toán tốn công và dễ sai: cư dân ghi sai nội dung chuyển khoản, chuyển thiếu, chuyển hai lần hoặc hai thành viên trong cùng căn hộ cùng trả một hóa đơn. Ban quản lý khó biết khoản nào đã thu đủ, khoản nào cần hoàn trả.
+- Dữ liệu phân tán, không nhất quán: thông tin cư dân, hợp đồng, xe, hóa đơn nằm ở nhiều file khác nhau; khi một hợp đồng thuê hết hạn, quyền xem hóa đơn của người thuê không được cập nhật kịp thời.
+- Thông báo không đến đúng người và đúng lúc: thông báo trong nhóm chat dễ bị trôi, không phân biệt được thông báo chung và thông báo riêng của từng căn hộ, không biết cư dân đã đọc hay chưa.
+- Xử lý quá hạn phụ thuộc vào con người: việc rà soát hóa đơn quá hạn, tạo yêu cầu tạm ngưng dịch vụ và khôi phục dịch vụ sau khi cư dân thanh toán đều phải làm bằng tay.
+- Cư dân thiếu kênh tra cứu: muốn biết mức phí gửi xe, hạn thanh toán, giờ làm việc hay vị trí phòng ban phải gọi điện hoặc lên văn phòng Ban quản lý.
+- Khó tổng hợp báo cáo: số liệu phát hành, thực thu, công nợ theo tháng, quý phải tổng hợp thủ công từ nhiều nguồn.
+Những vấn đề này cho thấy nhu cầu xây dựng một hệ thống quản lý tập trung, trong đó dữ liệu được lưu một nơi, quyền truy cập được kiểm soát theo vai trò và căn hộ, thanh toán được đối soát tự động với ngân hàng, thông báo được gửi đúng đối tượng và cư dân có thể tự tra cứu thông tin.
+## 1.3. Xu hướng ứng dụng công nghệ trong quản lý chung cư
+Trên thị trường hiện có nhiều phần mềm quản lý tòa nhà theo mô hình dịch vụ trực tuyến, thường gồm ứng dụng di động cho cư dân và trang quản trị cho Ban quản lý. Các xu hướng chung có thể kể đến:
+- Thanh toán không tiền mặt bằng mã VietQR theo chuẩn NAPAS, kết hợp dịch vụ trung gian theo dõi biến động số dư để xác nhận giao dịch tự động.
+- Thông báo đẩy tới điện thoại và trình duyệt thay cho bảng tin giấy.
+- Chatbot trả lời tự động các câu hỏi về nội quy, phí và tiện ích, giảm tải cho bộ phận lễ tân.
+- Thiết kế hệ thống theo dịch vụ hoặc microservices để có thể mở rộng từng chức năng độc lập.
+Tuy nhiên, các phần mềm thương mại thường có chi phí theo số căn hộ hằng năm, khó tùy biến theo quy định riêng của từng tòa nhà (ví dụ cách tính phí gửi xe theo kỳ sáu tháng, phí làm thẻ một lần) và phần lớn không công khai cách đối soát khi cư dân chuyển thiếu hoặc chuyển dư. Đây là khoảng trống mà đề tài hướng tới với một hệ thống có quy tắc nghiệp vụ rõ ràng, có thể tự triển khai và kiểm chứng được.
+## 1.4. Mục tiêu của đề tài
+Đề tài hướng tới xây dựng hệ thống quản lý chung cư (đặt tên là An Cư) đáp ứng các mục tiêu:
+- Số hóa toàn bộ nghiệp vụ chính của Ban quản lý: căn hộ, cư dân, hợp đồng, hóa đơn, gửi xe, sửa chữa, khiếu nại, thông báo, báo cáo và tài khoản.
+- Cho phép cư dân tự đăng ký tài khoản, xem hóa đơn của căn hộ mình, thanh toán bằng VietQR, tải biên nhận, gửi yêu cầu và nhận thông báo.
+- Hỗ trợ kỹ thuật viên nhận và cập nhật công việc được giao, nhập doanh thu gửi xe vãng lai.
+- Tự động hóa các tác vụ định kỳ: chuyển hóa đơn quá hạn, nhắc hạn, tạo yêu cầu tạm ngưng dịch vụ và khôi phục dịch vụ khi đã thanh toán đủ.
+- Đảm bảo mỗi hóa đơn chỉ được ghi nhận thu một lần dù webhook bị gửi lặp, nhiều thành viên cùng thanh toán hoặc cư dân chuyển dư.
+- Tổ chức mã nguồn theo kiến trúc hướng dịch vụ để mỗi chức năng có thể chạy, kiểm thử và triển khai độc lập.
+## 1.5. Các yêu cầu hệ thống
+### 1.5.1. Yêu cầu chức năng
+Hệ thống phục vụ ba nhóm người dùng chính và một trợ lý tự động:
+Đối với Ban quản lý:
+- Quản lý căn hộ: thêm, sửa căn hộ (mã căn, tòa, tầng, diện tích); xem trạng thái đang ở hoặc còn trống, cư dân hiện tại, loại hợp đồng và số ngày còn lại của hợp đồng thuê.
+- Quản lý cư dân và hợp đồng: thêm, sửa hồ sơ cư dân; lập hợp đồng sở hữu hoặc thuê; xác nhận hoặc gỡ xác nhận cư dân thuộc căn hộ.
+- Quản lý hóa đơn: lập hóa đơn điện nước hằng tháng theo lượng tiêu thụ và đơn giá; lập hóa đơn phí dịch vụ và gửi xe sáu tháng, trong đó phí gửi xe được tự tính theo số xe và số tháng gửi; sửa hóa đơn chưa thanh toán; ghi nhận thu tiền mặt; đối soát giao dịch chuyển khoản.
+- Quản lý gửi xe: đăng ký, hủy xe tháng của từng căn hộ; ghi nhận doanh thu gửi xe vãng lai theo ngày.
+- Quản lý sửa chữa, bảo trì: tạo phiếu, phân công kỹ thuật viên, theo dõi tiến độ.
+- Giải quyết khiếu nại và đơn đăng ký: phản hồi, chuyển trạng thái, cư dân nhận thông báo riêng.
+- Gửi thông báo chung tới toàn bộ cư dân và thông báo riêng tới căn hộ hoặc cư dân.
+- Báo cáo, thống kê doanh thu theo tháng hoặc quý: phát hành, thực thu, công nợ; xuất CSV.
+- Quản lý nhân sự và tài khoản: tạo tài khoản, khóa tài khoản có lý do, đặt lại mật khẩu, quản lý hồ sơ kỹ thuật viên.
+- Cập nhật nội quy, câu hỏi thường gặp và danh bạ địa điểm cho trợ lý.
+Đối với cư dân:
+- Đăng ký tài khoản bằng số căn hộ, đăng nhập, cập nhật thông tin cá nhân, đổi mật khẩu.
+- Xem căn hộ, hợp đồng và hóa đơn của căn hộ mình.
+- Thanh toán hóa đơn bằng VietQR, theo dõi trạng thái, xem lịch sử thanh toán và tải biên nhận.
+- Xem xe đã đăng ký và phí gửi xe.
+- Gửi yêu cầu sửa chữa, bảo trì; gửi khiếu nại và đơn đăng ký (đăng ký gửi xe, dịch vụ); xem phản hồi.
+- Nhận thông báo chung, riêng trên web và thông báo đẩy trên trình duyệt, điện thoại.
+- Hỏi trợ lý An Cư về nội quy, phí, vị trí tiện ích, công nợ của chính mình.
+Đối với kỹ thuật viên:
+- Xem danh sách công việc được phân công, nhận xử lý, hoàn thành phiếu.
+- Thực hiện các phiếu tạm ngưng hoặc khôi phục dịch vụ điện nước được tạo tự động.
+- Nhập, sửa doanh thu gửi xe vãng lai theo ngày; xem tổng hợp xe theo căn hộ.
+- Gửi thông báo tới cư dân và Ban quản lý về tình hình phát sinh.
+Đối với trợ lý An Cư (chatbot):
+- Trả lời 24/7 các câu hỏi về nội quy, chính sách, mức phí, thủ tục.
+- Cho biết vị trí các địa điểm quan trọng trong chung cư (văn phòng Ban quản lý, phòng camera, hiệu thuốc, bãi xe…).
+- Trả lời từ kho kiến thức do Ban quản lý quản lý; có thể dùng mô hình ngôn ngữ lớn để diễn đạt lại nhưng không tự tạo thông tin ngoài nguồn.
+### 1.5.2. Yêu cầu phi chức năng
+- Bảo mật: mật khẩu được băm, xác thực bằng JWT có thời hạn, tài khoản bị khóa mất quyền ngay lập tức; phân quyền theo vai trò và theo căn hộ; khóa bí mật chỉ nằm ở máy chủ; webhook thanh toán phải có API Key.
+- Toàn vẹn dữ liệu: một căn hộ chỉ có một hóa đơn mỗi kỳ và mỗi loại; mỗi hóa đơn chỉ có một khoản thanh toán thành công; số tiền là số nguyên VND không âm; ràng buộc được kiểm tra ở cả API và cơ sở dữ liệu.
+- Tin cậy: sự kiện giữa các service được lưu trong outbox và gửi lại khi service đích tạm lỗi; mỗi sự kiện có mã định danh để xử lý đúng một lần.
+- Khả năng bảo trì và mở rộng: mỗi service là một ứng dụng độc lập có tài liệu OpenAPI, health check và container riêng.
+- Khả dụng: giao diện tiếng Việt, hiển thị tốt trên máy tính và điện thoại, có thể thêm vào màn hình chính như ứng dụng.
+- Kiểm thử được: có bộ kiểm thử tự động chạy trên cơ sở dữ liệu tạm, không ảnh hưởng dữ liệu đang vận hành.
+## 1.6. Phạm vi và phương pháp thực hiện
+### 1.6.1. Phạm vi
+Hệ thống được xây dựng dưới dạng ứng dụng web, triển khai bằng Docker Compose trên một máy chủ, phục vụ một tòa nhà chung cư. Dữ liệu được lưu trong một tệp SQLite dùng chung nhưng phân quyền sở hữu bảng theo từng service. Các giới hạn có chủ đích:
+- Không quản lý ô tô (ô tô gửi ở bãi ngoài không do Ban quản lý kiểm soát).
+- Doanh thu gửi xe vãng lai chỉ nhập tổng tiền theo ngày, không quản lý từng lượt xe.
+- Không tự tính biểu giá điện bậc thang, thuế hay phí phạt chậm trả; Ban quản lý nhập đơn giá áp dụng.
+- Biên nhận là chứng từ nội bộ, không thay thế hóa đơn điện tử theo quy định thuế.
+### 1.6.2. Phương pháp thực hiện
+Đề tài được thực hiện theo các bước: khảo sát và mô tả yêu cầu; thiết kế cơ sở dữ liệu gốc với các bảng, view và trigger; xây dựng lần lượt các service Auth, Resident, Billing, Parking, Maintenance, Notification, Complaint và Chatbot; xây dựng giao diện cho ba vai trò; tích hợp SePay, Firebase và Gemini; viết kiểm thử tự động và thiết lập quy trình CI/CD; cuối cùng nghiệm thu thanh toán bằng giao dịch thật và thông báo đẩy trên thiết bị.

@@ -1,0 +1,26 @@
+@startuml H3_23_tt_hoa_don_thang
+!include _style.iuml
+title Biểu đồ tuần tự – Lập hóa đơn điện nước hàng tháng
+actor "Ban quản lý" as A
+participant "Giao diện web" as UI
+participant "Billing Service" as BILL
+participant "Resident Service" as RES
+participant "Notification Service" as NOTI
+database "SQLite" as DB
+A -> UI : Nhập kWh, m³, đơn giá, kỳ, hạn
+UI -> UI : xem trước tổng tiền
+UI -> BILL : POST /api/billing/invoices/monthly
+BILL -> RES : GET /api/apartments/{id} (nội bộ)
+RES --> BILL : 200 căn hộ
+BILL -> BILL : validated_fees(): làm tròn ROUND_HALF_UP
+BILL -> DB : BEGIN; INSERT monthly_invoices
+DB -> DB : trigger kiểm tra công thức, tính total_amount
+BILL -> DB : INSERT billing_outbox (billing:created:...)
+BILL -> DB : COMMIT
+BILL --> UI : 201 hóa đơn
+note over BILL, NOTI : Job outbox (30 giây) hoặc gửi ngay
+BILL -> NOTI : POST /api/notifications/events {event_id,...}
+NOTI -> DB : INSERT notifications nếu event_id chưa có
+NOTI --> BILL : 201
+BILL -> DB : UPDATE billing_outbox SET delivered_at
+@enduml

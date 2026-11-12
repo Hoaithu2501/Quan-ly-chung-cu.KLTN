@@ -1,0 +1,16 @@
+skinparam defaultFontName "Times New Roman"
+skinparam defaultFontSize 14
+skinparam shadowing false
+skinparam monochrome false
+skinparam ArrowColor #333333
+skinparam ActorBorderColor #333333
+skinparam UsecaseBorderColor #333333
+skinparam UsecaseBackgroundColor #FFFFFF
+skinparam ParticipantBorderColor #333333
+skinparam ParticipantBackgroundColor #F5F5F5
+skinparam ActivityBorderColor #333333
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam SwimlaneBorderColor #333333
+skinparam NoteBackgroundColor #FFFFF0
+skinparam NoteBorderColor #999999

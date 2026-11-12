@@ -1,0 +1,34 @@
+@startuml H3_09_hd_hoa_don_6_thang
+!include _style.iuml
+title Biểu đồ hoạt động – Lập hóa đơn dịch vụ và gửi xe 6 tháng
+|Ban quản lý|
+start
+:Chọn tab "6 tháng" → "Lập hóa đơn";
+:Nhập căn hộ, kỳ (YYYY-H1/H2), hạn thanh toán,
+phí dịch vụ chung;
+if (Nhập tay phí gửi xe?) then (Có)
+  :Nhập phí gửi xe;
+endif
+:Chọn "Lưu";
+|Hệ thống|
+:Kiểm tra định dạng kỳ, căn hộ;
+if (Chưa có phí gửi xe?) then (Đúng)
+  :Billing gọi Parking /summary?period=...;
+  |Parking Service|
+  :Với mỗi xe của căn hộ: đếm số tháng gửi
+  trong kỳ (dừng trước ngày hủy);
+  :Phí định kỳ = số tháng × phí tháng
+  (xe đạp 50.000đ; xe máy, xe điện 100.000đ);
+  :Cộng phí thẻ 100.000đ cho xe mới
+  đăng ký trong kỳ (một lần);
+  |Hệ thống|
+  :Nhận parking_fee;
+endif
+:Tổng = phí dịch vụ + phí gửi xe;
+if (Trùng căn hộ/kỳ?) then (Có)
+  :Báo 409;
+  stop
+endif
+:Lưu hóa đơn, ghi outbox thông báo căn hộ;
+stop
+@enduml

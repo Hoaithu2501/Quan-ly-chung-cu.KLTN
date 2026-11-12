@@ -1,0 +1,18 @@
+@startuml H3_38_tt_khieu_nai
+!include _style.iuml
+title Biểu đồ trạng thái – Khiếu nại / đơn đăng ký
+[*] --> pending : cư dân gửi yêu cầu
+pending : Chờ xử lý
+processing : Đang xử lý
+resolved : Đã giải quyết
+rejected : Từ chối
+pending --> processing : BQL tiếp nhận
+pending --> resolved : BQL phản hồi và đóng
+pending --> rejected : BQL từ chối (bắt buộc phản hồi)
+processing --> resolved
+processing --> rejected
+resolved --> resolved : sửa nội dung phản hồi\n(thông báo lại cư dân)
+rejected --> rejected : sửa nội dung phản hồi
+resolved --> [*]
+rejected --> [*]
+@enduml

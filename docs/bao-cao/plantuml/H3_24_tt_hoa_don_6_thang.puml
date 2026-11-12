@@ -1,0 +1,26 @@
+@startuml H3_24_tt_hoa_don_6_thang
+!include _style.iuml
+title Biểu đồ tuần tự – Lập hóa đơn dịch vụ 6 tháng (tự tính phí gửi xe)
+actor "Ban quản lý" as A
+participant "Giao diện web" as UI
+participant "Billing Service" as BILL
+participant "Resident Service" as RES
+participant "Parking Service" as PARK
+database "SQLite" as DB
+A -> UI : Nhập căn hộ, kỳ 2026-H2, phí dịch vụ
+UI -> BILL : POST /api/billing/invoices/semiannual
+BILL -> RES : GET /api/apartments/{id}
+RES --> BILL : 200
+BILL -> PARK : GET /api/parking/summary?apartment_id&period=2026-H2
+PARK -> DB : SELECT vehicles của căn hộ
+PARK -> PARK : vehicle_months × monthly_fee + card_fee
+PARK --> BILL : {parking_fee, vehicle_months, card_fee}
+BILL -> BILL : total = service_fee + parking_fee
+BILL -> DB : INSERT semiannual_invoices + outbox
+alt trùng căn hộ/kỳ
+  DB --> BILL : IntegrityError
+  BILL --> UI : 409
+else thành công
+  BILL --> UI : 201 hóa đơn
+end
+@enduml

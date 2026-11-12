@@ -1,0 +1,38 @@
+@startuml H3_12_hd_qua_han
+!include _style.iuml
+title Biểu đồ hoạt động – Xử lý hóa đơn quá hạn và khôi phục dịch vụ
+|Bộ lập lịch|
+start
+:00:05 hằng ngày (hoặc khi Billing khởi động);
+|Billing Service|
+:Tìm hóa đơn chưa thanh toán có hạn < hôm nay;
+while (Còn hóa đơn?) is (Có)
+  :Cập nhật trạng thái → "Quá hạn";
+  |CSDL (trigger)|
+  :Tạo phiếu cut_service, ưu tiên cao;
+  |Billing Service|
+  :Ghi outbox thông báo quá hạn tới căn hộ;
+endwhile (Hết)
+:Gửi báo cáo tổng hợp quá hạn tới BQL;
+:Nhắc hạn các hóa đơn đến hạn trong 3 ngày;
+|Kỹ thuật viên|
+:Nhận phiếu tạm ngưng dịch vụ, thực hiện;
+|Cư dân|
+:Thanh toán công nợ;
+|Billing Service|
+:Gửi sự kiện invoice_settled (all_debts_settled);
+|Maintenance Service|
+if (Đã xử lý event_id này?) then (Có)
+  stop
+endif
+if (Còn nợ quá hạn?) then (Có)
+  stop
+else (Không)
+  if (Phiếu cắt chưa bắt đầu?) then (Đúng)
+    :Đóng phiếu, outcome = cancelled;
+  else (Đang làm / đã xong)
+    :Tạo (hoặc dùng lại) phiếu restore_service;
+  endif
+endif
+stop
+@enduml

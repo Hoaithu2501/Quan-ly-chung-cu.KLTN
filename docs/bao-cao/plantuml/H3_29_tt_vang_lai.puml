@@ -1,0 +1,19 @@
+@startuml H3_29_tt_vang_lai
+!include _style.iuml
+title Biểu đồ tuần tự – Ghi nhận doanh thu gửi xe vãng lai
+actor "Kỹ thuật viên" as T
+participant "Giao diện web" as UI
+participant "Parking Service" as PARK
+database "SQLite" as DB
+T -> UI : Nhập ngày, tổng tiền
+UI -> PARK : POST /api/parking/guest-daily
+PARK -> PARK : kiểm tra ngày ≤ hôm nay, tiền ≥ 0
+PARK -> DB : INSERT guest_parking_daily
+alt ngày đã có bản ghi
+  PARK --> UI : 409, dùng PUT /guest-daily/{id} để sửa
+else
+  PARK --> UI : 201
+end
+UI -> PARK : GET /api/parking/guest-daily?from&to
+PARK --> UI : danh sách, tổng theo tháng
+@enduml

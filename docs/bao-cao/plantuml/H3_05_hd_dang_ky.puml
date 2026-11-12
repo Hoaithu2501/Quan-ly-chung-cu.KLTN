@@ -1,0 +1,42 @@
+@startuml H3_05_hd_dang_ky
+!include _style.iuml
+title Biểu đồ hoạt động – Đăng ký tài khoản cư dân
+|Cư dân|
+start
+:Chọn "Đăng ký";
+|Hệ thống|
+:Hiển thị form đăng ký;
+|Cư dân|
+:Nhập họ tên, tên đăng nhập, mật khẩu,
+email @gmail.com, số điện thoại, số căn hộ;
+:Chọn "Đăng ký";
+|Hệ thống|
+if (Dữ liệu hợp lệ?\n(độ dài, định dạng email, SĐT)) then (Không)
+  :Hiển thị lỗi tại trường tương ứng;
+  stop
+endif
+:Auth gọi Resident tra cứu mã căn hộ;
+if (Căn hộ tồn tại?) then (Không)
+  :Báo "Không tìm thấy căn hộ";
+  stop
+endif
+if (Tên đăng nhập / email đã dùng?) then (Có)
+  :Báo trùng dữ liệu (409);
+  stop
+endif
+:Tạo tài khoản role = resident, trạng thái tạm khóa;
+:Gọi Resident tạo hồ sơ cư dân
+(ghi registered_apartment_code);
+if (Tạo hồ sơ thành công?) then (Không)
+  :Giữ tài khoản khóa,
+  báo liên hệ Ban quản lý;
+  stop
+endif
+:Kích hoạt tài khoản, cấp JWT 8 giờ;
+:Chuyển tới trang Thông tin cá nhân;
+note right
+  Mã căn hộ tự khai chưa cấp quyền
+  xem hóa đơn; BQL phải xác nhận.
+end note
+stop
+@enduml

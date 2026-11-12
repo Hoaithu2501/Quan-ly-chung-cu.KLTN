@@ -1,0 +1,36 @@
+@startuml H3_13_hd_dang_ky_xe
+!include _style.iuml
+title Biểu đồ hoạt động – Đăng ký gửi xe tháng
+|Cư dân|
+start
+:Gửi đơn đăng ký gửi xe
+tại "Khiếu nại & đăng ký";
+|Ban quản lý|
+:Xét duyệt đơn (trong 48 giờ), phản hồi;
+:Vào "Quản lý gửi xe" → "Đăng ký xe";
+:Nhập căn hộ, loại xe, biển số,
+số tháng cam kết (≥ 2), ngày bắt đầu;
+|Parking Service|
+if (Loại xe hợp lệ?\n(xe đạp, xe máy, xe điện)) then (Không)
+  :Từ chối (không nhận ô tô);
+  stop
+endif
+if (Xe máy / xe điện thiếu biển số?) then (Có)
+  :Báo thiếu biển số;
+  stop
+endif
+if (Xe đạp không có biển?) then (Đúng)
+  :Cấp mã <căn hộ>-XD-<id>;
+endif
+if (Biển số đang hoạt động bị trùng?) then (Có)
+  :Báo trùng (409);
+  stop
+endif
+:Gán phí tháng theo loại xe;
+:Phí thẻ = 0 nếu biển số đã từng có thẻ,
+ngược lại 100.000đ;
+:Lưu đăng ký, tính ngày được hủy sớm nhất;
+|Cư dân|
+:Xem xe và phí trong mục Gửi xe;
+stop
+@enduml

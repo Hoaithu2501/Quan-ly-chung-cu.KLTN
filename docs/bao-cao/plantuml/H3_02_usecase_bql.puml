@@ -1,0 +1,60 @@
+@startuml H3_02_usecase_bql
+!include _style.iuml
+left to right direction
+title Biểu đồ use case phân rã – Ban quản lý
+actor "Ban quản lý" as BQL
+rectangle "Chức năng Ban quản lý" {
+  usecase "Đăng nhập" as L
+  usecase "Quản lý căn hộ" as A
+  usecase "Thêm / sửa căn hộ" as A1
+  usecase "Xem tình trạng ở, hợp đồng\nhiện hành, số ngày còn lại" as A2
+  usecase "Quản lý cư dân & hợp đồng" as R
+  usecase "Thêm / sửa hồ sơ cư dân" as R1
+  usecase "Lập / sửa hợp đồng\nsở hữu, thuê" as R2
+  usecase "Xác nhận / gỡ cư dân\nthuộc căn hộ" as R3
+  usecase "Quản lý hóa đơn" as I
+  usecase "Lập hóa đơn điện nước tháng" as I1
+  usecase "Lập hóa đơn dịch vụ 6 tháng" as I2
+  usecase "Sửa hóa đơn chưa thanh toán" as I3
+  usecase "Ghi nhận tiền mặt /\nchuyển khoản thực nhận" as I4
+  usecase "Đối soát giao dịch SePay" as I5
+  usecase "Chạy quét quá hạn thủ công" as I6
+  usecase "Quản lý gửi xe" as P
+  usecase "Đăng ký / hủy xe tháng" as P1
+  usecase "Ghi nhận doanh thu vãng lai" as P2
+  usecase "Quản lý sửa chữa, bảo trì" as M
+  usecase "Tạo phiếu, phân công\nkỹ thuật viên" as M1
+  usecase "Giải quyết khiếu nại, đơn đăng ký" as C
+  usecase "Gửi thông báo chung / riêng" as N
+  usecase "Báo cáo, thống kê" as RP
+  usecase "Quản lý nhân sự & tài khoản" as U
+  usecase "Quản lý FAQ, địa điểm" as K
+}
+BQL --> A
+BQL --> R
+BQL --> I
+BQL --> P
+BQL --> M
+BQL --> C
+BQL --> N
+BQL --> RP
+BQL --> U
+BQL --> K
+A1 .> A : <<extend>>
+A2 .> A : <<extend>>
+R1 .> R : <<extend>>
+R2 .> R : <<extend>>
+R3 .> R : <<extend>>
+I1 .> I : <<extend>>
+I2 .> I : <<extend>>
+I3 .> I : <<extend>>
+I4 .> I : <<extend>>
+I5 .> I : <<extend>>
+I6 .> I : <<extend>>
+P1 .> P : <<extend>>
+P2 .> P : <<extend>>
+M1 .> M : <<extend>>
+A ..> L : <<include>>
+I ..> L : <<include>>
+R ..> L : <<include>>
+@enduml

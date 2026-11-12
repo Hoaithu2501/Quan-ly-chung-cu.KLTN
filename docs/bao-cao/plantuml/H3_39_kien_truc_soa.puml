@@ -1,0 +1,65 @@
+@startuml H3_39_kien_truc_soa
+!include _style.iuml
+title Kiến trúc hướng dịch vụ của hệ thống An Cư
+skinparam componentStyle rectangle
+actor "Ban quản lý\nCư dân\nKỹ thuật viên" as USERS
+node "Trình duyệt" {
+  [Giao diện web\nHTML, Tailwind CSS, JavaScript] as UI
+  [Service worker\n(firebase-messaging-sw.js)] as SW
+}
+node "Gateway :5000" as GW {
+  [Phục vụ file tĩnh\n+ chuyển tiếp /api/*] as PROXY
+}
+package "Các service nghiệp vụ (Flask + Waitress)" {
+  [Auth :5001] as AUTH
+  [Resident :5002] as RES
+  [Billing :5003\n+ APScheduler] as BILL
+  [Parking :5004] as PARK
+  [Maintenance :5005] as MAIN
+  [Notification :5006] as NOTI
+  [Complaint :5007\n+ APScheduler] as COMP
+  [Chatbot :5008] as CHAT
+}
+database "SQLite QLCC.db\n(WAL, mỗi service sở hữu nhóm bảng riêng)" as DB
+cloud "SePay\n(webhook, API giao dịch)" as SEPAY
+cloud "vietqr.app\n(ảnh VietQR)" as VQR
+cloud "Firebase Cloud\nMessaging" as FCM
+cloud "Google Gemini\n(tùy chọn)" as LLM
+
+USERS --> UI
+UI --> PROXY : HTTPS/HTTP + JWT
+PROXY --> AUTH
+PROXY --> RES
+PROXY --> BILL
+PROXY --> PARK
+PROXY --> MAIN
+PROXY --> NOTI
+PROXY --> COMP
+PROXY --> CHAT
+BILL ..> RES : REST nội bộ\nX-Service-Token
+BILL ..> PARK : phí gửi xe
+BILL ..> NOTI : outbox
+BILL ..> MAIN : outbox invoice_settled
+COMP ..> RES
+COMP ..> NOTI : outbox
+NOTI ..> RES : người nhận
+MAIN ..> RES
+PARK ..> RES
+CHAT ..> BILL : hóa đơn cá nhân
+AUTH ..> RES : tạo hồ sơ
+RES ..> AUTH
+AUTH --> DB
+RES --> DB
+BILL --> DB
+PARK --> DB
+MAIN --> DB
+NOTI --> DB
+COMP --> DB
+CHAT --> DB
+SEPAY --> BILL : webhook Apikey
+BILL --> SEPAY : API đối soát
+BILL --> VQR
+NOTI --> FCM
+FCM --> SW
+CHAT --> LLM
+@enduml

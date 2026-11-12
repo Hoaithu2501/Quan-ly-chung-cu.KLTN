@@ -1,0 +1,25 @@
+@startuml H3_30_tt_sua_chua
+!include _style.iuml
+title Biểu đồ tuần tự – Yêu cầu sửa chữa, phân công, xử lý
+actor "Cư dân" as U
+actor "Ban quản lý" as A
+actor "Kỹ thuật viên" as T
+participant "Maintenance Service" as MAIN
+participant "Resident Service" as RES
+database "SQLite" as DB
+U -> MAIN : POST /api/maintenance/tickets {apartment_id, type, mô tả}
+MAIN -> RES : GET /api/residents/me
+RES --> MAIN : apartment_ids
+MAIN -> DB : INSERT maintenance_tickets (pending)
+MAIN --> U : 201
+A -> MAIN : PATCH /tickets/{id} {technician_id}
+MAIN -> DB : UPDATE technician_id
+MAIN --> A : 200
+T -> MAIN : PATCH /tickets/{id} {status: in_progress}
+MAIN -> DB : BEGIN IMMEDIATE; kiểm tra phiếu được giao
+MAIN -> DB : UPDATE status
+MAIN --> T : 200
+T -> MAIN : PATCH /tickets/{id} {status: completed}
+MAIN -> DB : UPDATE status, completed_at
+MAIN --> T : 200
+@enduml

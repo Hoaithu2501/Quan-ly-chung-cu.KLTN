@@ -1,0 +1,37 @@
+@startuml H3_15_hd_sua_chua
+!include _style.iuml
+title Biểu đồ hoạt động – Yêu cầu sửa chữa, phân công và xử lý
+|Cư dân|
+start
+:Vào "Sửa chữa & bảo trì" → "Tạo yêu cầu";
+:Chọn căn hộ, loại (sửa chữa / bảo trì),
+mức ưu tiên, mô tả;
+|Hệ thống|
+if (Căn hộ thuộc phạm vi cư dân?) then (Không)
+  :Từ chối (403);
+  stop
+endif
+:Tạo phiếu trạng thái "Chờ xử lý";
+|Ban quản lý|
+:Xem phiếu mới, chọn kỹ thuật viên phù hợp;
+|Hệ thống|
+:Cập nhật technician_id;
+|Kỹ thuật viên|
+:Xem công việc được giao;
+:Chọn "Nhận xử lý";
+|Hệ thống|
+if (Phiếu được giao cho đúng người?) then (Không)
+  :Từ chối (403);
+  stop
+endif
+:Trạng thái → "Đang xử lý";
+|Kỹ thuật viên|
+:Thực hiện công việc tại hiện trường;
+:Chọn "Hoàn thành";
+|Hệ thống|
+:Trạng thái → "Hoàn thành", ghi completed_at;
+note right: Không được lùi trạng thái hoặc mở lại phiếu đã đóng
+|Cư dân|
+:Theo dõi kết quả trên giao diện;
+stop
+@enduml

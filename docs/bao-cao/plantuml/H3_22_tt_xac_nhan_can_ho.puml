@@ -1,0 +1,21 @@
+@startuml H3_22_tt_xac_nhan_can_ho
+!include _style.iuml
+title Biểu đồ tuần tự – Xác nhận cư dân thuộc căn hộ
+actor "Ban quản lý" as A
+participant "Giao diện web" as UI
+participant "Resident Service" as RES
+participant "Auth Service" as AUTH
+database "SQLite" as DB
+A -> UI : Chọn cư dân → Xác nhận căn hộ
+UI -> RES : POST /api/residents/{id}/apartments {apartment_id}
+RES -> AUTH : GET /api/auth/me
+AUTH --> RES : role = admin
+RES -> DB : SELECT residents, apartments
+alt chưa có xác nhận
+  RES -> DB : INSERT resident_apartment_memberships
+  RES --> UI : 201 hồ sơ (apartment_ids mới)
+else đã xác nhận
+  RES --> UI : 200 hồ sơ hiện tại
+end
+UI --> A : cập nhật danh sách
+@enduml

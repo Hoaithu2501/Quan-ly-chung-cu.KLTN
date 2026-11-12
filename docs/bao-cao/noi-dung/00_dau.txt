@@ -1,0 +1,86 @@
+@c: ĐẠI HỌC KINH TẾ QUỐC DÂN
+@c: TRƯỜNG CÔNG NGHỆ
+@cn: --------------------
+@cn: [Chèn logo Đại học Kinh tế Quốc dân]
+@cn:
+@big: KHÓA LUẬN TỐT NGHIỆP
+@cn:
+@c: XÂY DỰNG HỆ THỐNG QUẢN LÝ CHUNG CƯ
+@cn:
+@kv: Tên sinh viên|: [Họ và tên sinh viên]
+@kv: Mã sinh viên|: [Mã sinh viên]
+@kv: Lớp|: [Lớp]
+@kv: Ngành|: Công nghệ thông tin
+@kv: Khoa|: Công nghệ thông tin
+@kv: Giảng viên hướng dẫn|: [Học hàm, học vị, họ tên GVHD]
+@cn:
+@cn: --------------------------------
+@ci: (Chữ ký GVHD)
+@cn:
+@c: Hà Nội, [tháng]/[năm]
+@pb
+#! LỜI CAM ĐOAN
+Tôi, [Họ và tên sinh viên], sinh viên lớp [Lớp], mã số sinh viên [Mã sinh viên] của Trường Đại học Kinh tế Quốc dân, xin cam đoan đề tài khóa luận tốt nghiệp "Xây dựng hệ thống quản lý chung cư" là công trình nghiên cứu độc lập của riêng tôi, được thực hiện dưới sự hướng dẫn khoa học của [Học hàm, học vị, họ tên GVHD].
+Toàn bộ số liệu, mã nguồn và kết quả được trình bày trong khóa luận là trung thực, được tôi trực tiếp phân tích, cài đặt và kiểm thử, chưa từng được công bố trong bất kỳ công trình nghiên cứu nào khác. Các tài liệu, thư viện và dịch vụ của bên thứ ba được sử dụng đều được ghi rõ nguồn trong phần Tài liệu tham khảo.
+Nếu có bất kỳ sai sót hoặc vi phạm nào được phát hiện, tôi xin hoàn toàn chịu trách nhiệm trước pháp luật và Trường Đại học Kinh tế Quốc dân.
+@r: Hà Nội, ngày … tháng … năm …
+@r: Sinh viên thực hiện
+@ri: (Ký và ghi rõ họ tên)
+#! LỜI CẢM ƠN
+Để hoàn thành khóa luận tốt nghiệp này, tôi xin gửi lời cảm ơn chân thành tới [Học hàm, học vị, họ tên GVHD], người đã trực tiếp hướng dẫn, góp ý và định hướng cho tôi trong suốt quá trình thực hiện đề tài.
+Tôi xin cảm ơn quý thầy cô Khoa Công nghệ thông tin, Trường Công nghệ, Đại học Kinh tế Quốc dân đã truyền đạt cho tôi những kiến thức nền tảng về phân tích, thiết kế hệ thống thông tin, cơ sở dữ liệu và phát triển phần mềm. Đây là cơ sở để tôi có thể thực hiện đề tài.
+Tôi cũng xin cảm ơn gia đình và bạn bè đã luôn động viên, hỗ trợ tôi trong thời gian học tập và làm khóa luận.
+Do thời gian và kinh nghiệm còn hạn chế, khóa luận không tránh khỏi những thiếu sót. Tôi rất mong nhận được những ý kiến đóng góp của quý thầy cô để đề tài được hoàn thiện hơn.
+@r: Hà Nội, ngày … tháng … năm …
+@r: Sinh viên thực hiện
+#! MỤC LỤC
+@note: [Đặt con trỏ tại đây và chọn Chèn → Mục lục (Insert → Table of contents) để Google Docs tự tạo mục lục từ các tiêu đề. Xóa dòng hướng dẫn này sau khi chèn.]
+#! DANH MỤC TỪ VIẾT TẮT
+@tab: Bảng 0.1. Danh mục từ viết tắt
+|Từ viết tắt|Diễn giải|
+|API|Application Programming Interface – Giao diện lập trình ứng dụng|
+|BQL|Ban quản lý chung cư|
+|CSDL|Cơ sở dữ liệu|
+|ERD|Entity Relationship Diagram – Biểu đồ thực thể liên kết|
+|FAQ|Frequently Asked Questions – Câu hỏi thường gặp|
+|FCM|Firebase Cloud Messaging – Dịch vụ gửi thông báo đẩy của Google|
+|HTTP|HyperText Transfer Protocol – Giao thức truyền siêu văn bản|
+|JWT|JSON Web Token – Chuẩn mã thông báo xác thực|
+|KTV|Kỹ thuật viên|
+|LLM|Large Language Model – Mô hình ngôn ngữ lớn|
+|QR|Quick Response code – Mã phản hồi nhanh|
+|REST|Representational State Transfer – Kiểu kiến trúc dịch vụ web|
+|SOA|Service-Oriented Architecture – Kiến trúc hướng dịch vụ|
+|UML|Unified Modeling Language – Ngôn ngữ mô hình hóa hợp nhất|
+|VietQR|Chuẩn mã QR chuyển khoản liên ngân hàng tại Việt Nam|
+|WAL|Write-Ahead Logging – Cơ chế ghi nhật ký trước của SQLite|
+#! DANH MỤC BẢNG
+@list: tab
+#! DANH MỤC HÌNH ẢNH
+@list: fig
+#! MỞ ĐẦU
+## 1. Lý do chọn đề tài
+Quá trình đô thị hóa tại Việt Nam diễn ra nhanh trong hai thập kỷ gần đây, kéo theo sự xuất hiện của rất nhiều tòa nhà chung cư tại các thành phố lớn. Mỗi tòa nhà có thể có hàng trăm căn hộ với hàng nghìn cư dân, đi kèm nhiều nghiệp vụ vận hành lặp lại hằng ngày như quản lý căn hộ và hợp đồng, thu phí điện nước, phí dịch vụ, phí gửi xe, tiếp nhận yêu cầu sửa chữa, giải quyết khiếu nại và thông báo tới cư dân.
+Tại nhiều chung cư, đặc biệt là các tòa nhà quy mô vừa và nhỏ, Ban quản lý vẫn xử lý các công việc này bằng bảng tính Excel, sổ sách giấy, nhóm chat và thu tiền mặt hoặc chuyển khoản thủ công. Cách làm này khiến việc đối chiếu khoản đã thu mất nhiều thời gian, dễ nhầm lẫn khi một căn hộ có nhiều thành viên cùng trả tiền, thông báo không đến đúng người và cư dân khó tra cứu nội quy, lịch sử thanh toán của chính mình.
+Xuất phát từ thực tế đó, tôi lựa chọn đề tài "Xây dựng hệ thống quản lý chung cư" làm khóa luận tốt nghiệp. Hệ thống được xây dựng theo kiến trúc hướng dịch vụ (SOA), phục vụ ba nhóm người dùng là Ban quản lý, cư dân và kỹ thuật viên; tích hợp thanh toán chuyển khoản qua VietQR với đối soát tự động qua SePay, thông báo đẩy qua Firebase và trợ lý hỏi đáp tự động cho cư dân.
+## 2. Mục tiêu nghiên cứu
+Mục tiêu tổng quát của đề tài là phân tích, thiết kế và xây dựng một hệ thống web quản lý chung cư có thể vận hành thực tế ở quy mô một tòa nhà, giúp số hóa các nghiệp vụ chính của Ban quản lý và tạo kênh tương tác trực tuyến với cư dân.
+Các mục tiêu cụ thể gồm:
+- Khảo sát nghiệp vụ quản lý chung cư, xác định các tác nhân, chức năng và quy tắc nghiệp vụ.
+- Phân tích và thiết kế hệ thống bằng UML: biểu đồ use case, hoạt động, tuần tự, trạng thái, kiến trúc và cơ sở dữ liệu.
+- Xây dựng hệ thống theo kiến trúc hướng dịch vụ với tám service độc lập giao tiếp qua REST API.
+- Tích hợp thanh toán VietQR, đối soát giao dịch ngân hàng tự động, thông báo đẩy và chatbot hỏi đáp.
+- Kiểm thử tự động các nghiệp vụ quan trọng và nghiệm thu luồng thanh toán bằng giao dịch thật.
+## 3. Đối tượng và phạm vi nghiên cứu
+Đối tượng nghiên cứu là các nghiệp vụ quản lý vận hành chung cư, kiến trúc hướng dịch vụ và các công nghệ xây dựng ứng dụng web: Python, Flask, SQLite, JavaScript, Docker, cùng các dịch vụ tích hợp VietQR, SePay, Firebase Cloud Messaging và Google Gemini.
+Phạm vi của đề tài là một tòa nhà chung cư với ba vai trò người dùng. Hệ thống quản lý phí điện nước theo tháng, phí dịch vụ và phí gửi xe theo kỳ sáu tháng, gửi xe máy, xe điện và xe đạp (không quản lý ô tô), doanh thu gửi xe vãng lai nhập theo ngày. Hệ thống không phát hành hóa đơn giá trị gia tăng; biên nhận chỉ là chứng từ nội bộ.
+## 4. Phương pháp nghiên cứu
+- Phương pháp khảo sát, phân tích nghiệp vụ: tìm hiểu quy trình thu phí, quản lý cư dân, sửa chữa và khiếu nại tại chung cư; tham khảo nội quy, bảng phí mẫu.
+- Phương pháp mô hình hóa: sử dụng UML để mô tả yêu cầu và thiết kế; sử dụng PlantUML để vẽ biểu đồ dưới dạng mã nguồn.
+- Phương pháp thực nghiệm: cài đặt hệ thống, viết kiểm thử tự động bằng pytest và Playwright, chạy kiểm thử liên tục bằng GitHub Actions, nghiệm thu thanh toán bằng SePay ở môi trường Test và Live.
+## 5. Bố cục khóa luận
+Ngoài phần Mở đầu, Kết luận và Tài liệu tham khảo, khóa luận gồm bốn chương:
+- Chương 1. Tổng quan đề tài: thực trạng quản lý chung cư, các vấn đề tồn tại, mục tiêu, yêu cầu và phạm vi của hệ thống.
+- Chương 2. Cơ sở lý thuyết và công nghệ sử dụng: kiến trúc hướng dịch vụ, các công nghệ backend, frontend, cơ sở dữ liệu, thanh toán, thông báo, chatbot và triển khai.
+- Chương 3. Phân tích và thiết kế hệ thống: tác nhân, use case, đặc tả use case, biểu đồ hoạt động, tuần tự, trạng thái, kiến trúc và cơ sở dữ liệu.
+- Chương 4. Kết quả và thảo luận: môi trường cài đặt, giao diện theo từng vai trò, kết quả kiểm thử, nghiệm thu và đánh giá.

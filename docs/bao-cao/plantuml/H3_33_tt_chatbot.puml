@@ -1,0 +1,27 @@
+@startuml H3_33_tt_chatbot
+!include _style.iuml
+title Biểu đồ tuần tự – Hỏi đáp với trợ lý An Cư
+actor "Người dùng" as U
+participant "Giao diện web" as UI
+participant "Chatbot Service" as CHAT
+database "SQLite" as DB
+participant "Billing Service" as BILL
+participant "Gemini API" as LLM
+U -> UI : Nhập câu hỏi
+UI -> CHAT : POST /api/chatbot/ask {question}
+alt câu hỏi hóa đơn cá nhân (đã bật)
+  CHAT -> BILL : GET /api/billing/invoices/{monthly,semiannual} (JWT người dùng)
+  BILL --> CHAT : hóa đơn trong phạm vi
+  CHAT --> UI : answer (engine = resident_data)
+else câu hỏi chung
+  CHAT -> DB : SELECT faq_knowledge_base, locations
+  CHAT -> CHAT : normalize, ALIASES, chấm điểm, chọn ≤ 5 nguồn
+  alt có cấu hình LLM
+    CHAT -> LLM : chat/completions (system prompt + JSON nguồn)
+    LLM --> CHAT : JSON câu trả lời
+    CHAT -> CHAT : kiểm tra trích nguồn, số liệu
+  end
+  CHAT --> UI : answer, sources, confidence, engine
+end
+UI --> U : hiển thị câu trả lời
+@enduml

@@ -1,0 +1,28 @@
+@startuml H3_17_hd_thong_bao
+!include _style.iuml
+title Biểu đồ hoạt động – Gửi thông báo chung / riêng
+|Ban quản lý / Kỹ thuật viên|
+start
+:Vào "Thông báo" → "Tạo thông báo";
+:Nhập tiêu đề, nội dung;
+if (Loại thông báo?) then (Chung)
+  :Gửi tới toàn bộ cư dân;
+else (Riêng)
+  :Chọn một đích: căn hộ / một cư dân / Ban quản lý;
+endif
+:Chọn "Gửi";
+|Notification Service|
+:Kiểm tra quyền và đích nhận;
+:Lưu thông báo vào CSDL (hộp thư trong web);
+if (Firebase đã cấu hình?) then (Có)
+  :Lấy token trình duyệt của người nhận;
+  :Gửi push qua FCM HTTP v1;
+  :Xóa token FCM báo hết hiệu lực;
+else (Không)
+  :Chỉ lưu hộp thư, báo push chưa cấu hình;
+endif
+|Cư dân|
+:Nhận push / thấy chuông báo,
+mở thông báo, hệ thống ghi đã đọc;
+stop
+@enduml

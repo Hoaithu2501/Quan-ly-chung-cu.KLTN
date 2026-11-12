@@ -1,0 +1,27 @@
+@startuml H3_06_hd_dang_nhap
+!include _style.iuml
+title Biểu đồ hoạt động – Đăng nhập
+|Người dùng|
+start
+:Mở trang chủ, nhập tên đăng nhập, mật khẩu;
+:Chọn "Đăng nhập";
+|Hệ thống|
+if (Sai quá 10 lần trong 5 phút?) then (Có)
+  :Từ chối, yêu cầu thử lại sau 5 phút (429);
+  stop
+endif
+:Tìm tài khoản, kiểm tra băm mật khẩu;
+if (Đúng thông tin?) then (Không)
+  :Báo sai tên đăng nhập hoặc mật khẩu;
+  stop
+endif
+if (Tài khoản bị khóa?) then (Có)
+  :Hiển thị thông báo khóa kèm lý do;
+  stop
+endif
+:Tạo JWT (sub, role, hạn 8 giờ);
+:Lưu token trong sessionStorage;
+:Hiển thị menu theo vai trò
+(Ban quản lý / Cư dân / Kỹ thuật viên);
+stop
+@enduml

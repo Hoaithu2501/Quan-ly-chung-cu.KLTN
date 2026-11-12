@@ -1,0 +1,32 @@
+@startuml H3_19_hd_bao_cao
+!include _style.iuml
+title Biểu đồ hoạt động – Xem báo cáo, thống kê doanh thu
+|Ban quản lý|
+start
+:Vào "Báo cáo & thống kê";
+:Chọn năm và kiểu nhóm (theo tháng / theo quý);
+|Billing Service|
+if (Năm và kiểu nhóm hợp lệ?) then (Không)
+  :Báo lỗi tham số (400);
+  stop
+endif
+:Khởi tạo các kỳ (12 tháng hoặc 4 quý) giá trị 0;
+:Đọc vw_billing_all_invoices theo kỳ phát hành
+(H1 tính tháng 1, H2 tính tháng 7);
+:Cộng tổng phát hành, còn phải thu,
+số hóa đơn, số đã thanh toán;
+:Đọc vw_billing_all_payments thành công
+theo ngày thanh toán → tổng thực thu;
+:Trả items, totals, monthly_breakdown;
+|Hệ thống (giao diện)|
+:Hiển thị thẻ chỉ số: tổng phát hành,
+đã thu, công nợ còn lại;
+:Vẽ biểu đồ cột doanh thu và bảng chi tiết;
+|Ban quản lý|
+if (Cần xuất dữ liệu?) then (Có)
+  :Chọn "Xuất CSV";
+  |Hệ thống (giao diện)|
+  :Tải file CSV báo cáo;
+endif
+stop
+@enduml
