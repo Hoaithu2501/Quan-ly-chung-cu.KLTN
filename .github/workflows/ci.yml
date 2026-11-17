@@ -17,7 +17,9 @@ concurrency:
 jobs:
   tests:
     name: Backend and browser tests
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to Ubuntu 26.04, where Playwright 1.56 cannot install Chromium.
+    # Move every job forward together once requirements-dev.txt has a Playwright that supports it.
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       PYTHONUTF8: '1'
@@ -67,7 +69,7 @@ jobs:
   docker:
     name: Docker build and smoke test
     needs: tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
       COMPOSE_PROJECT_NAME: qlcc-ci
@@ -94,7 +96,7 @@ jobs:
     name: CI required
     needs: [tests, docker]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 2
     steps:
       - name: Require every check to pass

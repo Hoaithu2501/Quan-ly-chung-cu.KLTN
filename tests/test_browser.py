@@ -272,10 +272,10 @@ def test_rail_dock_and_today_column_follow_the_agreed_layout(browser_page,role):
 
 
 # Visible text under 11px, and form controls under 16px (iOS zooms into those). Chart labels are SVG text.
-PHONE_TEXT_SIZES="""() => {
+PHONE_TEXT_SIZES="""(root) => {
   const small=[],controls=[];
-  for (const el of document.querySelectorAll('#app *')) {
-    if (el.closest('.sidebar, svg')) continue;
+  for (const el of document.querySelectorAll(root+' *')) {
+    if (el.closest('svg') || (root==='#app' && el.closest('.sidebar'))) continue;
     const box=el.getBoundingClientRect(), size=parseFloat(getComputedStyle(el).fontSize);
     if (!box.width || !box.height) continue;
     if (el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea') && size<16) controls.push(`${el.id} ${size}px`);
@@ -293,9 +293,12 @@ def test_phone_text_is_readable_and_the_dock_clears_the_iphone_home_bar(browser_
         visit(page,route)
         page.set_viewport_size({'width':390,'height':844})
         page.wait_for_function("document.querySelector('.sidebar').getBoundingClientRect().right <= 0")
-        assert page.evaluate(PHONE_TEXT_SIZES)=={'small':[],'controls':[]},route
+        assert page.evaluate(PHONE_TEXT_SIZES,'#app')=={'small':[],'controls':[]},route
         page.set_viewport_size({'width':1440,'height':1000})
     page.set_viewport_size({'width':390,'height':844})
+    page.locator('[data-action=menu]').click()
+    page.wait_for_function("document.querySelector('.sidebar').getBoundingClientRect().left >= 0")
+    assert page.evaluate(PHONE_TEXT_SIZES,'.sidebar')=={'small':[],'controls':[]},'menu'
     assert 'viewport-fit=cover' in page.locator('meta[name=viewport]').get_attribute('content')
     try:
         page.context.new_cdp_session(page).send('Emulation.setSafeAreaInsetsOverride',{'insets':{'top':0,'bottom':34,'left':0,'right':0}})
