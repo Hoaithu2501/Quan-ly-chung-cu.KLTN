@@ -271,6 +271,41 @@ def test_rail_dock_and_today_column_follow_the_agreed_layout(browser_page,role):
     assert not errors,errors
 
 
+# Visible text under 11px, and form controls under 16px (iOS zooms into those). Chart labels are SVG text.
+PHONE_TEXT_SIZES="""() => {
+  const small=[],controls=[];
+  for (const el of document.querySelectorAll('#app *')) {
+    if (el.closest('.sidebar, svg')) continue;
+    const box=el.getBoundingClientRect(), size=parseFloat(getComputedStyle(el).fontSize);
+    if (!box.width || !box.height) continue;
+    if (el.matches('input:not([type=checkbox]):not([type=radio]):not([type=file]), select, textarea') && size<16) controls.push(`${el.id} ${size}px`);
+    const own=[...el.childNodes].filter(n => n.nodeType===3).map(n => n.textContent.trim()).join('');
+    if (own && size<11) small.push(`${el.className} ${size}px "${own.slice(0,30)}"`);
+  }
+  return {small,controls};
+}"""
+
+
+def test_phone_text_is_readable_and_the_dock_clears_the_iphone_home_bar(browser_page):
+    page,cluster,errors=browser_page
+    login(page,cluster,'resident')
+    for route in ('overview','billing','notifications'):
+        visit(page,route)
+        page.set_viewport_size({'width':390,'height':844})
+        page.wait_for_function("document.querySelector('.sidebar').getBoundingClientRect().right <= 0")
+        assert page.evaluate(PHONE_TEXT_SIZES)=={'small':[],'controls':[]},route
+        page.set_viewport_size({'width':1440,'height':1000})
+    page.set_viewport_size({'width':390,'height':844})
+    assert 'viewport-fit=cover' in page.locator('meta[name=viewport]').get_attribute('content')
+    try:
+        page.context.new_cdp_session(page).send('Emulation.setSafeAreaInsetsOverride',{'insets':{'top':0,'bottom':34,'left':0,'right':0}})
+    except Exception:
+        pytest.skip('This browser cannot emulate the iPhone safe area')
+    page.wait_for_function("getComputedStyle(document.querySelector('.dock')).paddingBottom === '34px'")
+    assert page.evaluate("innerHeight - document.querySelector('.dock a').getBoundingClientRect().bottom")>=34
+    assert not errors,errors
+
+
 def test_admin_has_the_wide_sidebar_separate_today_cards_and_can_remove_a_policy(browser_page):
     page,cluster,errors=browser_page
     login(page,cluster,'admin')
@@ -633,12 +668,10 @@ def test_admin_creation_and_resident_payment_in_browser(browser_page):
     page.locator('#payment-status').get_by_text('Đang chờ chuyển khoản',exact=True).wait_for()
     order_id=page.evaluate("sessionStorage.getItem('ancu_vietqr_order_3')")
     order=cluster.call('billing',f'/api/billing/orders/{order_id}',role='resident').json()
-    page.locator('[data-action=payment-confirm]').click()
-    page.locator('#payment-status h3').get_by_text('Chờ ngân hàng xác nhận',exact=True).wait_for()
     assert page.locator('#payment-actions [data-action=receipt]').count()==0
     response=cluster.call('billing','/api/billing/sepay/webhook',method='POST',json=bank_webhook(order),headers={'Authorization':'Apikey '+TEST_SEPAY_KEY})
     assert response.status_code==201,response.text
-    page.locator('[data-action=payment-check]').click()
+    # Nothing to press: the open dialog notices the verified payment on its own.
     page.locator('#payment-status').get_by_text('Đã xác nhận thanh toán',exact=True).wait_for()
     page.locator('#modal [data-action=close-modal]').first.click()
     page.wait_for_function("[...document.querySelectorAll('tbody tr')].some(r => r.textContent.includes('2098-11') && r.textContent.includes('Đã thanh toán'))")
@@ -847,47 +880,47 @@ def test_sepay_order_resumes_without_trusting_return_parameters(browser_page):
     assert page.locator('#payment-actions [data-action=payment-cancel]').count()==0
     assert page.locator('#payment-actions [data-action=invoice-pay]').count()==0
     order.update(status='success',payment_id=812)
-    page.locator('#payment-actions [data-action=payment-check]').click()
     page.locator('#payment-status').get_by_text('Đã xác nhận thanh toán',exact=True).wait_for()
     assert page.evaluate("sessionStorage.getItem('ancu_vietqr_order_3')") is None
     assert not errors,errors
 
 
 @pytest.mark.parametrize('environment',['test','live'])
-def test_sepay_checkout_report_transfer_reconcile_and_receipt_in_browser(browser_page,environment):
-    """Reporting a transfer never marks the invoice paid; only verified server state does."""
+def test_sepay_checkout_confirms_itself_and_only_reports_errors_in_browser(browser_page,environment):
+    """There is nothing to report or check: verified server state alone marks the invoice paid."""
     page,cluster,errors=browser_page
     invoice=browser_invoice(cluster)
     order=browser_order(invoice['invoice_id'],environment=environment)
     route_browser_order(page,order)
-    def report_transfer(route):
-        assert route.request.method=='POST'
-        order.update(status='awaiting_confirmation',can_pay=False)
-        route.fulfill(json=order)
-    page.route('**/api/billing/orders/VQR-ui-checkout/confirm-transfer',report_transfer)
+    outage={'on':False}
+    def order_state(route):
+        if outage['on']:
+            route.fulfill(status=502,json={'error':'Billing tạm thời không phản hồi.'})
+        else:
+            route.fulfill(json=order)
+    page.route('**/api/billing/orders/VQR-ui-checkout',order_state)
     page.route('**/api/billing/payments/monthly/812/receipt',lambda route:route.fulfill(json={
         'title':'Biên nhận','issuer':'Chung cư','notice':'SEPAY TEST','rows':[['Mã biên nhận','MONTHLY-812']],'footer':'Nội bộ'}))
     open_browser_payment(page,cluster)
     page.locator('#payment-status').get_by_text('Đang chờ chuyển khoản',exact=True).wait_for()
     if environment=='test':
         assert 'SePay Test' in page.locator('#modal-title').inner_text()
-        assert 'Không quét mã bằng ứng dụng ngân hàng' in page.locator('#modal').inner_text()
     else:
         assert page.locator('#modal-title').inner_text()=='Thanh toán VietQR'
-        assert 'sử dụng tiền thật' in page.locator('#modal').inner_text()
+    assert 'tiền thật' not in page.locator('#modal').inner_text()
+    assert page.locator('#modal [data-action=payment-confirm], #modal [data-action=payment-check]').count()==0
     assert 'QLCCUI12345' in page.locator('#payment-options').inner_text()
     assert 'không phải hạn thanh toán hóa đơn' in page.locator('#payment-expiry').inner_text()
-    page.locator('#payment-actions [data-action=payment-confirm]').click()
-    page.locator('#payment-status h3').get_by_text('Chờ ngân hàng xác nhận',exact=True).wait_for()
+    assert page.locator('#payment-feedback').is_hidden()
+    outage['on']=True
+    page.locator('#payment-feedback').get_by_text('Chưa cập nhật được trạng thái thanh toán. Billing tạm thời không phản hồi.',exact=True).wait_for()
     assert page.locator('#payment-actions [data-action=receipt]').count()==0
-    assert page.locator('#payment-options').is_hidden()
     with sqlite3.connect(cluster.db_path) as db:
         assert db.execute('SELECT status FROM monthly_invoices WHERE invoice_id=?',(invoice['invoice_id'],)).fetchone()[0]!='paid'
-    page.locator('#payment-actions [data-action=payment-check]').click()
-    page.locator('#payment-feedback').get_by_text('Nếu đã chuyển khoản, không chuyển thêm;',exact=False).wait_for()
     order.update(status='success',payment_id=812)
-    page.locator('#payment-actions [data-action=payment-check]').click()
+    outage['on']=False
     page.locator('#payment-status').get_by_text('Đã xác nhận thanh toán',exact=True).wait_for()
+    assert page.locator('#payment-feedback').is_hidden()
     assert page.evaluate("sessionStorage.getItem('ancu_vietqr_order_3')") is None
     with page.expect_download() as download:
         page.locator('#payment-actions [data-action=receipt]').click()
@@ -914,7 +947,6 @@ def test_sepay_other_household_member_cannot_see_qr_or_transfer_details(browser_
     assert page.locator('#payment-actions [data-action=invoice-pay]').count()==0
     assert not qr_requests
     order.update(status='success',payment_id=812)
-    page.locator('#payment-actions [data-action=payment-check]').click()
     page.locator('#payment-status').get_by_text('Đã xác nhận thanh toán',exact=True).wait_for()
     assert not errors,errors
 
@@ -930,7 +962,6 @@ def test_sepay_expired_session_hides_bank_details_and_cancel_requires_warning(br
     assert page.locator('#payment-actions [data-action=payment-confirm]').count()==0
     assert page.locator('#payment-actions [data-action=payment-cancel]').count()==0
     order.update(expires_at=(datetime.now(timezone.utc)+timedelta(minutes=10)).isoformat())
-    page.locator('#payment-actions [data-action=payment-check]').click()
     page.locator('#payment-actions [data-action=payment-cancel]').wait_for()
     cancel_requests=[]
     def cancel(route):
@@ -1074,12 +1105,12 @@ def test_sepay_partial_receipt_refreshes_qr_for_remaining_amount(browser_page):
     assert qr_amounts==[150000]
     first_image=page.locator('#payment-qr').get_attribute('src')
     order.update(paid_amount=100000,remaining_amount=50000)
-    page.locator('#payment-actions [data-action=payment-check]').click()
-    page.wait_for_function("() => document.querySelector('#payment-amount')?.textContent.includes('50.000')")
+    # "150.000" also contains "50.000", so wait for the shortfall line the next status check renders.
+    page.locator('#payment-status').get_by_text('Chỉ chuyển phần còn thiếu',exact=False).wait_for()
     page.locator('#payment-qr').wait_for(state='visible')
     assert qr_amounts==[150000,50000]
     assert page.locator('#payment-qr').get_attribute('src')!=first_image
-    assert 'Chỉ chuyển phần còn thiếu' in page.locator('#payment-status').inner_text()
+    assert not page.locator('#payment-amount').inner_text().startswith('150')
     assert '50.000' in page.locator('#payment-options').inner_text()
     assert page.locator('#payment-actions [data-action=payment-cancel]').count()==0
     assert not errors,errors

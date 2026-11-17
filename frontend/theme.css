@@ -985,3 +985,23 @@ dialog { border-radius:24px; }
   .stats-grid { grid-template-columns:repeat(4,1fr); }
   body { background:white; }
 }
+
+/* Phones. viewport-fit=cover (index.html) lets the page reach under the notch, the rounded
+   corners and the iPhone home bar; the insets below keep content clear of them. env() is 0
+   wherever there is nothing to avoid, so desktop layouts are unchanged. */
+body { padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px); }
+.sidebar { left:env(safe-area-inset-left,0px); }
+.body-area { padding-bottom:env(safe-area-inset-bottom,0px); }
+.toast-stack { bottom:calc(24px + env(safe-area-inset-bottom,0px)); right:calc(25px + env(safe-area-inset-right,0px)); }
+@media (max-width:700px) {
+  .sidebar { transform:translateX(calc(-100% - env(safe-area-inset-left,0px))); }
+  .sidebar.open { transform:translateX(0); }
+  .dock { padding-left:env(safe-area-inset-left,0px); padding-right:env(safe-area-inset-right,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  .toast-stack { bottom:calc(76px + env(safe-area-inset-bottom,0px)); }
+  /* Readable floor: no text under 11px (measured at 390px wide). */
+  .eyebrow,.page-spotlight .eyebrow,.page-footer,.resident-identity .apt-tag,.overview-hero-actions .button,
+  .overview-hero-kicker,.hero-floating-note span,.hero-floating-note small,.hero-image-caption,.hero-photo-inset>span,
+  .auth-visual-label,.auth-art .brand-tag,.shortcut-index,.notification-badge { font-size:11px; }
+  /* iOS zooms into any form control under 16px. */
+  .toolbar select,.filter-group select { font-size:16px; }
+}

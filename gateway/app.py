@@ -1,6 +1,7 @@
 """Same-origin UI and API reverse proxy. No domain data access."""
 
 import ipaddress
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 import requests
@@ -33,6 +34,7 @@ CONTENT_SECURITY_POLICY = "; ".join(
         "font-src 'self'",
         "connect-src 'self' https://*.googleapis.com https://www.gstatic.com",
         "worker-src 'self'",
+        "manifest-src 'self'",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
@@ -41,10 +43,25 @@ CONTENT_SECURITY_POLICY = "; ".join(
 )
 
 
+FUNNEL_HEADER = "Tailscale-Funnel-Request"
+
+
+def via_tunnel():
+    """Requests relayed from the internet by Cloudflare Tunnel or Tailscale Funnel."""
+    return "CF-Connecting-IP" in request.headers or FUNNEL_HEADER in request.headers
+
+
 def caller_ip():
-    """Cloudflare overwrites this header at its edge, so tunnel callers cannot forge it."""
+    """The tunnels overwrite these headers on what they relay, so internet callers cannot forge them.
+
+    Cloudflare sends CF-Connecting-IP. Tailscale Funnel marks its requests with
+    Tailscale-Funnel-Request and puts the caller in X-Forwarded-For.
+    """
+    address = request.headers.get("CF-Connecting-IP")
+    if address is None and FUNNEL_HEADER in request.headers:
+        address = request.headers.get("X-Forwarded-For")
     try:
-        return str(ipaddress.ip_address(request.headers.get("CF-Connecting-IP", "").strip()))
+        return str(ipaddress.ip_address((address or "").strip()))
     except ValueError:
         return request.remote_addr or "unknown"
 
@@ -54,8 +71,12 @@ def create_app():
 
     @app.before_request
     def restrict_tunnel():
-        # The website is used on this machine only; the tunnel exists just for the bank callback.
-        if "CF-Connecting-IP" in request.headers and request.path != WEBHOOK_PATH:
+        # TUNNEL_ACCESS=webhook keeps the bank callback public and the rest on localhost/LAN.
+        if (
+            os.getenv("TUNNEL_ACCESS", "all").strip().lower() == "webhook"
+            and via_tunnel()
+            and request.path != WEBHOOK_PATH
+        ):
             raise APIError("Không tìm thấy trang.", 404)
 
     @app.after_request

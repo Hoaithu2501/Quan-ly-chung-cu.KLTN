@@ -9,7 +9,7 @@ if ($Mode -eq 'Docker') {
     Write-Host 'Starting Docker. Database: /app/data/QLCC.db in the Compose data volume.'
     & docker compose up --build -d
     if ($LASTEXITCODE -ne 0) { throw 'Cannot start Docker. Check Docker Desktop; no Python fallback was started.' }
-    Write-Host 'Open http://localhost:5000 in a browser on this computer.'
+    Write-Host 'Open http://localhost:5000. Desktop and iPhone use the same database.'
     return
 }
 
