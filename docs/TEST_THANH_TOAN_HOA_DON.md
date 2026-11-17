@@ -64,9 +64,7 @@ Nguồn chính thức: [mô phỏng giao dịch](https://developer.sepay.vn/vi/t
 
 ## 6. Kiểm tra phía cư dân
 
-Web tự kiểm tra trạng thái khoảng 4 giây khi hộp thoại đang mở. Có thể bấm **Kiểm tra trạng thái**.
-
-Nếu đã mô phỏng nhưng web chưa nhận kết quả, bấm **Tôi đã chuyển khoản** để giữ phiên chờ đối soát, tránh người khác trả tiếp. Nút này **không** tự xác nhận hóa đơn đã thanh toán.
+Hộp thoại thanh toán không có nút kiểm tra hay báo đã chuyển. Web tự hỏi trạng thái khoảng 4 giây một lần khi hộp thoại đang mở; webhook SePay (và đối soát API mỗi phút nếu có token) xác nhận khoản nhận. Hộp thoại chỉ báo lỗi khi không lấy được trạng thái, không tải được QR, phiên hết thời gian hoặc mới nhận một phần tiền.
 
 Kết quả cần thấy sau khi server xác minh đủ tiền:
 
@@ -76,7 +74,7 @@ Kết quả cần thấy sau khi server xác minh đủ tiền:
 - Có thể tải biên nhận trong hộp thoại hoặc **Lịch sử thanh toán**.
 - Giao dịch và biên nhận có nhãn **SePay Test**, không xác nhận thu tiền thật.
 
-Nếu thiếu token API dự phòng, nút kiểm tra chỉ đọc kết quả webhook đã có tại web; không thể khắc phục một webhook chưa được gửi tới.
+Nếu thiếu token API dự phòng, web chỉ thấy kết quả khi webhook đã tới; không thể khắc phục một webhook chưa được gửi tới.
 
 ## 7. Kiểm tra BQL và các thành viên cùng ở
 
@@ -102,7 +100,7 @@ Chỉ dùng SePay Test cho các tình huống có nhiều khoản chuyển:
 | Chuyển nốt phần thiếu | Giữ mã chuyển khoản, mô phỏng thêm 6.000đ | Đủ 10.000đ, một biên nhận thanh toán hóa đơn |
 | Chuyển dư | Mô phỏng 12.000đ cho hóa đơn 10.000đ mới | Hóa đơn đã trả; 2.000đ còn lại BQL phải xử lý |
 | Nội dung không đúng | Mô phỏng khoản tiền không có mã phiên | Không tự đánh dấu hóa đơn đã trả; giao dịch hiện chưa xác định nếu webhook không lọc bỏ |
-| Báo đã chuyển nhưng chưa có giao dịch | Bấm Tôi đã chuyển khoản | Chờ ngân hàng xác nhận, chưa có biên nhận |
+| Chưa có giao dịch | Mở phiên, không mô phỏng chuyển tiền | Hộp thoại giữ QR và chờ; không có biên nhận |
 | Hủy khi chưa chuyển | Bấm Hủy phiên và đọc cảnh báo | Phiên đóng; không cập nhật đã thanh toán |
 | Hóa đơn quá hạn | Tạo hóa đơn thử có hạn trước hôm nay | Vẫn cho thanh toán; không tự cộng phí phạt |
 | Giao dịch về trễ | Giữ mã phiên rồi mô phỏng sau khi phiên hiển thị hết hạn | Server vẫn đối soát khoản nhận theo mã gốc |
@@ -121,12 +119,12 @@ Tiền chuyển dư được BQL kiểm tra và hoàn ngoài hệ thống nếu 
 | Webhook 401/403 | Chọn API Key; giá trị khớp .env; header Authorization dạng Apikey |
 | Webhook 404/502 hoặc không kết nối | Gateway 5000, tunnel còn chạy, đúng đường dẫn /api/billing/sepay/webhook |
 | Có giao dịch trên SePay nhưng web chưa cập nhật | Xem nhật ký webhook, gửi lại request sau khi sửa lỗi; kiểm tra mã, ngân hàng, tài khoản nhận và số tiền |
-| Nút kiểm tra không lấy được giao dịch từ SePay | Có đủ token + UUID tài khoản API v2 đúng môi trường chưa; nếu chưa có thì chỉ đọc dữ liệu webhook |
+| Đối soát API không lấy được giao dịch từ SePay | Có đủ token + UUID tài khoản API v2 đúng môi trường chưa; nếu chưa có thì chỉ đọc dữ liệu webhook |
 | BQL thấy tiền chưa xác định/chuyển dư | Kiểm tra sổ Đối soát chuyển khoản và tham chiếu, không tạo thêm lần thu hóa đơn |
 | Ứng dụng ngân hàng báo không tồn tại tài khoản Test | Dừng dùng ứng dụng thật, quay về mô phỏng trong dashboard SePay |
 | HTTP 403 ở trang tài liệu ngoài | Đọc file hướng dẫn này; lỗi tài liệu chưa chứng minh endpoint ứng dụng lỗi |
 
-Không đánh dấu đã thanh toán chỉ vì quét QR thành công, có ảnh chuyển khoản hoặc bấm Tôi đã chuyển khoản. Không xóa phiên/giao dịch trong database để thử lại.
+Không đánh dấu đã thanh toán chỉ vì quét QR thành công hoặc có ảnh chuyển khoản. Không xóa phiên/giao dịch trong database để thử lại.
 
 ## 10. Nếu muốn quét bằng ứng dụng ngân hàng thật
 

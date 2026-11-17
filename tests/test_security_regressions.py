@@ -1,8 +1,10 @@
 """Regressions for the defects found in the security and reliability review."""
 from contextlib import closing
 import importlib.util
+import json
 from pathlib import Path
 import sqlite3
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -123,6 +125,31 @@ def test_release_stays_locked_when_the_bank_cannot_be_checked(service_cluster, m
     monkeypatch.setattr(c.modules["billing"].bank_payments, "reconcile", unavailable)
     assert c.call("billing", route + "/release-payment", "POST", json={"note": "x"}).status_code == 502
     assert c.call("billing", route).json()["active_payment_status"] == "awaiting_confirmation"
+
+
+def test_release_works_when_sepay_finds_no_transfer_for_the_session(service_cluster, monkeypatch):
+    """SePay answers a search with no match with last_page 0. That is a clean "no money", not a failed check."""
+    c = service_cluster
+    route, scope, order, _ = awaiting_transfer(c, "RG-EMPTY", "empty.owner")
+    confirm(c, order, scope)
+    monkeypatch.setenv("SEPAY_API_TOKEN", "x" * 40)
+    monkeypatch.setenv("SEPAY_BANK_ACCOUNT_ID", "11111111-1111-1111-1111-111111111111")
+
+    def no_match(url, **kwargs):
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps({"status": "success", "data": [], "meta": {"pagination": {
+            "total": 0, "per_page": 100, "current_page": 1, "last_page": 0, "has_more": False}}}).encode()
+        return response
+
+    payments = sys.modules[type(c.modules["billing"].bank_payments).__module__]
+    monkeypatch.setattr(payments, "requests", SimpleNamespace(get=no_match, RequestException=requests.RequestException))
+    released = c.call("billing", route + "/release-payment", "POST", json={"note": "Sao kê không có khoản chuyển"})
+    assert released.status_code == 200, released.text
+    assert released.json()["status"] == "expired"
+    with sqlite3.connect(c.db_path) as db:
+        assert db.execute("SELECT last_error FROM bank_payment_intents WHERE order_id=?",
+                          (order["order_id"],)).fetchone()[0] is None
 
 
 def test_resident_reconcile_presses_are_throttled_but_admin_checks_are_not(service_cluster, monkeypatch):
@@ -317,9 +344,8 @@ def gateway(monkeypatch):
 
 def test_gateway_stamps_the_real_caller_and_drops_forged_headers(gateway):
     client, forwarded = gateway
-    # Tunnel traffic only reaches the bank webhook, so that is where the caller is stamped.
-    client.post("/api/billing/sepay/webhook?status=paid&status=unpaid", json={},
-                headers={"CF-Connecting-IP": "198.51.100.7", "X-Client-IP": "1.1.1.1", "X-Service-Token": "forged"})
+    client.get("/api/billing/invoices/monthly?status=paid&status=unpaid",
+               headers={"CF-Connecting-IP": "198.51.100.7", "X-Client-IP": "1.1.1.1", "X-Service-Token": "forged"})
     assert forwarded["headers"]["X-Client-IP"] == "198.51.100.7"
     assert "X-Service-Token" not in forwarded["headers"]
     assert forwarded["params"] == {"status": ["paid", "unpaid"]}
@@ -327,34 +353,68 @@ def test_gateway_stamps_the_real_caller_and_drops_forged_headers(gateway):
 
 def test_gateway_ignores_a_malformed_cloudflare_header(gateway):
     client, forwarded = gateway
-    client.post("/api/billing/sepay/webhook", json={}, headers={"CF-Connecting-IP": "not-an-ip"},
-                environ_base={"REMOTE_ADDR": "192.0.2.4"})
+    client.get("/api/apartments", headers={"CF-Connecting-IP": "not-an-ip"}, environ_base={"REMOTE_ADDR": "192.0.2.4"})
     assert forwarded["headers"]["X-Client-IP"] == "192.0.2.4"
 
 
-def test_tunnel_serves_only_the_bank_webhook_and_the_site_stays_local(gateway, monkeypatch):
+def test_gateway_stamps_the_caller_that_tailscale_funnel_reports(gateway):
+    client, forwarded = gateway
+    funnel = {"Tailscale-Funnel-Request": "?1", "X-Forwarded-For": "203.0.113.9"}
+    client.get("/api/apartments", headers=funnel, environ_base={"REMOTE_ADDR": "172.17.0.1"})
+    assert forwarded["headers"]["X-Client-IP"] == "203.0.113.9"
+    # Without the Funnel mark, X-Forwarded-For is just a header anyone on the network can send.
+    client.get("/api/apartments", headers={"X-Forwarded-For": "203.0.113.9"}, environ_base={"REMOTE_ADDR": "172.17.0.1"})
+    assert forwarded["headers"]["X-Client-IP"] == "172.17.0.1"
+
+
+@pytest.mark.parametrize("tunnel", [
+    {"CF-Connecting-IP": "198.51.100.7"},
+    {"Tailscale-Funnel-Request": "?1", "X-Forwarded-For": "198.51.100.7"},
+], ids=["cloudflare", "tailscale-funnel"])
+def test_tunnel_serves_everything_by_default_and_only_the_webhook_when_restricted(gateway, monkeypatch, tunnel):
     client, _ = gateway
-    tunnel = {"CF-Connecting-IP": "198.51.100.7"}
-    # The old switch that opened the whole site to phones no longer exists.
-    monkeypatch.setenv("TUNNEL_ACCESS", "all")
+    assert client.get("/api/apartments", headers=tunnel).status_code == 200
+    monkeypatch.setenv("TUNNEL_ACCESS", "webhook")
     assert client.get("/api/apartments", headers=tunnel).status_code == 404
     assert client.get("/", headers=tunnel).status_code == 404
     assert client.post("/api/billing/sepay/webhook", json={}, headers=tunnel).status_code == 200
     assert client.get("/api/apartments").status_code == 200
-    assert client.get("/").status_code == 200
 
 
 def test_gateway_browser_policy_and_cache_headers(gateway):
     client, _ = gateway
     page, script, image, api = client.get("/"), client.get("/app.js"), client.get("/assets/favicon.svg"), client.get("/api/apartments")
     assert "script-src 'self' https://www.gstatic.com" in page.headers["Content-Security-Policy"]
-    assert b"manifest" not in page.data and b"apple-mobile-web-app" not in page.data
     assert "unsafe-inline" not in page.headers["Content-Security-Policy"].split("script-src")[1].split(";")[0]
     assert "Content-Security-Policy" not in client.get("/docs").headers
     assert "no-store" not in script.headers["Cache-Control"] and script.headers.get("ETag")
     assert "max-age=604800" in image.headers["Cache-Control"]
     assert api.headers["Cache-Control"] == "no-store"
     for response in (page, script, image):
+        response.close()
+
+
+def test_home_screen_icons_are_served_at_their_declared_sizes(gateway):
+    """iPhone ignores SVG icons and needs an opaque apple-touch-icon; Android reads the manifest PNGs."""
+    client, _ = gateway
+    page = client.get("/")
+    assert b'rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png"' in page.data
+    manifest = client.get("/manifest.webmanifest")
+    assert manifest.headers["Content-Type"].startswith("application/manifest+json")
+    icons = [("/assets/icons/apple-touch-icon.png", "180x180", "any")]
+    icons += [(icon["src"], icon["sizes"], icon["purpose"]) for icon in manifest.get_json(force=True)["icons"]
+              if icon["type"] == "image/png"]
+    assert {purpose for _, _, purpose in icons} == {"any", "maskable"}
+    for src, sizes, purpose in icons:
+        image = client.get(src)
+        data = image.data
+        assert image.status_code == 200 and data[:8] == b"\x89PNG\r\n\x1a\n", src
+        width, height = int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+        assert f"{width}x{height}" == sizes, src
+        if src.endswith("apple-touch-icon.png") or purpose == "maskable":
+            assert data[25] == 2, f"{src} must be opaque RGB"  # transparency turns black or is cropped away
+        image.close()
+    for response in (page, manifest):
         response.close()
 
 

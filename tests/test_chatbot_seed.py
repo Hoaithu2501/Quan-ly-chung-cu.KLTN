@@ -64,8 +64,34 @@ def test_seed_keeps_canonical_parking_policy_and_does_not_insert_legacy_aliases(
         assert "Sửa chữa trong căn hộ có mất phí không?" not in current
         assert "Thẻ ra vào cư dân được cấp như thế nào?" not in current
         assert "Sửa chữa & bảo trì → Tạo yêu cầu" in current["Căn hộ bị hỏng điện nước thì báo ở đâu?"][3]
-        assert "SePay Test" in current["Có những hình thức thanh toán nào?"][3]
+        assert "VietQR" in current["Có những hình thức thanh toán nào?"][3]
         assert "biên nhận nội bộ" in current["Có xuất hoá đơn điện tử không?"][3]
+
+
+def test_payment_answers_stop_naming_the_removed_payment_buttons():
+    """Existing databases get the new answers; an answer management rewrote is left alone."""
+    root = seed.ROOT / "migrations"
+    with closing(sqlite3.connect(":memory:")) as db:
+        db.executescript(SCHEMA)
+        db.executemany(
+            "INSERT INTO faq_knowledge_base(category,question,answer) VALUES ('Thanh toán',?,?)",
+            [
+                ("Có những hình thức thanh toán nào?", "MoMo"),
+                ("Đã thanh toán nhưng hoá đơn vẫn báo chưa thanh toán thì làm gì?", "MoMo"),
+                ("Thanh toán thiếu tiền thì hoá đơn có được tính là đã thanh toán không?", "Hiện chưa thể chia nhỏ"),
+            ],
+        )
+        db.executescript((root / "chatbot_sepay_payment_guidance.sql").read_text(encoding="utf-8"))
+        edited = "Câu trả lời Ban quản lý tự viết."
+        db.execute(
+            "UPDATE faq_knowledge_base SET answer=? WHERE question='Có những hình thức thanh toán nào?'", (edited,)
+        )
+        db.executescript((root / "0160_chatbot_payment_updates_automatically.sql").read_text(encoding="utf-8"))
+        answers = dict(db.execute("SELECT question, answer FROM faq_knowledge_base WHERE category='Thanh toán'"))
+    assert answers.pop("Có những hình thức thanh toán nào?") == edited
+    for answer in answers.values():
+        assert "tự cập nhật" in answer
+        assert "Kiểm tra trạng thái" not in answer and "Tôi đã chuyển khoản" not in answer
 
 
 def test_existing_duplicate_questions_keep_both_ids_and_are_reported():

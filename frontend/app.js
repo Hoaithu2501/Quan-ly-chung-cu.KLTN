@@ -1696,7 +1696,7 @@ const pages = {
       ? paymentConfig?.message ||
         'VietQR chưa sẵn sàng. Ban quản lý cần kết nối tài khoản SePay và ngân hàng nhận tiền.'
       : paymentConfig.environment === 'test'
-        ? 'VietQR · SePay Test: kiểm thử bằng giao dịch thử trên SePay. Không quét mã bằng ứng dụng ngân hàng để chuyển tiền thật.'
+        ? 'VietQR · SePay Test: kiểm thử bằng giao dịch thử trên SePay.'
         : '';
     const paymentNotice = billingManager()
       ? '<div class="info-box">Cư dân thanh toán trong tài khoản của mình. Ban quản lý và kỹ thuật viên lập hóa đơn, theo dõi trạng thái và chỉ ghi nhận thu khi đã nhận đủ tiền mặt hoặc chuyển khoản. Các khoản chuyển dư hoặc chuyển lặp được theo dõi tại mục Đối soát chuyển khoản.</div>'
@@ -1927,7 +1927,7 @@ const pages = {
               <span>${esc(dateTime(n.created_at))}
                 ${n.related_apartment_id ? ` · Căn hộ ${esc(n.related_apartment_code || apartmentCode(n.related_apartment_id))}` : n.target_apartment_id ? ` · Căn hộ ${esc(apartmentCode(n.target_apartment_id))}` : ''}
                 </span>
-              ${!n.is_read ? '<span style="color:var(--red);font-weight:600;font-size:10px">Chưa đọc</span>' : '<span class="muted" style="font-size:10px">Đã đọc</span>'}
+              ${!n.is_read ? '<span style="color:var(--red);font-weight:600;font-size:11px">Chưa đọc</span>' : '<span class="muted" style="font-size:11px">Đã đọc</span>'}
               </footer>
             </article>
           `,
@@ -2873,7 +2873,7 @@ function paymentClock(watch) {
   if (!clock) return;
   const remaining = Math.max(0, Math.ceil((Date.parse(watch.order.expires_at) - Date.now()) / 1000));
   clock.textContent = expired
-    ? 'Phiên trên web đã hết thời gian. Nếu đã chuyển khoản, hãy kiểm tra trạng thái; không chuyển lần nữa.'
+    ? 'Phiên trên web đã hết thời gian. Nếu đã chuyển khoản, hệ thống vẫn tự ghi nhận; không chuyển lần nữa.'
     : `Thời gian giữ phiên: ${Math.floor(remaining / 60)} phút ${String(remaining % 60).padStart(2, '0')} giây. Đây không phải hạn thanh toán hóa đơn.`;
 }
 function updatePayment(order) {
@@ -2903,12 +2903,12 @@ function updatePayment(order) {
   const explanation = success
     ? 'Hệ thống đã đối soát khoản nhận. Hóa đơn đã được cập nhật và có thể tải biên nhận.'
     : awaiting
-      ? 'Đã nhận thông tin báo chuyển khoản. Hóa đơn chỉ chuyển sang đã thanh toán khi hệ thống xác minh đủ tiền nhận. Vui lòng không chuyển thêm.'
+      ? 'Hệ thống đang chờ ngân hàng xác nhận khoản chuyển và sẽ tự cập nhật hóa đơn. Vui lòng không chuyển thêm.'
       : canPay
-        ? 'Chỉ một thành viên thanh toán hóa đơn này. Kiểm tra đúng tài khoản, số tiền và giữ nguyên nội dung chuyển khoản.'
+        ? 'Chỉ một thành viên thanh toán hóa đơn này. Kiểm tra đúng tài khoản, số tiền và giữ nguyên nội dung chuyển khoản. Hóa đơn tự chuyển sang đã thanh toán khi hệ thống nhận đủ tiền.'
         : activePayment(order) && !owner
           ? 'Một thành viên trong căn hộ đang giữ phiên thanh toán. Vui lòng chờ kết quả, không chuyển khoản thêm.'
-          : 'Nếu đã chuyển khoản, hãy kiểm tra trạng thái hoặc liên hệ Ban quản lý. QR đã lưu vẫn có thể được ngân hàng chấp nhận; không dùng lại mã cũ.';
+          : 'Nếu đã chuyển khoản, hệ thống vẫn tự ghi nhận theo nội dung chuyển khoản; không chuyển lại và liên hệ Ban quản lý nếu cần hỗ trợ. Không dùng lại mã QR cũ.';
   $('#payment-status').innerHTML =
     view`
       ${badge(order.status)}<h3 style="margin:12px 0 6px">${esc(title)}</h3>
@@ -2969,11 +2969,7 @@ function updatePayment(order) {
               `data-id="${esc(order.payment_id)}" data-kind="${esc(order.invoice_type)}"`,
             )
           : '') + button('Lịch sử thanh toán', 'payment-history', '', 'secondary')
-      : button('Kiểm tra trạng thái', 'payment-check', 'refresh', 'secondary') +
-        (canPay
-          ? button('Tôi đã chuyển khoản', 'payment-confirm', 'check', 'primary') +
-            (Number(order.paid_amount) > 0 ? '' : button('Hủy phiên', 'payment-cancel', '', 'secondary'))
-          : '') +
+      : (canPay && !(Number(order.paid_amount) > 0) ? button('Hủy phiên', 'payment-cancel', '', 'secondary') : '') +
         (['expired', 'cancelled'].includes(order.status)
           ? button(
               'Mở phiên mới',
@@ -3002,40 +2998,30 @@ function queuePaymentPoll(watch) {
     queuePaymentPoll(watch);
   }, 4000);
 }
-async function checkPayment(watch, reconcile = false) {
+// The webhook and the server's reconciliation settle the invoice; the page only follows.
+// A failed check is shown, and cleared again by the next check that succeeds.
+async function checkPayment(watch) {
   if (!watch || paymentWatch !== watch || watch.busy) return;
   watch.busy = true;
   const controller = new AbortController();
   watch.controller = controller;
-  const timeout = setTimeout(() => controller.abort(), reconcile ? 45000 : 15000);
-  const buttonEl = $('[data-action="payment-check"]');
-  if (buttonEl) buttonEl.disabled = true;
-  if (reconcile) paymentFeedback('Đang kiểm tra khoản tiền nhận…');
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const path = `/api/billing/orders/${encodeURIComponent(watch.order.order_id)}`;
-    const order = await api(reconcile ? path + '/reconcile' : path, {
-      ...(reconcile ? { method: 'POST', body: {} } : {}),
+    const order = await api(`/api/billing/orders/${encodeURIComponent(watch.order.order_id)}`, {
       signal: controller.signal,
     });
     if (paymentWatch !== watch) return;
     updatePayment(order);
-    if (order.status === 'success') paymentFeedback('');
-    else if (reconcile)
-      paymentFeedback(
-        order.message ||
-          'Chưa xác nhận đủ tiền nhận. Nếu đã chuyển khoản, không chuyển thêm; vui lòng chờ hoặc liên hệ Ban quản lý.',
-      );
+    if (watch.checkFailed || order.status === 'success') paymentFeedback('');
+    watch.checkFailed = false;
   } catch (error) {
-    if (paymentWatch === watch) paymentFeedback(`Chưa xác minh được kết quả. ${error.message}`, true);
+    if (paymentWatch !== watch) return;
+    watch.checkFailed = true;
+    paymentFeedback(`Chưa cập nhật được trạng thái thanh toán. ${error.message}`, true);
   } finally {
     clearTimeout(timeout);
     watch.controller = null;
     watch.busy = false;
-    if (paymentWatch === watch) {
-      const current = $('[data-action="payment-check"]');
-      if (current) current.disabled = false;
-      queuePaymentPoll(watch);
-    }
   }
 }
 function showPayment(order) {
@@ -3048,9 +3034,7 @@ function showPayment(order) {
         <div class="notice-symbol" style="margin:auto">${icon('wallet')}</div>
         <div class="amount" id="payment-amount">${money(transferAmount(order))}</div>
         <p>Hóa đơn #${esc(order.invoice_id)} · ${esc(label(order.invoice_type))}</p>
-        <div class="info-box" style="margin-top:18px;text-align:left">
-          ${testing ? 'Môi trường SePay Test: dùng chức năng gửi giao dịch thử trên SePay để kiểm tra. Không quét mã bằng ứng dụng ngân hàng để chuyển tiền thật.' : 'Chuyển khoản ngân hàng sử dụng tiền thật. Mỗi hóa đơn chỉ cần một thành viên chuyển tiền một lần. Nếu đã chuyển, không mở giao dịch khác.'}
-          </div>
+        ${testing ? '<div class="info-box" style="margin-top:18px;text-align:left">Môi trường SePay Test: dùng chức năng gửi giao dịch thử trên SePay để kiểm tra.</div>' : ''}
         <div id="payment-status" role="status" aria-live="polite">
         </div>
         <div id="payment-options">
@@ -3073,7 +3057,7 @@ async function loadPaymentQr(watch, optionKey) {
     if (path.origin !== location.origin || !path.pathname.startsWith('/api/billing/orders/'))
       throw new Error('Đường dẫn mã QR không hợp lệ.');
     const response = await fetch(path.href, { cache: 'no-store', headers: { Authorization: `Bearer ${state.token}` } });
-    if (!response.ok) throw new Error('Chưa tải được mã VietQR. Hãy kiểm tra trạng thái trước khi thử lại.');
+    if (!response.ok) throw new Error('Chưa tải được mã VietQR. Hãy đóng hộp thoại rồi bấm Thanh toán lại.');
     const blob = await response.blob();
     if (paymentWatch !== watch || watch.optionKey !== optionKey) return;
     modalBlob = URL.createObjectURL(blob);
@@ -3084,22 +3068,6 @@ async function loadPaymentQr(watch, optionKey) {
     }
   } catch (error) {
     if (paymentWatch === watch) paymentFeedback(error.message, true);
-  }
-}
-async function confirmTransfer() {
-  const watch = paymentWatch;
-  if (!watch || watch.busy || !watch.order.is_owner || !watch.order.can_pay || sessionExpired(watch.order)) return;
-  watch.busy = true;
-  try {
-    const order = await post(`/api/billing/orders/${encodeURIComponent(watch.order.order_id)}/confirm-transfer`);
-    if (paymentWatch === watch) {
-      updatePayment(order);
-      paymentFeedback(
-        'Đã báo chuyển khoản. Đây chưa phải xác nhận đã thanh toán; hệ thống đang chờ đối soát tiền nhận.',
-      );
-    }
-  } finally {
-    watch.busy = false;
   }
 }
 async function cancelPayment() {
@@ -3114,7 +3082,7 @@ async function cancelPayment() {
     return;
   if (
     !window.confirm(
-      'Chỉ hủy khi bạn CHƯA chuyển khoản. Nếu đã chuyển, chọn Hủy bỏ và bấm “Tôi đã chuyển khoản” để chờ đối soát. Bạn chắc chắn chưa chuyển tiền?',
+      'Chỉ hủy khi bạn CHƯA chuyển khoản. Nếu đã chuyển, chọn Hủy bỏ và chờ hệ thống tự xác nhận. Bạn chắc chắn chưa chuyển tiền?',
     )
   )
     return;
@@ -4273,9 +4241,6 @@ document.addEventListener('click', async (event) => {
       case 'invoice-release':
         releasePayment(kind, id);
         break;
-      case 'payment-confirm':
-        await confirmTransfer();
-        break;
       case 'payment-cancel':
         await cancelPayment();
         break;
@@ -4286,9 +4251,6 @@ document.addEventListener('click', async (event) => {
         closeModal();
         state.tab.billing = 'payments';
         navigate('billing');
-        break;
-      case 'payment-check':
-        await checkPayment(paymentWatch, true);
         break;
       case 'receipt':
         target.disabled = true;

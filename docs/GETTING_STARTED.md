@@ -64,7 +64,7 @@ docker compose ps
 docker compose logs -f billing
 ```
 
-Compose tạo **8 container nghiệp vụ**, thêm gateway, một container `backup` và một job `db-init` chạy xong rồi thoát. Tất cả dùng named volume `qlcc_qlcc-data:/app/data`. DB Docker tách khỏi chế độ Python. Volume mới khởi tạo từ `QLCC.db` nguồn được đóng gói trong image; volume đã có DB tiếp tục giữ dữ liệu hiện tại. Gateway cổng 5000 và các service nghiệp vụ đều chỉ bind vào `127.0.0.1`: trang web dùng trên trình duyệt của chính máy chạy project. Các service chạy bằng user không có quyền root và chỉ nhận những khóa cần cho nhiệm vụ của mình.
+Compose tạo **8 container nghiệp vụ**, thêm gateway, một container `backup` và một job `db-init` chạy xong rồi thoát. Tất cả dùng named volume `qlcc_qlcc-data:/app/data`. DB Docker tách khỏi chế độ Python. Volume mới khởi tạo từ `QLCC.db` nguồn được đóng gói trong image; volume đã có DB tiếp tục giữ dữ liệu hiện tại. Gateway cổng 5000 được bind vào `0.0.0.0` để truy cập từ mạng LAN; các service nghiệp vụ bind vào `127.0.0.1`. Các service chạy bằng user không có quyền root và chỉ nhận những khóa cần cho nhiệm vụ của mình.
 
 Gateway đọc giao diện trực tiếp từ `./frontend` qua bind mount chỉ đọc. Khi chỉnh frontend, chạy `npm ci` một lần rồi giữ `npm run watch:css` chạy để biên dịch Tailwind. Lưu thay đổi và tải lại http://localhost:5000; không cần build lại image. `styles.css` là đầu ra, sửa `theme.css` và các class trong `app.js`. Các thay đổi Python cần build lại service tương ứng.
 
@@ -85,7 +85,7 @@ docker compose up -d
 1. Đăng nhập quản trị. Dashboard lấy số liệu thật từ các API căn hộ, Billing, phiếu kỹ thuật và thông báo.
 2. Tạo căn hộ, nhập diện tích; tạo cư dân hoặc liên kết tài khoản đăng ký; tạo hợp đồng thuê/sở hữu. Mỗi tài khoản chỉ liên kết một căn hộ; căn hộ khác cần tài khoản riêng và được dùng chung email, số điện thoại. Nếu nhiều cư dân trùng tên, chọn đúng người theo mã `#` trong danh sách gợi ý. Theo dõi lịch sử hợp đồng, ngày kết thúc và số ngày còn lại.
 3. Thêm phương tiện cho căn hộ. Lập hóa đơn điện/nước theo `YYYY-MM`; hóa đơn dịch vụ theo `YYYY-H1` hoặc `YYYY-H2`. Phí gửi xe sáu tháng lấy tổng phí phương tiện đang hoạt động qua HTTP sang Parking.
-4. Cấu hình VietQR/SePay theo mục 6. Đăng nhập cư dân đúng căn hộ, mở hóa đơn, giữ nguyên nội dung chuyển khoản và mô phỏng giao dịch trong dashboard SePay. Web chỉ cập nhật sau khi server xác minh đủ tiền, rồi cho tải biên nhận Test. Nút Tôi đã chuyển khoản không tự đánh dấu đã trả. Nếu cư dân đã báo chuyển nhưng ngân hàng không có tiền, Ban quản lý mở chi tiết hóa đơn và chọn **Mở khóa phiên thanh toán**.
+4. Cấu hình VietQR/SePay theo mục 6. Đăng nhập cư dân đúng căn hộ, mở hóa đơn, giữ nguyên nội dung chuyển khoản và mô phỏng giao dịch trong dashboard SePay. Hộp thoại thanh toán tự chuyển sang đã thanh toán khi server xác minh đủ tiền, rồi cho tải biên nhận Test; cư dân không cần bấm gì thêm. Phiên cũ còn ở trạng thái chờ ngân hàng xác nhận mà ngân hàng không có tiền thì Ban quản lý mở chi tiết hóa đơn và chọn **Mở khóa phiên thanh toán**.
 5. Gửi khiếu nại/đơn đăng ký gửi xe hoặc phiếu sửa chữa. Ban quản lý phản hồi, duyệt đơn, tạo phương tiện nếu hồ sơ được chấp thuận; việc duyệt đơn không tự thêm phương tiện vì đơn là nội dung tự do.
 6. Quản trị phân công kỹ thuật viên. Mọi kỹ thuật viên đều thấy và xử lý được mọi phiếu, chuyển từ chờ sang đang xử lý rồi hoàn thành; ghi nhận doanh thu vé vãng lai theo ngày.
 7. Gửi thông báo chung/riêng hoặc thông báo cho Ban quản lý. Cư dân xem, đánh dấu đã đọc. Bật thông báo trình duyệt sau khi cấu hình Firebase.
@@ -110,14 +110,14 @@ Mọi cấu hình nằm trong `.env`, có chú thích trong `.env.example`. Sau 
 **VietQR/SePay**
 
 1. Trên [my.sepay.vn](https://my.sepay.vn/), bật **Test Mode** và tạo tài khoản ngân hàng Test. Điền `SEPAY_BANK_CODE`, `SEPAY_BANK_NAME`, `SEPAY_ACCOUNT_NUMBER`, `SEPAY_ACCOUNT_NAME` và đặt `SEPAY_ENV=test`.
-2. Mở HTTPS công khai tới gateway: `cloudflared tunnel --url http://localhost:5000 --protocol http2`. Ghép URL in ra với `/api/billing/sepay/webhook` và điền vào `SEPAY_WEBHOOK_URL`. Quick tunnel đổi tên khi chạy lại; khi đổi, sửa cả `.env` và SePay.
+2. Mở HTTPS công khai cố định tới gateway bằng Tailscale Funnel: `tailscale funnel --bg 5000` (cài đặt lần đầu theo [CAI_DAT_DIEN_THOAI.md](CAI_DAT_DIEN_THOAI.md), mục 1). Ghép địa chỉ trong `tailscale funnel status` với `/api/billing/sepay/webhook` rồi điền vào `SEPAY_WEBHOOK_URL`; địa chỉ không đổi khi khởi động lại. Cloudflare quick tunnel (`cloudflared tunnel --url http://localhost:5000 --protocol http2`) vẫn dùng được, nhưng đổi địa chỉ mỗi lần chạy lại, khi đó phải sửa cả `.env` và SePay.
 3. Tạo webhook trên SePay trỏ tới URL đó, xác thực bằng API Key với đúng giá trị `SEPAY_WEBHOOK_API_KEY` trong `.env`.
 4. Tùy chọn đối soát dự phòng: điền cả `SEPAY_API_TOKEN` và UUID `SEPAY_BANK_ACCOUNT_ID`.
 5. Kiểm tra bằng `.\.venv\Scripts\python.exe scripts/check_sepay.py --probe`. Webhook trả 403 khi không có khóa là đúng.
 
 Trong Test Mode chỉ mô phỏng giao dịch trên dashboard SePay, không quét QR bằng ứng dụng ngân hàng thật. Live dùng tài khoản, token và khóa riêng, chuyển tiền thật.
 
-Tunnel chỉ chuyển webhook SePay; mọi đường dẫn khác đi qua tunnel trả 404. Trang web mở tại http://localhost:5000 trên máy chạy project.
+Funnel (hoặc Cloudflare Tunnel) mặc định công khai toàn bộ trang web, cần cho iPhone vì push yêu cầu HTTPS. Đặt `TUNNEL_ACCESS=webhook` nếu chỉ muốn SePay gọi được webhook, còn trang web chỉ mở trong máy/LAN.
 
 **Firebase push (tùy chọn)**
 
@@ -125,7 +125,7 @@ Tunnel chỉ chuyển webhook SePay; mọi đường dẫn khác đi qua tunnel 
 2. Lưu service account tại `secrets/firebase-credentials.json`; điền `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG` (JSON một dòng), `FIREBASE_VAPID_KEY`.
 3. Kiểm tra bằng `docker compose exec notification python scripts/check_firebase.py`.
 
-Push hoạt động trên trình duyệt máy tính tại http://localhost:5000 khi người dùng đồng ý nhận thông báo. Khi chưa cấu hình, thông báo trong web vẫn hoạt động.
+Push cần HTTPS hoặc localhost và người dùng đồng ý nhận thông báo. Trên iPhone, mở URL gốc của tunnel bằng Safari, thêm vào Màn hình chính rồi bật thông báo từ biểu tượng đó. Khi chưa cấu hình, thông báo trong web vẫn hoạt động. Hướng dẫn từng bước cho iPhone và Android: [CAI_DAT_DIEN_THOAI.md](CAI_DAT_DIEN_THOAI.md).
 
 ## 7. Giới hạn cần nêu trong báo cáo
 

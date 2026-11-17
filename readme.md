@@ -164,4 +164,4 @@ Mở http://localhost:5000 và đăng nhập bằng tài khoản mẫu:
 | Cư dân | `resident` | `Resident@12345` |
 | Kỹ thuật viên | `technician` | `Tech@12345` |
 
-Bản chạy thử dùng dữ liệu mẫu. Thanh toán QR, thông báo đẩy và diễn đạt câu trả lời bằng AI chỉ bật khi có thông tin kết nối riêng trong `.env` (xem `docs/GETTING_STARTED.md`); các chức năng còn lại hoạt động bình thường.
+Bản chạy thử dùng dữ liệu mẫu. Thanh toán QR, thông báo đẩy và diễn đạt câu trả lời bằng AI chỉ bật khi có thông tin kết nối riêng trong `.env` (xem `docs/GETTING_STARTED.md`); các chức năng còn lại hoạt động bình thường. Cài lên iPhone hoặc Android: xem `docs/CAI_DAT_DIEN_THOAI.md`.

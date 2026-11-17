@@ -6,7 +6,7 @@
 # The defaults below are for running on this machine. CI and releases override them with:
 #   IMAGE_PREFIX, IMAGE_TAG      names of the built images
 #   APP_ENV_FILE                 settings file (default: .env)
-#   GATEWAY_BIND, GATEWAY_PORT   where the website is published (default: this machine only)
+#   GATEWAY_BIND, GATEWAY_PORT   where the website is published
 #   FRONTEND_MOUNT               replaced so that the UI inside the image is the one tested
 
 x-environment: &environment
@@ -219,7 +219,7 @@ services:
       - qlcc-data:/app/data
       # Serves the working copy of the UI, so edits show up after a browser reload.
       - ${FRONTEND_MOUNT:-./frontend:/app/frontend:ro}
-    ports: ["${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-5000}:5000"]
+    ports: ["${GATEWAY_BIND:-0.0.0.0}:${GATEWAY_PORT:-5000}:5000"]
     healthcheck:
       <<: *health
       test: ["CMD", "python", "-c", "import urllib.request as r; r.urlopen('http://localhost:5000/health', timeout=3)"]

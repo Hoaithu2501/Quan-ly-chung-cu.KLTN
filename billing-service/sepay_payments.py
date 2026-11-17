@@ -128,9 +128,9 @@ class SePayPayments:
                 issues.append("SEPAY_BANK_ACCOUNT_ID phải là UUID của API v2")
         ready = not missing and not issues
         message = (
-            "SePay Test Mode: chỉ dùng tài khoản Test và mô phỏng tiền vào trên SePay; không quét bằng ứng dụng ngân hàng thật."
+            "SePay Test Mode: chỉ dùng tài khoản Test và mô phỏng tiền vào trên SePay."
             if environment == "test"
-            else "VietQR Live: chuyển khoản bằng tiền thật, xác nhận qua SePay."
+            else "VietQR Live: xác nhận thanh toán qua SePay."
         )
         if not ready:
             message = "Chưa sẵn sàng thanh toán: " + "; ".join(
@@ -303,7 +303,7 @@ class SePayPayments:
             if action == "confirm" and order["status"] == "awaiting_confirmation":
                 return self.public_order(order)
             if order["status"] != "pending":
-                raise APIError("Phiên không còn chờ chuyển khoản; hãy kiểm tra kết quả, không chuyển thêm", 409)
+                raise APIError("Phiên không còn chờ chuyển khoản; không chuyển thêm", 409)
             if action == "cancel" and self.allocated(order):
                 raise APIError(
                     "Đã nhận một phần tiền; không hủy phiên, hãy thanh toán số còn lại hoặc liên hệ Ban quản lý", 409
@@ -653,7 +653,8 @@ class SePayPayments:
                 pagination = result.get("meta", {}).get("pagination", {})
                 if not isinstance(pagination, dict):
                     raise ValueError()
-                last_page = integer(pagination.get("last_page", page), "last_page", 1)
+                # SePay answers a search with no match with last_page 0: nothing arrived, not a failed check.
+                last_page = integer(pagination.get("last_page", page), "last_page", 0)
                 if last_page <= page and not pagination.get("has_more", False):
                     break
             else:
