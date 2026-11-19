@@ -6,7 +6,9 @@ pending : Chờ xử lý
 processing : Đang xử lý
 resolved : Đã giải quyết
 rejected : Từ chối
+cancelled : Đã hủy
 pending --> processing : BQL tiếp nhận
+pending --> cancelled : cư dân hủy yêu cầu
 pending --> resolved : BQL phản hồi và đóng
 pending --> rejected : BQL từ chối (bắt buộc phản hồi)
 processing --> resolved
@@ -15,4 +17,5 @@ resolved --> resolved : sửa nội dung phản hồi\n(thông báo lại cư d�
 rejected --> rejected : sửa nội dung phản hồi
 resolved --> [*]
 rejected --> [*]
+cancelled --> [*]
 @enduml

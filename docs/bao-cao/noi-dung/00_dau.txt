@@ -146,6 +146,7 @@ Hình 4.27: Trợ lý An Cư trả lời câu hỏi về phí gửi xe
 Hình 4.28: Trợ lý An Cư chỉ đường tới địa điểm
 Hình 4.29: Công việc được giao
 Hình 4.30: Nhập doanh thu vãng lai
+Hình 4.31: Quản lý dịch vụ
 #! MỞ ĐẦU
 ## 1. Lý do chọn đề tài
 Quá trình đô thị hóa tại Việt Nam diễn ra nhanh trong hai thập kỷ gần đây, kéo theo sự xuất hiện của rất nhiều tòa nhà chung cư tại các thành phố lớn. Mỗi tòa nhà có thể có hàng trăm căn hộ với hàng nghìn cư dân, đi kèm nhiều nghiệp vụ vận hành lặp lại hằng ngày như quản lý căn hộ và hợp đồng, thu phí điện nước, phí dịch vụ, phí gửi xe, tiếp nhận yêu cầu sửa chữa, giải quyết khiếu nại và thông báo tới cư dân.

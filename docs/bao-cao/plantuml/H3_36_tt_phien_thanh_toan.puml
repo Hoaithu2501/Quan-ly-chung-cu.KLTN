@@ -3,17 +3,15 @@
 title Biểu đồ trạng thái – Phiên thanh toán VietQR
 [*] --> pending : cư dân chọn Thanh toán
 pending : Chờ chuyển khoản (15 phút)
-awaiting_confirmation : Chờ ngân hàng xác nhận
 success : Thành công
 expired : Hết thời gian hiển thị QR
 cancelled : Đã hủy
-pending --> awaiting_confirmation : "Tôi đã chuyển khoản"
-pending --> success : webhook / API đủ tiền
+pending --> success : webhook / đối soát API đủ tiền
 pending --> expired : quá hạn phiên
 pending --> cancelled : chủ phiên hủy\n[chưa nhận tiền]
-pending --> pending : nhận thiếu tiền\n(QR mới = số còn thiếu)
-awaiting_confirmation --> success : đối soát đủ tiền
+pending --> pending : nhận thiếu tiền\n(gia hạn phiên, QR mới = số còn thiếu)
 expired --> success : tiền đến trễ vẫn đối soát
 cancelled --> success : tiền đến trễ vẫn đối soát
 success --> [*]
+note bottom of pending : Giao diện hỏi trạng thái mỗi 4 giây;\nkhông có nút báo đã chuyển khoản
 @enduml

@@ -5,25 +5,27 @@ title Biểu đồ use case phân rã – Kỹ thuật viên
 actor "Kỹ thuật viên" as KTV
 rectangle "Chức năng Kỹ thuật viên" {
   usecase "Đăng nhập" as L
-  usecase "Xem danh sách công việc\nđược phân công" as T1
+  usecase "Xem toàn bộ phiếu của đội,\nnhận phiếu chưa có người phụ trách" as T1
   usecase "Nhận xử lý phiếu\n(chờ xử lý → đang xử lý)" as T2
   usecase "Hoàn thành, đóng phiếu" as T3
-  usecase "Xử lý phiếu tạm ngưng /\nkhôi phục điện nước" as T4
-  usecase "Nhập / sửa doanh thu\ngửi xe vãng lai theo ngày" as G1
+    usecase "Nhập / sửa doanh thu\ngửi xe vãng lai theo ngày" as G1
   usecase "Xem tổng hợp xe theo căn hộ" as G2
-  usecase "Gửi thông báo tới cư dân, BQL" as N1
+  usecase "Quản lý dịch vụ: cắt dịch vụ\nhóa đơn quá hạn, cấp lại khi đã trả" as S1
+  usecase "Quản lý hóa đơn\n(cùng quyền với BQL, trừ báo cáo)" as I1
   usecase "Xem thông báo" as N2
   usecase "Hỏi trợ lý An Cư" as CH
 }
 KTV --> T1
 KTV --> G1
 KTV --> G2
-KTV --> N1
+KTV --> S1
+KTV --> I1
 KTV --> N2
 KTV --> CH
 T2 .> T1 : <<extend>>
 T3 .> T1 : <<extend>>
-T4 .> T1 : <<extend>>
 T1 ..> L : <<include>>
 G1 ..> L : <<include>>
+S1 ..> L : <<include>>
+I1 ..> L : <<include>>
 @enduml

@@ -16,18 +16,22 @@ rectangle "Chức năng Ban quản lý" {
   usecase "Lập hóa đơn điện nước tháng" as I1
   usecase "Lập hóa đơn dịch vụ 6 tháng" as I2
   usecase "Sửa hóa đơn chưa thanh toán" as I3
-  usecase "Ghi nhận tiền mặt /\nchuyển khoản thực nhận" as I4
+  usecase "Ghi nhận tiền đã thu" as I4
   usecase "Đối soát giao dịch SePay" as I5
   usecase "Chạy quét quá hạn thủ công" as I6
+  usecase "Lập hóa đơn gửi xe bổ sung" as I7
   usecase "Quản lý gửi xe" as P
-  usecase "Đăng ký / hủy xe tháng" as P1
+  usecase "Đăng ký / gia hạn / hủy xe tháng" as P1
+  usecase "Duyệt đơn đăng ký gửi xe" as P3
   usecase "Ghi nhận doanh thu vãng lai" as P2
   usecase "Quản lý sửa chữa, bảo trì" as M
-  usecase "Tạo phiếu, phân công\nkỹ thuật viên" as M1
+  usecase "Tạo phiếu (căn hộ / khu vực chung),\nphân công kỹ thuật viên" as M1
   usecase "Giải quyết khiếu nại, đơn đăng ký" as C
   usecase "Gửi thông báo chung / riêng" as N
   usecase "Báo cáo, thống kê" as RP
   usecase "Quản lý nhân sự & tài khoản" as U
+  usecase "Đổi vai trò tài khoản" as U1
+  usecase "Xem nhật ký thao tác" as U2
   usecase "Quản lý FAQ, địa điểm" as K
 }
 BQL --> A
@@ -51,8 +55,12 @@ I3 .> I : <<extend>>
 I4 .> I : <<extend>>
 I5 .> I : <<extend>>
 I6 .> I : <<extend>>
+I7 .> I : <<extend>>
 P1 .> P : <<extend>>
 P2 .> P : <<extend>>
+P3 .> P : <<extend>>
+U1 .> U : <<extend>>
+U2 .> U : <<extend>>
 M1 .> M : <<extend>>
 A ..> L : <<include>>
 I ..> L : <<include>>

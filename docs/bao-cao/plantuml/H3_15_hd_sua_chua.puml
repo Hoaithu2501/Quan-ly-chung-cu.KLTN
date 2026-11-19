@@ -13,17 +13,19 @@ if (Căn hộ thuộc phạm vi cư dân?) then (Không)
 endif
 :Tạo phiếu trạng thái "Chờ xử lý";
 |Ban quản lý|
-:Xem phiếu mới, chọn kỹ thuật viên phù hợp;
+:Xem phiếu mới, chọn kỹ thuật viên phù hợp
+(hoặc để kỹ thuật viên tự nhận);
 |Hệ thống|
 :Cập nhật technician_id;
 |Kỹ thuật viên|
-:Xem công việc được giao;
+:Xem toàn bộ phiếu của đội kỹ thuật;
 :Chọn "Nhận xử lý";
 |Hệ thống|
-if (Phiếu được giao cho đúng người?) then (Không)
-  :Từ chối (403);
+if (Phiếu đã có người phụ trách khác?) then (Có)
+  :Từ chối (409);
   stop
 endif
+:Gán người phụ trách nếu phiếu chưa có;
 :Trạng thái → "Đang xử lý";
 |Kỹ thuật viên|
 :Thực hiện công việc tại hiện trường;
@@ -31,6 +33,7 @@ endif
 |Hệ thống|
 :Trạng thái → "Hoàn thành", ghi completed_at;
 note right: Không được lùi trạng thái hoặc mở lại phiếu đã đóng
+:Thông báo cư dân, BQL và các kỹ thuật viên;
 |Cư dân|
 :Theo dõi kết quả trên giao diện;
 stop

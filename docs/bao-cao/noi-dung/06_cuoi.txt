@@ -1,11 +1,11 @@
 #! KẾT LUẬN
 Khóa luận "Xây dựng hệ thống quản lý chung cư" đã hoàn thành mục tiêu đặt ra: phân tích nghiệp vụ quản lý chung cư, thiết kế và xây dựng hệ thống An Cư theo kiến trúc hướng dịch vụ, phục vụ Ban quản lý, cư dân và kỹ thuật viên.
 Về mặt phân tích thiết kế, khóa luận đã xác định các tác nhân, xây dựng biểu đồ use case tổng quát và phân rã, đặc tả các use case chính, mô hình hóa luồng xử lý bằng 15 biểu đồ hoạt động, 15 biểu đồ tuần tự, 4 biểu đồ trạng thái, cùng biểu đồ kiến trúc, triển khai và thực thể liên kết. Toàn bộ biểu đồ được lưu dưới dạng mã PlantUML cùng mã nguồn.
-Về mặt cài đặt, hệ thống gồm gateway và tám service Flask độc lập (Auth, Resident, Billing, Parking, Maintenance, Notification, Complaint, Chatbot) giao tiếp qua REST, triển khai bằng Docker Compose. Hệ thống tích hợp thanh toán VietQR với đối soát tự động qua SePay, thông báo đẩy qua Firebase Cloud Messaging và trợ lý hỏi đáp dựa trên kho kiến thức kết hợp mô hình ngôn ngữ lớn. Các cơ chế outbox, khóa chống trùng và giao dịch tuần tự giúp mỗi hóa đơn chỉ được ghi nhận thu một lần trong các tình huống phức tạp như webhook lặp, chuyển thiếu, chuyển dư hay nhiều thành viên cùng thanh toán.
-Về mặt kiểm chứng, hệ thống có bộ kiểm thử tự động chạy trong quy trình CI với 333 ca kiểm thử backend và tích hợp đều đạt, cùng các ca kiểm thử giao diện đầu cuối; luồng thanh toán đã được nghiệm thu bằng giao dịch ngân hàng thật và thông báo đẩy đã được kiểm tra trên máy tính và điện thoại.
+Về mặt cài đặt, hệ thống gồm gateway và tám service Flask độc lập (Auth, Resident, Billing, Parking, Maintenance, Notification, Complaint, Chatbot) giao tiếp qua REST, triển khai bằng Docker Compose với một Dockerfile, tự khởi động lại và sao lưu CSDL hằng ngày. Hệ thống tích hợp thanh toán VietQR với đối soát tự động qua SePay, thông báo đẩy qua Firebase Cloud Messaging HTTP v1 và trợ lý hỏi đáp dựa trên kho kiến thức kết hợp mô hình ngôn ngữ lớn. Các cơ chế outbox, khóa chống trùng và giao dịch tuần tự giúp mỗi hóa đơn chỉ được ghi nhận thu một lần trong các tình huống phức tạp như webhook lặp, chuyển thiếu, chuyển dư hay nhiều thành viên cùng thanh toán.
+Về mặt kiểm chứng, hệ thống có bộ kiểm thử tự động chạy trong quy trình CI với 398 ca kiểm thử backend và tích hợp cùng 43 ca kiểm thử giao diện đầu cuối, đều đạt; luồng thanh toán đã được nghiệm thu bằng giao dịch ngân hàng thật và thông báo đẩy đã được kiểm tra trên máy tính và điện thoại.
 Thông qua đề tài, tôi có cơ hội vận dụng kiến thức về phân tích thiết kế hệ thống thông tin, cơ sở dữ liệu, lập trình web và kiểm thử phần mềm vào một bài toán thực tế; đồng thời tìm hiểu cách tích hợp với các dịch vụ thanh toán, thông báo và trí tuệ nhân tạo.
 Hướng phát triển trong tương lai:
-- Tách CSDL vật lý cho từng service hoặc chuyển sang PostgreSQL, thay trigger liên miền bằng sự kiện, bổ sung hàng đợi thông điệp (message queue) và khóa phân tán cho bộ lập lịch để có thể chạy nhiều bản sao.
+- Tách CSDL vật lý cho từng service hoặc chuyển sang PostgreSQL, bổ sung hàng đợi thông điệp (message queue) và khóa phân tán cho bộ lập lịch để có thể chạy nhiều bản sao.
 - Cấp định danh và khóa riêng cho từng service, bổ sung quản lý bí mật tập trung.
 - Phát triển ứng dụng di động cho cư dân, hỗ trợ phân trang và tìm kiếm nâng cao cho dữ liệu lớn.
 - Tích hợp phát hành hóa đơn điện tử, biểu giá điện bậc thang và phí phạt chậm trả theo quy định của từng tòa nhà.
@@ -31,16 +31,16 @@ Mặc dù đã cố gắng, khóa luận chắc chắn không tránh khỏi nh�
 [17] PlantUML, "PlantUML Language Reference Guide." [Trực tuyến]. Có sẵn: https://plantuml.com/guide. [Truy cập ngày: 10-Nov-2026].
 #! PHỤ LỤC
 ## Phụ lục A: Hướng dẫn cài đặt và chạy hệ thống
-Yêu cầu: máy tính cài Docker Desktop (hoặc Docker Engine kèm Docker Compose) và Git; tài khoản SePay, dự án Firebase và khóa API Gemini nếu dùng các tính năng tương ứng. Các bước thực hiện:
+Yêu cầu: máy tính cài Docker Desktop (hoặc Docker Engine kèm Docker Compose) và Git; tài khoản SePay, dự án Firebase, khóa API Gemini và Tailscale nếu dùng các tính năng tương ứng. Các bước thực hiện:
 - Tải mã nguồn từ [địa chỉ kho mã nguồn] và chuyển vào thư mục dự án.
-- Sao chép tệp .env.example thành .env; khai báo JWT_SECRET và SERVICE_TOKEN (tối thiểu 32 ký tự); khai báo thông tin SePay, Firebase, Gemini nếu sử dụng.
-- Chạy lệnh docker compose up --build -d (trên Windows có thể dùng script start.ps1). Container db-init khởi tạo cơ sở dữ liệu, sau đó gateway và tám service khởi động.
-- Truy cập http://localhost:5000 để sử dụng hệ thống; tài liệu API của từng service tại http://localhost:5001/docs đến http://localhost:5008/docs.
-- Chạy kiểm thử: cài các thư viện trong requirements-dev.txt; chạy python -m pytest tests --ignore=tests/test_browser.py cho kiểm thử backend và python -m pytest tests/test_browser.py cho kiểm thử giao diện.
+- Tùy chọn: sao chép tệp .env.example thành .env để khai báo thông tin SePay, Firebase, Gemini; JWT_SECRET và SERVICE_TOKEN được tự sinh nếu không khai báo.
+- Chạy lệnh docker compose up --build -d (trên Windows có thể dùng script start.ps1). Container db-init khởi tạo cơ sở dữ liệu, sau đó gateway, tám service và container sao lưu khởi động.
+- Truy cập http://localhost:5000 (hoặc http://<địa chỉ IP>:5000 trong mạng LAN) để sử dụng hệ thống; tài liệu API của từng service tại http://localhost:5001/docs đến http://localhost:5008/docs. Để truy cập từ xa và nhận webhook SePay, chạy tailscale funnel --bg 5000.
+- Chạy kiểm thử: cài các thư viện trong requirements.txt và requirements-dev.txt; chạy python -m pytest tests --ignore=tests/test_browser.py --ignore=tests/test_bug_sheet_browser.py cho kiểm thử backend và python -m pytest tests/test_browser.py tests/test_bug_sheet_browser.py cho kiểm thử giao diện.
 ## Phụ lục B: Cấu trúc thư mục sản phẩm nộp kèm
 Thư mục tổng hợp nộp cho Khoa gồm:
 - 11236032_Trần Hoài Thu_Xây dựng hệ thống quản lý chung cư.pdf: báo cáo khóa luận.
-- Thư mục Source: mã nguồn hệ thống, gồm thư mục của tám service, gateway, frontend, migrations, scripts, tests, docs và các tệp docker-compose.yml, requirements.txt.
+- Thư mục Source: mã nguồn hệ thống, gồm thư mục của tám service, gateway, frontend, migrations, scripts, tests, docs và các tệp Dockerfile, docker-compose.yml, requirements.txt.
 - Tệp Readme.md: mô tả cấu trúc dự án, cách cài đặt và triển khai.
 ## Phụ lục C: Mã nguồn PlantUML của các biểu đồ
 Các biểu đồ trong Chương 3 được vẽ bằng PlantUML và lưu trong thư mục docs/bao-cao/plantuml của mã nguồn. Tương ứng giữa tệp mã và hình như sau:

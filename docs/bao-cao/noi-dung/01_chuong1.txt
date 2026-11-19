@@ -4,7 +4,7 @@ Ban quản lý chung cư là bộ phận chịu trách nhiệm vận hành tòa 
 - Quản lý căn hộ và cư dân: lưu thông tin căn hộ (mã căn, tòa, tầng, diện tích), chủ sở hữu, người thuê, thời hạn hợp đồng thuê và trạng thái căn hộ đang ở hay còn trống.
 - Thu phí: tiền điện, nước tính theo chỉ số tiêu thụ hằng tháng; phí dịch vụ chung và phí gửi xe thu theo kỳ sáu tháng; theo dõi khoản quá hạn và nhắc nợ.
 - Quản lý gửi xe: đăng ký xe tháng cho từng căn hộ, cấp thẻ, thu tiền gửi xe vãng lai theo ngày.
-- Sửa chữa và bảo trì: tiếp nhận yêu cầu của cư dân, phân công kỹ thuật viên, theo dõi tiến độ; tạm ngưng hoặc khôi phục dịch vụ điện nước khi căn hộ nợ phí.
+- Sửa chữa và bảo trì: tiếp nhận yêu cầu của cư dân, phân công kỹ thuật viên, theo dõi tiến độ; ghi nhận cắt hoặc cấp lại dịch vụ khi hóa đơn quá hạn hoặc đã được thanh toán.
 - Tiếp nhận và giải quyết khiếu nại, đơn đăng ký dịch vụ.
 - Thông báo chung tới toàn bộ cư dân và thông báo riêng tới từng căn hộ.
 - Giải đáp nội quy, mức phí, vị trí các tiện ích trong tòa nhà.
@@ -29,8 +29,8 @@ Tuy nhiên, các phần mềm thương mại thường có chi phí theo số c�
 Đề tài hướng tới xây dựng hệ thống quản lý chung cư (đặt tên là An Cư) đáp ứng các mục tiêu:
 - Số hóa toàn bộ nghiệp vụ chính của Ban quản lý: căn hộ, cư dân, hợp đồng, hóa đơn, gửi xe, sửa chữa, khiếu nại, thông báo, báo cáo và tài khoản.
 - Cho phép cư dân tự đăng ký tài khoản, xem hóa đơn của căn hộ mình, thanh toán bằng VietQR, tải biên nhận, gửi yêu cầu và nhận thông báo.
-- Hỗ trợ kỹ thuật viên nhận và cập nhật công việc được giao, nhập doanh thu gửi xe vãng lai.
-- Tự động hóa các tác vụ định kỳ: chuyển hóa đơn quá hạn, nhắc hạn, tạo yêu cầu tạm ngưng dịch vụ và khôi phục dịch vụ khi đã thanh toán đủ.
+- Hỗ trợ kỹ thuật viên xử lý phiếu sửa chữa, bảo trì, ghi nhận cắt và cấp lại dịch vụ của hóa đơn quá hạn, cùng Ban quản lý quản lý hóa đơn và nhập doanh thu gửi xe vãng lai.
+- Tự động hóa các tác vụ định kỳ: chuyển hóa đơn sang quá hạn ngay khi qua hạn thanh toán, nhắc hạn, báo kỹ thuật viên cắt dịch vụ của hóa đơn quá hạn và cấp lại khi hóa đơn đã được thanh toán; tự xác nhận thanh toán chuyển khoản mà cư dân không phải thao tác thêm.
 - Đảm bảo mỗi hóa đơn chỉ được ghi nhận thu một lần dù webhook bị gửi lặp, nhiều thành viên cùng thanh toán hoặc cư dân chuyển dư.
 - Tổ chức mã nguồn theo kiến trúc hướng dịch vụ để mỗi chức năng có thể chạy, kiểm thử và triển khai độc lập.
 ## 1.5. Các yêu cầu hệ thống
@@ -39,37 +39,38 @@ Hệ thống phục vụ ba nhóm người dùng chính và một trợ lý tự
 Đối với Ban quản lý:
 - Quản lý căn hộ: thêm, sửa căn hộ (mã căn, tòa, tầng, diện tích); xem trạng thái đang ở hoặc còn trống, cư dân hiện tại, loại hợp đồng và số ngày còn lại của hợp đồng thuê.
 - Quản lý cư dân và hợp đồng: thêm, sửa hồ sơ cư dân; lập hợp đồng sở hữu hoặc thuê; xác nhận hoặc gỡ xác nhận cư dân thuộc căn hộ.
-- Quản lý hóa đơn: lập hóa đơn điện nước hằng tháng theo lượng tiêu thụ và đơn giá; lập hóa đơn phí dịch vụ và gửi xe sáu tháng, trong đó phí gửi xe được tự tính theo số xe và số tháng gửi; sửa hóa đơn chưa thanh toán; ghi nhận thu tiền mặt; đối soát giao dịch chuyển khoản.
-- Quản lý gửi xe: đăng ký, hủy xe tháng của từng căn hộ; ghi nhận doanh thu gửi xe vãng lai theo ngày.
+- Quản lý hóa đơn: lập hóa đơn điện nước hằng tháng theo lượng tiêu thụ và đơn giá; lập hóa đơn phí dịch vụ và gửi xe sáu tháng, trong đó phí gửi xe được tự tính theo số xe và số tháng gửi; lập hóa đơn gửi xe bổ sung cho xe đăng ký sau khi đã phát hành hóa đơn kỳ; sửa hóa đơn chưa thanh toán; ghi nhận tiền đã thu; đối soát giao dịch chuyển khoản. Kỹ thuật viên dùng chung bộ quyền quản lý hóa đơn này.
+- Quản lý gửi xe: đăng ký, gia hạn, hủy xe tháng của từng căn hộ (phí làm thẻ chỉ thu một lần cho mỗi biển số); duyệt đơn đăng ký gửi xe của cư dân; ghi nhận doanh thu gửi xe vãng lai theo ngày.
 - Quản lý sửa chữa, bảo trì: tạo phiếu, phân công kỹ thuật viên, theo dõi tiến độ.
 - Giải quyết khiếu nại và đơn đăng ký: phản hồi, chuyển trạng thái, cư dân nhận thông báo riêng.
 - Gửi thông báo chung tới toàn bộ cư dân và thông báo riêng tới căn hộ hoặc cư dân.
 - Báo cáo, thống kê doanh thu theo tháng hoặc quý: phát hành, thực thu, công nợ; xuất CSV.
-- Quản lý nhân sự và tài khoản: tạo tài khoản, khóa tài khoản có lý do, đặt lại mật khẩu, quản lý hồ sơ kỹ thuật viên.
+- Quản lý tài khoản và nhân sự kỹ thuật: đổi vai trò tài khoản (danh sách kỹ thuật viên tự cập nhật theo vai trò), phân công kỹ thuật viên, xem nhật ký thao tác quản trị.
 - Cập nhật nội quy, câu hỏi thường gặp và danh bạ địa điểm cho trợ lý.
 Đối với cư dân:
 - Đăng ký tài khoản bằng số căn hộ, đăng nhập, cập nhật thông tin cá nhân, đổi mật khẩu.
 - Xem căn hộ, hợp đồng và hóa đơn của căn hộ mình.
 - Thanh toán hóa đơn bằng VietQR, theo dõi trạng thái, xem lịch sử thanh toán và tải biên nhận.
 - Xem xe đã đăng ký và phí gửi xe.
-- Gửi yêu cầu sửa chữa, bảo trì; gửi khiếu nại và đơn đăng ký (đăng ký gửi xe, dịch vụ); xem phản hồi.
+- Gửi yêu cầu sửa chữa, bảo trì; gửi khiếu nại và đơn đăng ký (đăng ký gửi xe, dịch vụ) kèm ảnh hoặc tệp; hủy yêu cầu khi còn chờ xử lý; xem phản hồi.
 - Nhận thông báo chung, riêng trên web và thông báo đẩy trên trình duyệt, điện thoại.
 - Hỏi trợ lý An Cư về nội quy, phí, vị trí tiện ích, công nợ của chính mình.
 Đối với kỹ thuật viên:
-- Xem danh sách công việc được phân công, nhận xử lý, hoàn thành phiếu.
-- Thực hiện các phiếu tạm ngưng hoặc khôi phục dịch vụ điện nước được tạo tự động.
+- Xem toàn bộ phiếu sửa chữa, bảo trì (các kỹ thuật viên làm việc theo nhóm), nhận xử lý và hoàn thành phiếu.
+- Tại màn hình Quản lý dịch vụ: ghi nhận cắt điện, nước, dịch vụ chung hoặc gửi xe của hóa đơn quá hạn và cấp lại sau khi hóa đơn được thanh toán.
 - Nhập, sửa doanh thu gửi xe vãng lai theo ngày; xem tổng hợp xe theo căn hộ.
-- Gửi thông báo tới cư dân và Ban quản lý về tình hình phát sinh.
+- Quản lý hóa đơn với cùng quyền như Ban quản lý (lập, sửa, ghi nhận tiền đã thu, đối soát chuyển khoản); không xem báo cáo thống kê và không soạn thông báo, hệ thống tự báo cư dân và Ban quản lý khi phiếu thay đổi.
 Đối với trợ lý An Cư (chatbot):
 - Trả lời 24/7 các câu hỏi về nội quy, chính sách, mức phí, thủ tục.
 - Cho biết vị trí các địa điểm quan trọng trong chung cư (văn phòng Ban quản lý, phòng camera, hiệu thuốc, bãi xe…).
 - Trả lời từ kho kiến thức do Ban quản lý quản lý; có thể dùng mô hình ngôn ngữ lớn để diễn đạt lại nhưng không tự tạo thông tin ngoài nguồn.
 ### 1.5.2. Yêu cầu phi chức năng
-- Bảo mật: mật khẩu được băm, xác thực bằng JSON Web Token (JWT) có thời hạn, tài khoản bị khóa mất quyền ngay lập tức; phân quyền theo vai trò và theo căn hộ; khóa bí mật chỉ nằm ở máy chủ; webhook thanh toán phải có API Key.
+- Bảo mật: mật khẩu được băm; xác thực bằng JSON Web Token (JWT) có thời hạn, mọi phiên cũ mất hiệu lực ngay khi đổi mật khẩu hoặc đổi vai trò; giới hạn số lần đăng nhập sai và số lần đăng ký; nhật ký thao tác quản trị chỉ được ghi thêm; phân quyền theo vai trò và theo căn hộ; khóa bí mật chỉ nằm ở máy chủ; webhook thanh toán phải có API Key.
 - Toàn vẹn dữ liệu: một căn hộ chỉ có một hóa đơn mỗi kỳ và mỗi loại; mỗi hóa đơn chỉ có một khoản thanh toán thành công; số tiền là số nguyên VND không âm; ràng buộc được kiểm tra ở cả API và cơ sở dữ liệu.
 - Tin cậy: sự kiện giữa các service được lưu trong outbox và gửi lại khi service đích tạm lỗi; mỗi sự kiện có mã định danh để xử lý đúng một lần.
 - Khả năng bảo trì và mở rộng: mỗi service là một ứng dụng độc lập có tài liệu OpenAPI, health check và container riêng.
-- Khả dụng: giao diện tiếng Việt, hiển thị tốt trên máy tính và điện thoại, có thể thêm vào màn hình chính như ứng dụng.
+- Sẵn sàng: các container tự khởi động lại mỗi khi Docker chạy; cơ sở dữ liệu được sao lưu tự động mỗi ngày và giữ 14 bản gần nhất.
+- Khả dụng: giao diện tiếng Việt, hiển thị tốt trên máy tính và điện thoại; truy cập được trong mạng nội bộ hoặc qua địa chỉ HTTPS cố định của Tailscale Funnel; cài được lên màn hình chính iPhone, Android như một ứng dụng.
 - Kiểm thử được: có bộ kiểm thử tự động chạy trên cơ sở dữ liệu tạm, không ảnh hưởng dữ liệu đang vận hành.
 ## 1.6. Phạm vi và phương pháp thực hiện
 ### 1.6.1. Phạm vi

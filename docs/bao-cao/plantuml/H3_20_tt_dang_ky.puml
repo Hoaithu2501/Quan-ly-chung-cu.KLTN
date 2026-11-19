@@ -10,7 +10,7 @@ database "SQLite" as DB
 U -> UI : Nhập thông tin, chọn Đăng ký
 UI -> GW : POST /api/auth/register
 GW -> AUTH : chuyển tiếp
-AUTH -> AUTH : kiểm tra định dạng dữ liệu
+AUTH -> AUTH : giới hạn 20 lần đăng ký / giờ / địa chỉ;\nkiểm tra định dạng, tên đăng nhập chưa tồn tại
 AUTH -> RES : GET /api/apartments (X-Service-Token)
 RES -> DB : SELECT apartments
 RES --> AUTH : danh sách căn hộ
@@ -22,6 +22,7 @@ else căn hộ hợp lệ
   RES -> DB : INSERT residents (registered_apartment_code)
   RES --> AUTH : 201 hồ sơ cư dân
   AUTH -> DB : UPDATE users SET status='active'
+  AUTH -> AUTH : báo BQL xác nhận căn hộ (Notification)
   AUTH --> GW : 201 {token, user}
   GW --> UI : 201
   UI --> U : chuyển tới Thông tin cá nhân

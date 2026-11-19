@@ -12,13 +12,13 @@ rectangle "Chức năng Cư dân" {
   usecase "Xem căn hộ, hợp đồng của mình" as P3
   usecase "Xem hóa đơn căn hộ" as B1
   usecase "Thanh toán qua VietQR" as B2
-  usecase "Báo đã chuyển khoản /\nhủy phiên" as B3
-  usecase "Kiểm tra trạng thái thanh toán" as B4
+  usecase "Hủy phiên thanh toán\n(khi chưa chuyển tiền)" as B3
   usecase "Xem lịch sử, tải biên nhận" as B5
   usecase "Xem xe đã đăng ký, phí gửi xe" as V1
   usecase "Tạo yêu cầu sửa chữa / bảo trì" as T1
   usecase "Theo dõi tiến độ phiếu" as T2
-  usecase "Gửi khiếu nại / đơn đăng ký" as C1
+  usecase "Gửi khiếu nại / đơn đăng ký\n(kèm tệp đính kèm)" as C1
+  usecase "Hủy yêu cầu đang chờ xử lý" as C3
   usecase "Xem phản hồi của BQL" as C2
   usecase "Xem thông báo, đánh dấu đã đọc" as N1
   usecase "Bật thông báo đẩy trên trình duyệt" as N2
@@ -40,7 +40,7 @@ CD --> N2
 CD --> CH
 B2 .> B1 : <<extend>>
 B3 .> B2 : <<extend>>
-B4 .> B2 : <<extend>>
+C3 .> C1 : <<extend>>
 B2 --> SEPAY
 P1 ..> L : <<include>>
 B1 ..> L : <<include>>

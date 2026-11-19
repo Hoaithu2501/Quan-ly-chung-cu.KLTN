@@ -1,9 +1,10 @@
 @startuml H3_40_trien_khai
 !include _style.iuml
 title Biểu đồ triển khai bằng Docker Compose
-node "Máy chủ / máy tính chạy Docker" {
+node "Máy chủ / máy tính chạy Docker\n(một Dockerfile, restart: always)" {
   node "Mạng ảo qlcc (bridge)" {
     node "db-init\n(chạy một lần)" as INIT
+    node "backup\n(mỗi ngày, giữ 14 bản)" as BK
     node "gateway :5000" as GW
     node "auth :5001" as A
     node "resident :5002" as R
@@ -15,12 +16,16 @@ node "Máy chủ / máy tính chạy Docker" {
     node "chatbot :5008" as CH
   }
   database "Volume qlcc-data\n/app/data/QLCC.db" as VOL
-  file ".env\n(JWT_SECRET, SERVICE_TOKEN,\nSEPAY_*, FIREBASE_*, LLM_*)" as ENV
+  file "/app/generated/secrets.json\n(JWT_SECRET, SERVICE_TOKEN tự sinh)" as SEC
+  file ".env (tùy chọn)\nSEPAY_*, FIREBASE_*, LLM_*" as ENV
 }
-node "Cloudflare Tunnel (HTTPS)" as TUN
+node "Thiết bị trong mạng LAN\nhttp://IP:5000" as LAN
+node "Tailscale Funnel\n(HTTPS cố định)" as TUN
 cloud "SePay" as SEPAY
-cloud "Firebase" as FCM
+cloud "Firebase Cloud Messaging" as FCM
 INIT --> VOL : khởi tạo + migration
+INIT --> SEC : sinh khóa bí mật
+BK --> VOL : sao lưu
 A --> VOL
 R --> VOL
 B --> VOL
@@ -30,7 +35,8 @@ N --> VOL
 C --> VOL
 CH --> VOL
 ENV ..> GW
-TUN --> GW : public URL
+LAN --> GW
+TUN --> GW : public URL\n(TUNNEL_ACCESS: all / webhook)
 SEPAY --> TUN : webhook
-N --> FCM
+N --> FCM : HTTP v1 (google-auth)
 @enduml

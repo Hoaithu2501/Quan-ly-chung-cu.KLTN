@@ -12,10 +12,11 @@ NOTI -> DB : lưu notification_push_tokens
 A -> NOTI : POST /api/notifications {type, title, content, đích}
 NOTI -> DB : INSERT notifications (+ audience)
 NOTI -> DB : SELECT token của người nhận
-NOTI -> FCM : messages:send (OAuth service account)
+NOTI -> NOTI : google-auth lấy access token\ntừ service account
+NOTI -> FCM : POST /v1/projects/{id}/messages:send (requests)
 FCM -> SW : push message
 SW -> U : hiển thị thông báo hệ điều hành
-FCM --> NOTI : kết quả; token hết hạn → xóa
+FCM --> NOTI : kết quả; token UNREGISTERED → xóa
 NOTI --> A : 201 {push: configured, sent, failed}
 U -> NOTI : POST /api/notifications/{id}/read
 NOTI -> DB : INSERT notification_logs (một lần)

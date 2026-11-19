@@ -10,7 +10,7 @@ database "SQLite" as DB
 U -> UI : Nhập tên đăng nhập, mật khẩu
 UI -> GW : POST /api/auth/login
 GW -> AUTH : chuyển tiếp
-AUTH -> AUTH : kiểm tra giới hạn số lần thử
+AUTH -> AUTH : kiểm tra giới hạn số lần thử\n(cặp địa chỉ + tài khoản, địa chỉ, tài khoản; 5 phút)
 AUTH -> DB : SELECT users WHERE username=?
 AUTH -> AUTH : check_password_hash()
 alt sai thông tin
@@ -18,7 +18,7 @@ alt sai thông tin
 else tài khoản khóa
   AUTH --> UI : 403 ACCOUNT_LOCKED + lý do
 else hợp lệ
-  AUTH -> AUTH : jwt.encode(sub, role, exp=8h)
+  AUTH -> AUTH : jwt.encode(sub, role, ver=token_version, exp=8h)
   AUTH --> UI : 200 {token, user}
   UI -> UI : lưu token, dựng menu theo vai trò
 end
@@ -27,7 +27,7 @@ UI -> GW : GET /api/... (Authorization: Bearer)
 GW -> SV : chuyển tiếp
 SV -> SV : jwt.decode()
 SV -> AUTH : GET /api/auth/me
-AUTH -> DB : kiểm tra trạng thái tài khoản
+AUTH -> DB : kiểm tra trạng thái tài khoản\nvà ver khớp token_version
 AUTH --> SV : user hiện tại
 SV -> SV : kiểm tra vai trò được phép
 SV --> UI : dữ liệu hoặc 403

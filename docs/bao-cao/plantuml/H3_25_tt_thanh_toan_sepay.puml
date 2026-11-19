@@ -8,7 +8,7 @@ participant "Resident Service" as RES
 participant "vietqr.app" as QR
 participant "Ngân hàng / SePay" as SEPAY
 participant "Notification" as NOTI
-participant "Maintenance" as MAIN
+participant "APScheduler" as S
 database "SQLite" as DB
 U -> UI : Chọn Thanh toán
 UI -> BILL : POST /invoices/{kind}/{id}/checkout
@@ -23,9 +23,6 @@ BILL -> QR : GET img (tài khoản, số còn thiếu, nội dung)
 QR --> BILL : PNG
 BILL --> UI : ảnh VietQR
 U -> SEPAY : quét QR, chuyển khoản
-U -> UI : "Tôi đã chuyển khoản"
-UI -> BILL : POST /orders/{id}/confirm-transfer
-BILL -> DB : status = awaiting_confirmation
 SEPAY -> BILL : POST /sepay/webhook (Authorization: Apikey)
 BILL -> BILL : xác thực khóa, tài khoản, ngân hàng, chiều tiền
 BILL -> DB : BEGIN IMMEDIATE; INSERT bank_transactions (chống lặp)
@@ -35,8 +32,12 @@ alt đủ tiền
 end
 BILL --> SEPAY : 201 {success: true}
 BILL -> NOTI : POST /api/notifications/events
-BILL -> MAIN : POST /api/maintenance/events (invoice_settled)
-loop mỗi 4 giây
+opt webhook bị lỡ
+  S -> BILL : sepay_job() mỗi 60 giây
+  BILL -> SEPAY : GET giao dịch theo nội dung phiên
+  BILL -> DB : ghi nhận như webhook (chống lặp)
+end
+loop mỗi 4 giây (song song từ khi hiện QR)
   UI -> BILL : GET /orders/{id}
   BILL --> UI : success, paid_amount
 end

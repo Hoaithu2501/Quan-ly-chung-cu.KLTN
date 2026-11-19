@@ -1,13 +1,15 @@
 @startuml H3_35_tt_hoa_don
 !include _style.iuml
 title Biểu đồ trạng thái – Hóa đơn
-[*] --> unpaid : BQL lập hóa đơn
+[*] --> unpaid : BQL / KTV lập hóa đơn\n[hạn chưa qua]
+[*] --> overdue : lập hóa đơn với hạn đã qua
 unpaid : Chưa thanh toán
 paid : Đã thanh toán
 overdue : Quá hạn
-unpaid --> unpaid : BQL sửa phí / hạn\n(khi chưa phát hành QR)
-unpaid --> paid : nhận đủ tiền (SePay)\nhoặc BQL ghi nhận tiền mặt
-unpaid --> overdue : job 00:05, due_date < hôm nay\n[trigger tạo phiếu cut_service]
-overdue --> paid : thanh toán công nợ\n[gửi invoice_settled]
+unpaid --> unpaid : sửa phí / hạn\n(khi chưa phát hành QR)
+unpaid --> paid : nhận đủ tiền (SePay)\nhoặc ghi nhận tiền đã thu
+unpaid --> overdue : qua hạn thanh toán\n(job 00:05 hoặc ngay khi lập / sửa)
+overdue --> paid : thanh toán công nợ\n[báo KTV cấp lại dịch vụ đã cắt]
+note right of overdue : KTV có thể ghi nhận cắt\nđiện, nước, dịch vụ chung, gửi xe
 paid --> [*]
 @enduml

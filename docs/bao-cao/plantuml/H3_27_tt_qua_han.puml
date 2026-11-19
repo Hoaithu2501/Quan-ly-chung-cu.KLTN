@@ -2,30 +2,31 @@
 !include _style.iuml
 title Biểu đồ tuần tự – Quét hóa đơn quá hạn và khôi phục dịch vụ
 participant "APScheduler" as S
+actor "Kỹ thuật viên" as T
 participant "Billing Service" as BILL
 database "SQLite" as DB
 participant "Notification" as NOTI
-participant "Maintenance" as MAIN
-S -> BILL : overdue_job() 00:05 hằng ngày
+S -> BILL : overdue_job() 00:05 hằng ngày\n(hoặc ngay khi lập / sửa hóa đơn quá hạn)
 BILL -> DB : BEGIN IMMEDIATE
 BILL -> DB : SELECT unpaid WHERE due_date < hôm nay
 loop mỗi hóa đơn
   BILL -> DB : UPDATE status='overdue'
-  DB -> DB : trg_auto_ticket_*_overdue → INSERT cut_service
-  BILL -> DB : INSERT outbox (overdue)
+  BILL -> DB : INSERT outbox (overdue cho căn hộ)
 end
-BILL -> DB : INSERT outbox (báo cáo quá hạn cho BQL); COMMIT
+BILL -> DB : INSERT outbox (tổng hợp cho BQL, KTV); COMMIT
 BILL -> DB : send_due_reminders (hạn trong 3 ngày)
 S -> BILL : outbox_job() mỗi 30 giây
 BILL -> NOTI : POST /api/notifications/events
 NOTI --> BILL : 201
-== Sau khi cư dân trả hết nợ quá hạn ==
-BILL -> MAIN : POST /api/maintenance/events\n{event_id, invoice_settled, all_debts_settled}
-MAIN -> DB : INSERT maintenance_events (bỏ qua nếu trùng)
-alt phiếu cut_service đang pending
-  MAIN -> DB : INSERT cut_service_resolutions (cancelled); đóng phiếu
-else phiếu đã bắt đầu / hoàn thành
-  MAIN -> DB : INSERT restore_service (hoặc dùng lại phiếu đang mở)
-end
-MAIN --> BILL : 200
+== Kỹ thuật viên cắt dịch vụ ==
+T -> BILL : GET /api/billing/services
+T -> BILL : POST /api/billing/services/{kind}/{id}\n{service, action: cut}
+BILL -> DB : kiểm tra hóa đơn quá hạn;\nINSERT invoice_service_cuts (cut)
+BILL -> DB : INSERT outbox (báo cư dân, BQL)
+BILL --> T : 200
+== Sau khi cư dân thanh toán ==
+BILL -> DB : hóa đơn = paid; INSERT outbox\n(restore-needed cho KTV)
+T -> BILL : POST /api/billing/services/{kind}/{id}\n{service, action: restore}
+BILL -> DB : kiểm tra hóa đơn đã thanh toán;\nUPDATE invoice_service_cuts (restored)
+BILL --> T : 200
 @enduml

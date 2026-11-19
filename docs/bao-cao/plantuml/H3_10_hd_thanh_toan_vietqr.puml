@@ -18,13 +18,12 @@ endif
 sinh nội dung chuyển khoản duy nhất;
 :Hiển thị ảnh VietQR với số tiền còn thiếu;
 |Cư dân|
-:Quét QR bằng ứng dụng ngân hàng, chuyển tiền;
-:Chọn "Tôi đã chuyển khoản";
-|Hệ thống|
-:Phiên → "Chờ ngân hàng xác nhận";
+:Quét QR bằng ứng dụng ngân hàng, chuyển tiền
+(không cần bấm xác nhận);
 |SePay|
 :Phát hiện tiền vào tài khoản;
-:Gọi webhook kèm Apikey;
+:Gọi webhook kèm Apikey
+(nếu lỡ, Billing đối soát qua API SePay mỗi 60 giây);
 |Hệ thống|
 if (API Key, tài khoản, ngân hàng,\nchiều tiền hợp lệ?) then (Không)
   :Từ chối webhook;
@@ -40,13 +39,15 @@ phần dư lưu sổ đối soát;
 if (Đã nhận đủ tiền?) then (Có)
   :Tạo một khoản thanh toán thành công,
   hóa đơn → "Đã thanh toán";
-  :Outbox: thông báo cư dân + BQL,
-  sự kiện invoice_settled cho Maintenance;
+  :Outbox: thông báo cư dân + BQL
+  (báo kỹ thuật viên cấp lại nếu dịch vụ đang bị cắt);
 else (Chưa đủ)
-  :Lưu phần đã nhận, QR mới chỉ chứa số còn thiếu;
+  :Lưu phần đã nhận, gia hạn phiên,
+  QR mới chỉ chứa số còn thiếu;
 endif
 |Cư dân|
-:Giao diện tự cập nhật (polling 4 giây),
-tải biên nhận;
+:Hộp thoại tự hỏi trạng thái mỗi 4 giây;
+chỉ báo lỗi khi không lấy được trạng thái / QR;
+:Đã thanh toán, tải biên nhận;
 stop
 @enduml

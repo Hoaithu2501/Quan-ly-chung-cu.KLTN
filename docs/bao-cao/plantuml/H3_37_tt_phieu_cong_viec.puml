@@ -1,14 +1,13 @@
 @startuml H3_37_tt_phieu_cong_viec
 !include _style.iuml
 title Biểu đồ trạng thái – Phiếu sửa chữa / bảo trì
-[*] --> pending : cư dân / BQL / trigger tạo phiếu
+[*] --> pending : cư dân / BQL tạo phiếu
 pending : Chờ xử lý
 in_progress : Đang xử lý
 completed : Hoàn thành
-pending --> pending : BQL phân công kỹ thuật viên
-pending --> in_progress : KTV nhận xử lý\n[đã có người được giao]
+pending --> pending : BQL phân công\nhoặc KTV tự nhận phiếu
+pending --> in_progress : KTV nhận xử lý\n[đã có người phụ trách]
 in_progress --> completed : KTV hoàn thành\n(ghi completed_at)
-pending --> completed : cut_service bị hủy khi trả hết nợ\n(outcome = cancelled)
 completed --> [*]
 note right of completed : Không mở lại; cần xử lý tiếp\nthì tạo phiếu mới
 @enduml

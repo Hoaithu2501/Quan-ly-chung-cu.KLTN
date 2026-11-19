@@ -9,12 +9,22 @@ entity users {
   --
   username : TEXT <<UNIQUE>>
   password_hash : TEXT
-  email : TEXT <<UNIQUE>>
+  email : TEXT
   phone : TEXT
   role : admin|resident|technician
   status : active|locked
   lock_reason : TEXT
+  token_version : INTEGER
+  full_name, id_card : TEXT
   created_at : TEXT
+}
+entity audit_log {
+  * audit_id : <<PK>>
+  --
+  actor_user_id, actor_username
+  action, entity, entity_id
+  details, client_ip, created_at
+  (chỉ thêm, trigger chặn sửa / xóa)
 }
 }
 package "Resident" {
@@ -107,6 +117,15 @@ entity bank_transactions {
   invoice_type, invoice_id
   resolution, resolution_note
 }
+entity invoice_service_cuts {
+  * cut_id : <<PK>>
+  --
+  invoice_type, invoice_id
+  service : electricity|water|common_service|parking
+  status : cut|restored
+  cut_by_user_id, cut_at
+  restored_by_user_id, restored_at
+}
 entity billing_outbox {
   * event_id : TEXT <<PK>>
   --
@@ -124,6 +143,7 @@ entity vehicles {
   monthly_fee : 50000|100000
   registered_date, registration_months
   status, cancelled_date, card_fee
+  created_at
 }
 entity guest_parking_daily {
   * record_id : <<PK>>
@@ -139,13 +159,14 @@ entity technicians {
   user_id : (ref logic)
   full_name
   specialty : parking|payment|general
+  active : 0|1
 }
 entity maintenance_tickets {
   * ticket_id : <<PK>>
   --
-  apartment_id : (ref logic)
+  apartment_id : (ref logic), location
   technician_id : <<FK>>
-  type : repair|maintenance|cut_service|restore_service
+  type : repair|maintenance
   description, priority, status
   created_at, completed_at
 }
@@ -182,7 +203,8 @@ entity complaints {
   --
   resident_id : (ref logic)
   type : complaint|registration
-  category, content, status
+  category, content, attachments
+  status : pending|processing|resolved|rejected|cancelled
   response, created_at, resolved_at
 }
 entity complaint_outbox {
@@ -218,5 +240,7 @@ users ||..o{ residents : ref logic
 apartments ||..o{ monthly_invoices : ref logic
 apartments ||..o{ semiannual_invoices : ref logic
 apartments ||..o{ vehicles : ref logic
+monthly_invoices ||..o{ invoice_service_cuts : ref logic
+users ||..o{ audit_log : ref logic
 users ||..o{ technicians : ref logic
 @enduml

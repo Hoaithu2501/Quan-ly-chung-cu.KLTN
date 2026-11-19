@@ -16,10 +16,11 @@ A -> MAIN : PATCH /tickets/{id} {technician_id}
 MAIN -> DB : UPDATE technician_id
 MAIN --> A : 200
 T -> MAIN : PATCH /tickets/{id} {status: in_progress}
-MAIN -> DB : BEGIN IMMEDIATE; kiểm tra phiếu được giao
+MAIN -> DB : BEGIN IMMEDIATE; KTV chỉ đổi trạng thái,\nnhận phiếu nếu chưa có người phụ trách
 MAIN -> DB : UPDATE status
 MAIN --> T : 200
 T -> MAIN : PATCH /tickets/{id} {status: completed}
 MAIN -> DB : UPDATE status, completed_at
 MAIN --> T : 200
+MAIN -> MAIN : thông báo cư dân, BQL, các KTV
 @enduml
