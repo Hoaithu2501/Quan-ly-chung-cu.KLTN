@@ -29,3 +29,25 @@ Mặc dù đã cố gắng, khóa luận chắc chắn không tránh khỏi nh�
 [15] Microsoft, "Playwright for Python." [Trực tuyến]. Có sẵn: https://playwright.dev/python/. [Truy cập ngày: 10-Nov-2026].
 [16] Object Management Group, "Unified Modeling Language Specification, Version 2.5.1," Dec. 2017. [Trực tuyến]. Có sẵn: https://www.omg.org/spec/UML/2.5.1.
 [17] PlantUML, "PlantUML Language Reference Guide." [Trực tuyến]. Có sẵn: https://plantuml.com/guide. [Truy cập ngày: 10-Nov-2026].
+#! PHỤ LỤC
+## Phụ lục A: Hướng dẫn cài đặt và chạy hệ thống
+Yêu cầu: máy tính cài Docker Desktop (hoặc Docker Engine kèm Docker Compose) và Git; tài khoản SePay, dự án Firebase và khóa API Gemini nếu dùng các tính năng tương ứng. Các bước thực hiện:
+- Tải mã nguồn từ [địa chỉ kho mã nguồn] và chuyển vào thư mục dự án.
+- Sao chép tệp .env.example thành .env; khai báo JWT_SECRET và SERVICE_TOKEN (tối thiểu 32 ký tự); khai báo thông tin SePay, Firebase, Gemini nếu sử dụng.
+- Chạy lệnh docker compose up --build -d (trên Windows có thể dùng script start.ps1). Container db-init khởi tạo cơ sở dữ liệu, sau đó gateway và tám service khởi động.
+- Truy cập http://localhost:5000 để sử dụng hệ thống; tài liệu API của từng service tại http://localhost:5001/docs đến http://localhost:5008/docs.
+- Chạy kiểm thử: cài các thư viện trong requirements-dev.txt; chạy python -m pytest tests --ignore=tests/test_browser.py cho kiểm thử backend và python -m pytest tests/test_browser.py cho kiểm thử giao diện.
+## Phụ lục B: Cấu trúc thư mục sản phẩm nộp kèm
+Thư mục tổng hợp nộp cho Khoa gồm:
+- 11236032_Trần Hoài Thu_Xây dựng hệ thống quản lý chung cư.pdf: báo cáo khóa luận.
+- Thư mục Source: mã nguồn hệ thống, gồm thư mục của tám service, gateway, frontend, migrations, scripts, tests, docs và các tệp docker-compose.yml, requirements.txt.
+- Tệp Readme.md: mô tả cấu trúc dự án, cách cài đặt và triển khai.
+## Phụ lục C: Mã nguồn PlantUML của các biểu đồ
+Các biểu đồ trong Chương 3 được vẽ bằng PlantUML và lưu trong thư mục docs/bao-cao/plantuml của mã nguồn. Tương ứng giữa tệp mã và hình như sau:
+- H3_01 đến H3_04: biểu đồ use case (hình 3.1 đến hình 3.4).
+- H3_05 đến H3_19: biểu đồ hoạt động (hình 3.5 đến hình 3.19).
+- H3_20 đến H3_34: biểu đồ tuần tự (hình 3.20 đến hình 3.34).
+- H3_35 đến H3_38: biểu đồ trạng thái (hình 3.35 đến hình 3.38).
+- H3_39, H3_40, H3_41: biểu đồ kiến trúc hướng dịch vụ, biểu đồ triển khai và biểu đồ thực thể liên kết (hình 3.39 đến hình 3.41).
+#! KẾT QUẢ KIỂM TRA TURNITIN
+[In trang đầu tiên trong báo cáo kiểm tra Turnitin và đóng vào cuối quyển]

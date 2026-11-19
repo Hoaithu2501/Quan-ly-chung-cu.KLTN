@@ -1,63 +1,151 @@
-@c: ĐẠI HỌC KINH TẾ QUỐC DÂN
-@c: TRƯỜNG CÔNG NGHỆ
-@cn: --------------------
-@cn: [Chèn logo Đại học Kinh tế Quốc dân]
-@cn:
-@big: KHÓA LUẬN TỐT NGHIỆP
-@cn:
-@c: XÂY DỰNG HỆ THỐNG QUẢN LÝ CHUNG CƯ
-@cn:
-@kv: Tên sinh viên|: [Họ và tên sinh viên]
-@kv: Mã sinh viên|: [Mã sinh viên]
-@kv: Lớp|: [Lớp]
-@kv: Ngành|: Công nghệ thông tin
-@kv: Khoa|: Công nghệ thông tin
-@kv: Giảng viên hướng dẫn|: [Học hàm, học vị, họ tên GVHD]
-@cn:
-@cn: --------------------------------
-@ci: (Chữ ký GVHD)
-@cn:
-@c: Hà Nội, [tháng]/[năm]
-@pb
+|ĐẠI HỌC KINH TẾ QUỐC DÂN / TRƯỜNG CÔNG NGHỆ / --------&--------  / KHÓA LUẬN TỐT NGHIỆP / XÂY DỰNG HỆ THỐNG QUẢN LÝ CHUNG CƯ / Tên sinh viên 		: Trần Hoài Thu / 	Giảng viên hướng dẫn 		: ThS. Nguyễn Trung Kiên / Hà Nội, 11/2026|
+|ĐẠI HỌC KINH TẾ QUỐC DÂN / TRƯỜNG CÔNG NGHỆ / --------&-------- / KHÓA LUẬN TỐT NGHIỆP / XÂY DỰNG HỆ THỐNG QUẢN LÝ CHUNG CƯ / Tên sinh viên		: Trần Hoài Thu / Mã sinh viên			: 11236032 / Lớp			: Khoa học máy tính K65 / Ngành			: Khoa học máy tính / Khoa			: Công nghệ thông tin / Giảng viên hướng dẫn		: ThS. Nguyễn Trung Kiên / -------------------------------- / (Chữ ký GVHD) / Hà Nội, 11/2026|
+#! MỤC LỤC
+@toc
 #! LỜI CAM ĐOAN
-Tôi, [Họ và tên sinh viên], sinh viên lớp [Lớp], mã số sinh viên [Mã sinh viên] của Trường Đại học Kinh tế Quốc dân, xin cam đoan đề tài khóa luận tốt nghiệp "Xây dựng hệ thống quản lý chung cư" là công trình nghiên cứu độc lập của riêng tôi, được thực hiện dưới sự hướng dẫn khoa học của [Học hàm, học vị, họ tên GVHD].
+Tôi, Trần Hoài Thu, sinh viên lớp KHMT65, mã số sinh viên 11236032 của Trường Đại học Kinh tế Quốc dân, xin cam đoan đề tài khóa luận tốt nghiệp "Xây dựng hệ thống quản lý chung cư" là công trình nghiên cứu độc lập của riêng tôi, được thực hiện dưới sự hướng dẫn khoa học của ThS. Nguyễn Trung Kiên.
 Toàn bộ số liệu, mã nguồn và kết quả được trình bày trong khóa luận là trung thực, được tôi trực tiếp phân tích, cài đặt và kiểm thử, chưa từng được công bố trong bất kỳ công trình nghiên cứu nào khác. Các tài liệu, thư viện và dịch vụ của bên thứ ba được sử dụng đều được ghi rõ nguồn trong phần Tài liệu tham khảo.
 Nếu có bất kỳ sai sót hoặc vi phạm nào được phát hiện, tôi xin hoàn toàn chịu trách nhiệm trước pháp luật và Trường Đại học Kinh tế Quốc dân.
-@r: Hà Nội, ngày … tháng … năm …
-@r: Sinh viên thực hiện
-@ri: (Ký và ghi rõ họ tên)
+Hà Nội, ngày … tháng … năm …
+Sinh viên thực hiện
+(Ký và ghi rõ họ tên)
 #! LỜI CẢM ƠN
-Để hoàn thành khóa luận tốt nghiệp này, tôi xin gửi lời cảm ơn chân thành tới [Học hàm, học vị, họ tên GVHD], người đã trực tiếp hướng dẫn, góp ý và định hướng cho tôi trong suốt quá trình thực hiện đề tài.
+Để hoàn thành khóa luận tốt nghiệp này, tôi xin gửi lời cảm ơn chân thành tới ThS. Nguyễn Trung Kiên, người đã trực tiếp hướng dẫn, góp ý và định hướng cho tôi trong suốt quá trình thực hiện đề tài.
 Tôi xin cảm ơn quý thầy cô Khoa Công nghệ thông tin, Trường Công nghệ, Đại học Kinh tế Quốc dân đã truyền đạt cho tôi những kiến thức nền tảng về phân tích, thiết kế hệ thống thông tin, cơ sở dữ liệu và phát triển phần mềm. Đây là cơ sở để tôi có thể thực hiện đề tài.
 Tôi cũng xin cảm ơn gia đình và bạn bè đã luôn động viên, hỗ trợ tôi trong thời gian học tập và làm khóa luận.
 Do thời gian và kinh nghiệm còn hạn chế, khóa luận không tránh khỏi những thiếu sót. Tôi rất mong nhận được những ý kiến đóng góp của quý thầy cô để đề tài được hoàn thiện hơn.
-@r: Hà Nội, ngày … tháng … năm …
-@r: Sinh viên thực hiện
-#! MỤC LỤC
-@note: [Đặt con trỏ tại đây và chọn Chèn → Mục lục (Insert → Table of contents) để Google Docs tự tạo mục lục từ các tiêu đề. Xóa dòng hướng dẫn này sau khi chèn.]
-#! DANH MỤC TỪ VIẾT TẮT
-@tab: Bảng 0.1. Danh mục từ viết tắt
-|Từ viết tắt|Diễn giải|
-|API|Application Programming Interface – Giao diện lập trình ứng dụng|
-|BQL|Ban quản lý chung cư|
+Hà Nội, ngày … tháng … năm …
+Sinh viên thực hiện
+#! DANH MỤC CÁC TỪ VIẾT TẮT
+|Từ viết tắt|Ý nghĩa|
+|API|Giao diện lập trình ứng dụng (Application Programming Interface)|
+|CI/CD|Tích hợp và chuyển giao liên tục (Continuous Integration/Continuous Delivery)|
 |CSDL|Cơ sở dữ liệu|
-|ERD|Entity Relationship Diagram – Biểu đồ thực thể liên kết|
-|FAQ|Frequently Asked Questions – Câu hỏi thường gặp|
-|FCM|Firebase Cloud Messaging – Dịch vụ gửi thông báo đẩy của Google|
-|HTTP|HyperText Transfer Protocol – Giao thức truyền siêu văn bản|
-|JWT|JSON Web Token – Chuẩn mã thông báo xác thực|
-|KTV|Kỹ thuật viên|
-|LLM|Large Language Model – Mô hình ngôn ngữ lớn|
-|QR|Quick Response code – Mã phản hồi nhanh|
-|REST|Representational State Transfer – Kiểu kiến trúc dịch vụ web|
-|SOA|Service-Oriented Architecture – Kiến trúc hướng dịch vụ|
-|UML|Unified Modeling Language – Ngôn ngữ mô hình hóa hợp nhất|
-|VietQR|Chuẩn mã QR chuyển khoản liên ngân hàng tại Việt Nam|
-|WAL|Write-Ahead Logging – Cơ chế ghi nhật ký trước của SQLite|
+|FAQ|Câu hỏi thường gặp (Frequently Asked Questions)|
+|FCM|Dịch vụ gửi thông báo đẩy của Google (Firebase Cloud Messaging)|
+|HTML|Ngôn ngữ đánh dấu siêu văn bản (HyperText Markup Language)|
+|HTTP|Giao thức truyền siêu văn bản (HyperText Transfer Protocol)|
+|JSON|Ký hiệu đối tượng JavaScript (JavaScript Object Notation)|
+|JWT|Chuẩn mã thông báo xác thực (JSON Web Token)|
+|LLM|Mô hình ngôn ngữ lớn (Large Language Model)|
+|QR|Mã phản hồi nhanh (Quick Response code)|
+|REST|Chuyển giao trạng thái biểu diễn (Representational State Transfer)|
+|SOA|Kiến trúc hướng dịch vụ (Service-Oriented Architecture)|
+|UML|Ngôn ngữ mô hình hóa hợp nhất (Unified Modeling Language)|
+|URL|Địa chỉ tài nguyên thống nhất (Uniform Resource Locator)|
+|WAL|Cơ chế ghi nhật ký trước của SQLite (Write-Ahead Logging)|
 #! DANH MỤC BẢNG
-@list: tab
-#! DANH MỤC HÌNH ẢNH
-@list: fig
+Bảng 2.1: So sánh các kiểu kiến trúc
+Bảng 2.2: Các thư viện Python sử dụng
+Bảng 2.3: So sánh các nhóm giải pháp quản lý chung cư
+Bảng 3.1: Danh sách tác nhân của hệ thống
+Bảng 3.2: Đặc tả use case Đăng ký tài khoản cư dân
+Bảng 3.3: Đặc tả use case Đăng nhập
+Bảng 3.4: Đặc tả use case Lập hóa đơn điện nước hằng tháng
+Bảng 3.5: Đặc tả use case Lập hóa đơn dịch vụ sáu tháng
+Bảng 3.6: Đặc tả use case Thanh toán hóa đơn qua VietQR
+Bảng 3.7: Đặc tả use case Xử lý hóa đơn quá hạn
+Bảng 3.8: Đặc tả use case Yêu cầu sửa chữa và xử lý phiếu
+Bảng 3.9: Đặc tả use case Gửi và giải quyết khiếu nại
+Bảng 3.10: Đặc tả use case Hỏi đáp với trợ lý An Cư
+Bảng 3.11: Danh sách service và chức năng
+Bảng 3.12: Quyền sở hữu dữ liệu của từng service
+Bảng 3.13: Cấu trúc thư mục mã nguồn
+Bảng 3.14: Bảng users (tài khoản)
+Bảng 3.15: Bảng apartments (căn hộ)
+Bảng 3.16: Bảng residents (cư dân)
+Bảng 3.17: Bảng apartment_contracts (hợp đồng)
+Bảng 3.18: Bảng resident_apartment_memberships (xác nhận cư trú)
+Bảng 3.19: Bảng monthly_invoices (hóa đơn điện nước tháng)
+Bảng 3.20: Bảng semiannual_invoices (hóa đơn dịch vụ sáu tháng)
+Bảng 3.21: Bảng monthly_payments / semiannual_payments (khoản thanh toán)
+Bảng 3.22: Bảng bank_payment_intents (phiên thanh toán VietQR)
+Bảng 3.23: Bảng bank_transactions (sổ giao dịch ngân hàng)
+Bảng 3.24: Bảng billing_outbox (sự kiện chờ gửi)
+Bảng 3.25: Bảng vehicles (xe gửi tháng)
+Bảng 3.26: Bảng guest_parking_daily (doanh thu vãng lai)
+Bảng 3.27: Bảng technicians và maintenance_tickets
+Bảng 3.28: Bảng notifications và notification_logs
+Bảng 3.29: Bảng complaints (khiếu nại, đơn đăng ký)
+Bảng 3.30: Bảng faq_knowledge_base và locations
+Bảng 3.31: Các view và trigger chính
+Bảng 3.32: Tóm tắt các API chính
+Bảng 3.33: Quy tắc nghiệp vụ và nơi kiểm tra
+Bảng 4.1: Môi trường phát triển và triển khai
+Bảng 4.2: Thống kê bộ kiểm thử tự động
+Bảng 4.3: Các ca kiểm thử nghiệp vụ tiêu biểu
+#! DANH MỤC HÌNH
+Hình 3.1: Biểu đồ use case tổng quát hệ thống
+Hình 3.2: Biểu đồ use case phân rã chức năng Ban quản lý
+Hình 3.3: Biểu đồ use case phân rã chức năng Cư dân
+Hình 3.4: Biểu đồ use case phân rã chức năng Kỹ thuật viên
+Hình 3.5: Biểu đồ hoạt động đăng ký tài khoản cư dân
+Hình 3.6: Biểu đồ hoạt động đăng nhập
+Hình 3.7: Biểu đồ hoạt động xác nhận cư dân thuộc căn hộ
+Hình 3.8: Biểu đồ hoạt động lập hóa đơn điện nước hằng tháng
+Hình 3.9: Biểu đồ hoạt động lập hóa đơn dịch vụ và gửi xe sáu tháng
+Hình 3.10: Biểu đồ hoạt động thanh toán hóa đơn qua VietQR
+Hình 3.11: Biểu đồ hoạt động ghi nhận tiền mặt và đối soát chuyển khoản
+Hình 3.12: Biểu đồ hoạt động xử lý hóa đơn quá hạn và khôi phục dịch vụ
+Hình 3.13: Biểu đồ hoạt động đăng ký gửi xe tháng
+Hình 3.14: Biểu đồ hoạt động ghi nhận doanh thu gửi xe vãng lai
+Hình 3.15: Biểu đồ hoạt động yêu cầu sửa chữa, phân công và xử lý
+Hình 3.16: Biểu đồ hoạt động gửi và giải quyết khiếu nại
+Hình 3.17: Biểu đồ hoạt động gửi thông báo chung và riêng
+Hình 3.18: Biểu đồ hoạt động hỏi đáp với trợ lý An Cư
+Hình 3.19: Biểu đồ hoạt động xem báo cáo, thống kê
+Hình 3.20: Biểu đồ tuần tự đăng ký tài khoản cư dân
+Hình 3.21: Biểu đồ tuần tự đăng nhập và gọi API có xác thực
+Hình 3.22: Biểu đồ tuần tự xác nhận cư dân thuộc căn hộ
+Hình 3.23: Biểu đồ tuần tự lập hóa đơn điện nước hằng tháng
+Hình 3.24: Biểu đồ tuần tự lập hóa đơn dịch vụ sáu tháng
+Hình 3.25: Biểu đồ tuần tự thanh toán qua VietQR và webhook SePay
+Hình 3.26: Biểu đồ tuần tự ghi nhận tiền mặt
+Hình 3.27: Biểu đồ tuần tự quét hóa đơn quá hạn và khôi phục dịch vụ
+Hình 3.28: Biểu đồ tuần tự đăng ký gửi xe tháng
+Hình 3.29: Biểu đồ tuần tự ghi nhận doanh thu gửi xe vãng lai
+Hình 3.30: Biểu đồ tuần tự yêu cầu sửa chữa, phân công, xử lý
+Hình 3.31: Biểu đồ tuần tự khiếu nại và phản hồi
+Hình 3.32: Biểu đồ tuần tự gửi thông báo và push Firebase
+Hình 3.33: Biểu đồ tuần tự hỏi đáp với trợ lý An Cư
+Hình 3.34: Biểu đồ tuần tự xem báo cáo, thống kê
+Hình 3.35: Biểu đồ trạng thái hóa đơn
+Hình 3.36: Biểu đồ trạng thái phiên thanh toán VietQR
+Hình 3.37: Biểu đồ trạng thái phiếu sửa chữa, bảo trì
+Hình 3.38: Biểu đồ trạng thái khiếu nại, đơn đăng ký
+Hình 3.39: Kiến trúc hướng dịch vụ của hệ thống
+Hình 3.40: Biểu đồ triển khai bằng Docker Compose
+Hình 3.41: Biểu đồ thực thể liên kết của cơ sở dữ liệu
+Hình 4.1: Màn hình đăng nhập
+Hình 4.2: Màn hình đăng ký tài khoản cư dân
+Hình 4.3: Trang tổng quan của Ban quản lý
+Hình 4.4: Trang tổng quan của cư dân
+Hình 4.5: Danh sách căn hộ
+Hình 4.6: Danh sách cư dân và xác nhận căn hộ
+Hình 4.7: Quản lý hợp đồng
+Hình 4.8: Lập hóa đơn điện nước hằng tháng
+Hình 4.9: Lập hóa đơn dịch vụ sáu tháng
+Hình 4.10: Danh sách và chi tiết hóa đơn
+Hình 4.11: Đối soát chuyển khoản
+Hình 4.12: Đăng ký xe tháng
+Hình 4.13: Doanh thu gửi xe vãng lai
+Hình 4.14: Quản lý phiếu sửa chữa, bảo trì
+Hình 4.15: Nhân sự và tài khoản
+Hình 4.16: Giải quyết khiếu nại, đơn đăng ký
+Hình 4.17: Gửi thông báo chung, riêng
+Hình 4.18: Báo cáo, thống kê doanh thu
+Hình 4.19: Thông tin cá nhân và đổi mật khẩu
+Hình 4.20: Danh sách hóa đơn của căn hộ
+Hình 4.21: Màn hình thanh toán VietQR
+Hình 4.22: Thanh toán thành công và biên nhận
+Hình 4.23: Tạo yêu cầu sửa chữa
+Hình 4.24: Gửi khiếu nại, đơn đăng ký
+Hình 4.25: Thông báo chung và riêng
+Hình 4.26: Thông báo đẩy trên trình duyệt và điện thoại
+Hình 4.27: Trợ lý An Cư trả lời câu hỏi về phí gửi xe
+Hình 4.28: Trợ lý An Cư chỉ đường tới địa điểm
+Hình 4.29: Công việc được giao
+Hình 4.30: Nhập doanh thu vãng lai
 #! MỞ ĐẦU
 ## 1. Lý do chọn đề tài
 Quá trình đô thị hóa tại Việt Nam diễn ra nhanh trong hai thập kỷ gần đây, kéo theo sự xuất hiện của rất nhiều tòa nhà chung cư tại các thành phố lớn. Mỗi tòa nhà có thể có hàng trăm căn hộ với hàng nghìn cư dân, đi kèm nhiều nghiệp vụ vận hành lặp lại hằng ngày như quản lý căn hộ và hợp đồng, thu phí điện nước, phí dịch vụ, phí gửi xe, tiếp nhận yêu cầu sửa chữa, giải quyết khiếu nại và thông báo tới cư dân.
@@ -67,8 +155,8 @@ Xuất phát từ thực tế đó, tôi lựa chọn đề tài "Xây dựng h�
 Mục tiêu tổng quát của đề tài là phân tích, thiết kế và xây dựng một hệ thống web quản lý chung cư có thể vận hành thực tế ở quy mô một tòa nhà, giúp số hóa các nghiệp vụ chính của Ban quản lý và tạo kênh tương tác trực tuyến với cư dân.
 Các mục tiêu cụ thể gồm:
 - Khảo sát nghiệp vụ quản lý chung cư, xác định các tác nhân, chức năng và quy tắc nghiệp vụ.
-- Phân tích và thiết kế hệ thống bằng UML: biểu đồ use case, hoạt động, tuần tự, trạng thái, kiến trúc và cơ sở dữ liệu.
-- Xây dựng hệ thống theo kiến trúc hướng dịch vụ với tám service độc lập giao tiếp qua REST API.
+- Phân tích và thiết kế hệ thống bằng ngôn ngữ mô hình hóa hợp nhất (UML): biểu đồ use case, hoạt động, tuần tự, trạng thái, kiến trúc và cơ sở dữ liệu.
+- Xây dựng hệ thống theo kiến trúc hướng dịch vụ với tám service độc lập giao tiếp qua giao diện lập trình ứng dụng (API) theo kiểu kiến trúc chuyển giao trạng thái biểu diễn (REST).
 - Tích hợp thanh toán VietQR, đối soát giao dịch ngân hàng tự động, thông báo đẩy và chatbot hỏi đáp.
 - Kiểm thử tự động các nghiệp vụ quan trọng và nghiệm thu luồng thanh toán bằng giao dịch thật.
 ## 3. Đối tượng và phạm vi nghiên cứu
@@ -80,7 +168,7 @@ Phạm vi của đề tài là một tòa nhà chung cư với ba vai trò ngư�
 - Phương pháp thực nghiệm: cài đặt hệ thống, viết kiểm thử tự động bằng pytest và Playwright, chạy kiểm thử liên tục bằng GitHub Actions, nghiệm thu thanh toán bằng SePay ở môi trường Test và Live.
 ## 5. Bố cục khóa luận
 Ngoài phần Mở đầu, Kết luận và Tài liệu tham khảo, khóa luận gồm bốn chương:
-- Chương 1. Tổng quan đề tài: thực trạng quản lý chung cư, các vấn đề tồn tại, mục tiêu, yêu cầu và phạm vi của hệ thống.
-- Chương 2. Cơ sở lý thuyết và công nghệ sử dụng: kiến trúc hướng dịch vụ, các công nghệ backend, frontend, cơ sở dữ liệu, thanh toán, thông báo, chatbot và triển khai.
-- Chương 3. Phân tích và thiết kế hệ thống: tác nhân, use case, đặc tả use case, biểu đồ hoạt động, tuần tự, trạng thái, kiến trúc và cơ sở dữ liệu.
+- Chương 1. Tổng quan đề tài: thực trạng quản lý chung cư, các vấn đề tồn tại, mục tiêu, yêu cầu và phạm vi của hệ thống; đối tượng nghiên cứu và ý nghĩa của đề tài.
+- Chương 2. Cơ sở lý thuyết và công nghệ sử dụng: kiến trúc hướng dịch vụ, các công nghệ backend, frontend, cơ sở dữ liệu, thanh toán, thông báo, chatbot và triển khai; các giải pháp liên quan.
+- Chương 3. Phân tích và thiết kế hệ thống: phương pháp, công cụ và quy trình thực hiện; tác nhân, use case, đặc tả use case, biểu đồ hoạt động, tuần tự, trạng thái, kiến trúc và cơ sở dữ liệu.
 - Chương 4. Kết quả và thảo luận: môi trường cài đặt, giao diện theo từng vai trò, kết quả kiểm thử, nghiệm thu và đánh giá.

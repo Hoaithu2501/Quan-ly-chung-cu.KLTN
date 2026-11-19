@@ -1,7 +1,7 @@
-#! CHƯƠNG 2: CƠ SỞ LÝ THUYẾT VÀ CÔNG NGHỆ SỬ DỤNG
+#! CHƯƠNG 2. CƠ SỞ LÝ THUYẾT VÀ CÔNG NGHỆ SỬ DỤNG
 ## 2.1. Kiến trúc hướng dịch vụ (SOA)
 ### 2.1.1. Khái niệm
-Kiến trúc hướng dịch vụ (Service-Oriented Architecture – SOA) là cách tổ chức phần mềm thành các dịch vụ (service) độc lập, mỗi dịch vụ đảm nhận một nhóm chức năng nghiệp vụ và cung cấp chức năng đó qua một giao diện được định nghĩa rõ ràng. Các dịch vụ giao tiếp với nhau qua mạng bằng các giao thức chuẩn như HTTP, thay vì gọi trực tiếp hàm của nhau trong cùng một chương trình [1].
+Kiến trúc hướng dịch vụ (Service-Oriented Architecture – SOA) là cách tổ chức phần mềm thành các dịch vụ (service) độc lập, mỗi dịch vụ đảm nhận một nhóm chức năng nghiệp vụ và cung cấp chức năng đó qua một giao diện được định nghĩa rõ ràng. Các dịch vụ giao tiếp với nhau qua mạng bằng các giao thức chuẩn như giao thức truyền siêu văn bản (HTTP), thay vì gọi trực tiếp hàm của nhau trong cùng một chương trình [1].
 Theo Thomas Erl, một thiết kế hướng dịch vụ tuân theo các nguyên tắc chính:
 - Hợp đồng dịch vụ chuẩn hóa: mỗi dịch vụ công bố giao diện (API) rõ ràng, trong đề tài là REST API kèm tài liệu OpenAPI.
 - Liên kết lỏng (loose coupling): dịch vụ phụ thuộc vào hợp đồng của dịch vụ khác, không phụ thuộc cách cài đặt bên trong.
@@ -10,23 +10,24 @@ Theo Thomas Erl, một thiết kế hướng dịch vụ tuân theo các nguyên
 - Tự chủ: mỗi dịch vụ chạy trong tiến trình và container riêng, có thể khởi động, dừng, kiểm thử độc lập.
 - Không trạng thái phiên: thông tin người dùng được mang trong JWT ở mỗi yêu cầu, không lưu phiên trong bộ nhớ dịch vụ.
 ### 2.1.2. So sánh với kiến trúc nguyên khối và microservices
-@tab: Bảng 2.1. So sánh các kiểu kiến trúc
+Bảng 2.1 trình bày so sánh các kiểu kiến trúc.
+@tab: Bảng 2.1: So sánh các kiểu kiến trúc
 |Tiêu chí|Nguyên khối (Monolith)|SOA (đề tài áp dụng)|Microservices|
 |Đơn vị triển khai|Một ứng dụng duy nhất|Nhiều dịch vụ theo miền nghiệp vụ|Rất nhiều dịch vụ nhỏ|
 |Giao tiếp|Gọi hàm trong tiến trình|REST qua HTTP|REST, gRPC, hàng đợi thông điệp|
-|Dữ liệu|Một CSDL dùng chung|Mỗi dịch vụ sở hữu nhóm bảng riêng|Mỗi dịch vụ một CSDL riêng|
+|Dữ liệu|Một cơ sở dữ liệu (CSDL) dùng chung|Mỗi dịch vụ sở hữu nhóm bảng riêng|Mỗi dịch vụ một CSDL riêng|
 |Độ phức tạp vận hành|Thấp|Trung bình|Cao|
 |Khả năng mở rộng|Mở rộng toàn bộ|Mở rộng theo dịch vụ|Mở rộng chi tiết từng dịch vụ|
 Đề tài chọn SOA vì quy mô một tòa nhà không cần độ chia nhỏ của microservices, nhưng vẫn cần tách bạch rõ trách nhiệm của từng miền nghiệp vụ (xác thực, cư dân, hóa đơn, gửi xe…) để dễ kiểm thử và thể hiện rõ ranh giới dữ liệu.
 ### 2.1.3. API Gateway và REST
 API Gateway là điểm vào duy nhất của hệ thống phía trình duyệt. Trong đề tài, gateway chạy ở cổng 5000, phục vụ giao diện web tĩnh và chuyển tiếp mọi yêu cầu /api/... tới service tương ứng theo tiền tố đường dẫn. Nhờ vậy trình duyệt chỉ làm việc với một nguồn gốc (origin), tránh lỗi CORS và không cần biết địa chỉ từng service.
-REST (Representational State Transfer) là kiểu kiến trúc dịch vụ web trong đó tài nguyên được định danh bằng URL và thao tác bằng các phương thức HTTP: GET đọc, POST tạo mới, PATCH/PUT cập nhật, DELETE xóa. Kết quả trả về dạng JSON cùng mã trạng thái HTTP: 200/201 thành công, 400 dữ liệu sai, 401 chưa đăng nhập, 403 không đủ quyền, 404 không tìm thấy, 409 xung đột.
+REST (Representational State Transfer) là kiểu kiến trúc dịch vụ web trong đó tài nguyên được định danh bằng địa chỉ tài nguyên thống nhất (URL) và thao tác bằng các phương thức HTTP: GET đọc, POST tạo mới, PATCH/PUT cập nhật, DELETE xóa. Kết quả trả về dạng ký hiệu đối tượng JavaScript (JSON) cùng mã trạng thái HTTP: 200/201 thành công, 400 dữ liệu sai, 401 chưa đăng nhập, 403 không đủ quyền, 404 không tìm thấy, 409 xung đột.
 ## 2.2. Ngôn ngữ Python và framework Flask
 Python là ngôn ngữ lập trình thông dịch, cú pháp ngắn gọn, có hệ sinh thái thư viện phong phú cho phát triển web, xử lý dữ liệu và kiểm thử. Đề tài dùng Python 3.11.
 Flask là micro-framework web cho Python, chỉ cung cấp phần lõi gồm định tuyến URL, xử lý request/response và cơ chế mở rộng [2]. Đặc điểm nhẹ của Flask phù hợp với SOA: mỗi service là một ứng dụng Flask nhỏ với vài chục endpoint. Các thành phần dùng chung như kết nối CSDL, xác thực, gọi HTTP liên service, chuẩn hóa lỗi và sinh tài liệu OpenAPI được đặt trong gói shared để tránh lặp mã nhưng không chứa logic nghiệp vụ.
 Ứng dụng được phục vụ bằng Waitress, một máy chủ WSGI thuần Python chạy ổn định trên cả Windows và Linux, mỗi service dùng 8 luồng xử lý.
-Các thư viện Python chính được sử dụng:
-@tab: Bảng 2.2. Các thư viện Python sử dụng
+Các thư viện Python chính được sử dụng (xem bảng 2.2):
+@tab: Bảng 2.2: Các thư viện Python sử dụng
 |Thư viện|Phiên bản|Mục đích|
 |Flask|3.1.2|Framework web cho từng service|
 |Waitress|3.0.2|Máy chủ WSGI|
@@ -55,7 +56,7 @@ APScheduler là thư viện lập lịch tác vụ cho Python, hỗ trợ lịch
 Khi một thao tác nghiệp vụ cần thông báo cho service khác (ví dụ thanh toán thành công cần báo Notification và Maintenance), nếu gọi HTTP trực tiếp ngay trong giao dịch thì có thể xảy ra tình huống dữ liệu đã lưu nhưng service đích tạm lỗi và sự kiện bị mất. Mẫu Transactional Outbox giải quyết vấn đề này: sự kiện được ghi vào bảng outbox trong cùng giao dịch với thay đổi nghiệp vụ, sau đó một tác vụ nền đọc outbox và gửi đi, thử lại cho tới khi thành công [7].
 Kết hợp với outbox là tính lũy đẳng (idempotency): mỗi sự kiện có event_id duy nhất, service đích ghi lại các event_id đã xử lý để nếu nhận lại cùng một sự kiện thì không tạo thông báo hoặc phiếu công việc lần hai. Thao tác ghi nhận tiền mặt của Ban quản lý cũng hỗ trợ header Idempotency-Key để bấm lặp không tạo hai khoản thu.
 ## 2.6. Thanh toán VietQR và dịch vụ SePay
-VietQR là chuẩn mã QR chuyển khoản liên ngân hàng do NAPAS phát triển, dựa trên chuẩn EMVCo. Mã QR chứa ngân hàng nhận, số tài khoản, số tiền và nội dung chuyển khoản; người dùng chỉ cần quét bằng ứng dụng ngân hàng bất kỳ để chuyển tiền chính xác [8]. Hệ thống tạo ảnh VietQR thông qua dịch vụ tạo ảnh công khai với các tham số do máy chủ quy định.
+VietQR là chuẩn mã phản hồi nhanh (QR) chuyển khoản liên ngân hàng do NAPAS phát triển, dựa trên chuẩn EMVCo. Mã QR chứa ngân hàng nhận, số tài khoản, số tiền và nội dung chuyển khoản; người dùng chỉ cần quét bằng ứng dụng ngân hàng bất kỳ để chuyển tiền chính xác [8]. Hệ thống tạo ảnh VietQR thông qua dịch vụ tạo ảnh công khai với các tham số do máy chủ quy định.
 SePay là dịch vụ theo dõi biến động số dư tài khoản ngân hàng. Khi có tiền vào tài khoản đã liên kết, SePay gọi webhook tới máy chủ của hệ thống kèm thông tin giao dịch: mã giao dịch, số tài khoản, ngân hàng, chiều tiền, số tiền, nội dung chuyển khoản. SePay còn cung cấp API tra cứu giao dịch để đối soát bổ sung khi webhook bị lỡ, và môi trường Test Mode để mô phỏng giao dịch mà không chuyển tiền thật [9].
 Quy trình thanh toán trong đề tài: máy chủ sinh một nội dung chuyển khoản duy nhất cho mỗi phiên (tiền tố cấu hình và 12 ký tự ngẫu nhiên), hiển thị VietQR cho cư dân; khi webhook đến, máy chủ xác thực API Key, kiểm tra đúng tài khoản, ngân hàng, chiều tiền vào, tìm phiên theo nội dung chuyển khoản, phân bổ số tiền tối đa bằng số còn nợ và lưu phần dư vào sổ đối soát. Hóa đơn chỉ chuyển sang đã thanh toán khi tổng tiền nhận được đủ.
 ## 2.7. Firebase Cloud Messaging
@@ -69,7 +70,7 @@ Bước truy xuất được cài đặt bằng Python thuần, không cần mô
 - Chấm điểm từng FAQ và địa điểm theo mức độ khớp ý định, chọn tối đa năm nguồn phù hợp; câu mơ hồ như "tiền nhà" được hỏi lại là tiền thuê hay phí dịch vụ.
 Mô hình ngôn ngữ lớn (LLM) là mô hình học sâu được huấn luyện trên lượng văn bản lớn, có khả năng hiểu và sinh ngôn ngữ tự nhiên. Khi được cấu hình, chatbot gửi câu hỏi kèm các nguồn đã chọn tới Google Gemini (model Flash-Lite, qua API tương thích Chat Completions) để diễn đạt lại câu trả lời tự nhiên hơn [11]. Prompt hệ thống yêu cầu mô hình chỉ dùng nguồn được cung cấp, giữ nguyên số tiền, ngày, số điện thoại. Kết quả trả về được máy chủ kiểm tra: phải là JSON hợp lệ, trích đúng nguồn có thật và không chứa con số không có trong nguồn; nếu không đạt, hoặc khi LLM lỗi, hết hạn mức, chatbot trả nguyên văn câu trả lời trong kho kiến thức.
 ## 2.9. Giao diện web: HTML, JavaScript và Tailwind CSS
-Giao diện được xây dựng dưới dạng ứng dụng một trang (single-page application) bằng HTML, CSS và JavaScript thuần, không dùng framework. Điều hướng dựa trên hash URL (#billing, #parking…); mỗi trang gọi REST API qua gateway với token JWT lưu trong sessionStorage. Dữ liệu hóa đơn và thông báo được làm mới bằng cơ chế polling khi tab đang hiển thị (5 giây với hóa đơn, 4 giây với màn hình QR).
+Giao diện được xây dựng dưới dạng ứng dụng một trang (single-page application) bằng ngôn ngữ đánh dấu siêu văn bản (HTML), CSS và JavaScript thuần, không dùng framework. Điều hướng dựa trên hash URL (#billing, #parking…); mỗi trang gọi REST API qua gateway với token JWT lưu trong sessionStorage. Dữ liệu hóa đơn và thông báo được làm mới bằng cơ chế polling khi tab đang hiển thị (5 giây với hóa đơn, 4 giây với màn hình QR).
 Tailwind CSS là framework CSS theo hướng tiện ích (utility-first), cho phép tạo giao diện bằng các lớp nhỏ ghép lại và biên dịch ra một tệp CSS tối giản [12]. Giao diện dùng tông xanh lá, trắng và mint, phông Be Vietnam Pro lưu cục bộ, có bố cục đáp ứng (responsive) cho điện thoại và tệp manifest để thêm vào màn hình chính như ứng dụng.
 ## 2.10. Docker và Docker Compose
 Docker là nền tảng đóng gói ứng dụng cùng toàn bộ thư viện phụ thuộc vào container, đảm bảo chạy giống nhau trên mọi máy [13]. Mỗi service trong đề tài có Dockerfile riêng dựa trên image Python.
@@ -86,3 +87,26 @@ UML (Unified Modeling Language) là ngôn ngữ mô hình hóa chuẩn dùng đ�
 - Biểu đồ trạng thái: mô tả vòng đời của hóa đơn, phiên thanh toán, phiếu công việc và khiếu nại.
 - Biểu đồ thành phần, triển khai và thực thể liên kết: mô tả kiến trúc, cách triển khai và cấu trúc dữ liệu.
 PlantUML là công cụ vẽ biểu đồ UML từ mô tả dạng văn bản [17]. Việc lưu biểu đồ dưới dạng mã giúp biểu đồ được quản lý phiên bản cùng mã nguồn và dễ cập nhật khi hệ thống thay đổi.
+## 2.13. Các giải pháp và nghiên cứu liên quan
+### 2.13.1. Các nhóm giải pháp hiện có
+Qua tìm hiểu, các giải pháp đang được sử dụng trong quản lý chung cư có thể chia thành ba nhóm chính:
+- Quản lý thủ công kết hợp công cụ văn phòng: dữ liệu căn hộ, cư dân và chỉ số điện nước lưu trong bảng tính; hóa đơn và thông báo gửi qua bảng tin hoặc nhóm chat. Cách làm này không tốn chi phí phần mềm và dễ bắt đầu, nhưng dữ liệu phân tán, khó phân quyền, đối soát chuyển khoản phải làm bằng tay và khó tổng hợp báo cáo khi số căn hộ tăng.
+- Phần mềm quản lý tòa nhà thương mại cung cấp theo mô hình dịch vụ trực tuyến: thường gồm trang quản trị cho Ban quản lý và ứng dụng di động cho cư dân, hỗ trợ hóa đơn, thanh toán trực tuyến, thông báo và phản ánh. Ưu điểm là chức năng đầy đủ, có đội ngũ hỗ trợ; hạn chế là chi phí thuê bao theo quy mô, khả năng tùy biến theo quy định riêng của từng tòa nhà phụ thuộc vào nhà cung cấp và cách xử lý chi tiết các trường hợp chuyển thiếu, chuyển dư thường không được công bố.
+- Các hệ thống do sinh viên xây dựng trong đồ án, khóa luận: nhiều hệ thống được thiết kế theo kiến trúc nguyên khối với một ứng dụng web và một cơ sở dữ liệu, tập trung vào quản lý danh mục, lập hóa đơn và ghi nhận thanh toán thủ công. Các hệ thống này phù hợp cho mục đích học tập nhưng ít khi tích hợp thanh toán có đối soát tự động từ ngân hàng, thông báo đẩy hay kiểm thử tự động.
+Bảng 2.3 so sánh các nhóm giải pháp trên với hệ thống An Cư theo một số tiêu chí chính.
+@tab: Bảng 2.3: So sánh các nhóm giải pháp quản lý chung cư
+|Tiêu chí|Quản lý thủ công|Phần mềm thương mại|Hệ thống An Cư|
+|Chi phí ban đầu|Thấp|Thuê bao theo số căn hộ hoặc tòa nhà|Tự xây dựng, triển khai trên máy chủ riêng|
+|Thanh toán|Tiền mặt, chuyển khoản tự do|Thanh toán trực tuyến qua cổng hoặc mã QR|VietQR riêng cho từng hóa đơn|
+|Đối soát chuyển khoản|Thủ công, dễ sai|Tự động; cách xử lý chi tiết tùy nhà cung cấp|Tự động qua webhook SePay; xử lý gửi lặp, chuyển thiếu, chuyển dư, tiền về muộn|
+|Thông báo|Bảng tin, nhóm chat|Ứng dụng di động|Thông báo trên web và thông báo đẩy Firebase|
+|Tùy biến quy định phí|Linh hoạt nhưng làm tay|Phụ thuộc nhà cung cấp|Theo quy định của tòa nhà, sửa trực tiếp trong mã nguồn|
+|Hỏi đáp tự động|Không có|Tùy sản phẩm|Trợ lý An Cư dựa trên kho kiến thức|
+|Kiến trúc|Không áp dụng|Thường không công bố|Hướng dịch vụ, tám service độc lập|
+|Kiểm thử tự động|Không áp dụng|Thường không công bố|Bộ kiểm thử tự động chạy trong CI|
+### 2.13.2. Đánh giá và định hướng của đề tài
+Từ so sánh trên, có thể thấy khoảng trống chủ yếu nằm ở khâu thu phí và đối soát: dữ liệu thanh toán từ ngân hàng cần được ghi nhận tự động và chính xác một lần cho mỗi hóa đơn, trong khi quy định thu phí của từng tòa nhà lại khác nhau. Vì vậy, đề tài không nhằm thay thế hoàn toàn các phần mềm thương mại mà tập trung vào ba điểm:
+- Tổ chức hệ thống theo kiến trúc hướng dịch vụ để mỗi nghiệp vụ có thể phát triển, kiểm thử và triển khai độc lập, thuận tiện cho việc mở rộng sau này.
+- Thiết kế luồng thanh toán VietQR có đối soát tự động qua SePay, xử lý đầy đủ các trường hợp webhook lặp, nhiều người cùng thanh toán, chuyển thiếu, chuyển dư và tiền về muộn.
+- Bổ sung trợ lý hỏi đáp dựa trên kho kiến thức do Ban quản lý kiểm soát, kết hợp thông báo đẩy để thông tin đến đúng người, đúng lúc.
+Các lý thuyết và công nghệ trình bày trong chương này là cơ sở để phân tích, thiết kế hệ thống ở Chương 3 và cài đặt, đánh giá ở Chương 4.

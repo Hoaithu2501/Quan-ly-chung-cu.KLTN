@@ -1,6 +1,27 @@
-#! CHƯƠNG 3: PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG
-## 3.1. Xác định tác nhân
-@tab: Bảng 3.1. Danh sách tác nhân của hệ thống
+#! CHƯƠNG 3. PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG
+## 3.1. Phương pháp, công cụ và quy trình thực hiện
+### 3.1.1. Phương pháp nghiên cứu
+Đề tài sử dụng kết hợp các phương pháp sau:
+- Phương pháp khảo sát và phân tích nghiệp vụ: tìm hiểu quy trình quản lý tại chung cư, nội quy và bảng phí mẫu; từ đó xác định tác nhân, chức năng và các quy tắc nghiệp vụ cần kiểm soát.
+- Phương pháp phân tích, thiết kế hướng đối tượng: mô hình hóa yêu cầu bằng biểu đồ use case và đặc tả use case; mô hình hóa hành vi bằng biểu đồ hoạt động, tuần tự và trạng thái; mô hình hóa cấu trúc bằng biểu đồ kiến trúc, triển khai và thực thể liên kết.
+- Phương pháp phát triển lặp và tăng dần: hệ thống được xây dựng theo từng service, mỗi vòng lặp bổ sung một nhóm chức năng, được kiểm thử và hoàn thiện trước khi chuyển sang nhóm tiếp theo.
+- Phương pháp thực nghiệm: đánh giá hệ thống bằng kiểm thử tự động ở nhiều mức và nghiệm thu với dịch vụ thật (thanh toán SePay ở chế độ Test và Live, thông báo đẩy trên máy tính và điện thoại).
+### 3.1.2. Công cụ sử dụng
+- Phân tích, thiết kế: PlantUML để vẽ các biểu đồ UML dưới dạng mã; DB Browser for SQLite để thiết kế và kiểm tra cơ sở dữ liệu.
+- Lập trình: Visual Studio Code; Python với framework Flask cho backend; HTML, JavaScript và Tailwind CSS cho giao diện; Git và GitHub để quản lý mã nguồn.
+- Kiểm thử, triển khai: pytest và Playwright cho kiểm thử tự động; GitHub Actions cho quy trình CI/CD; Docker, Docker Compose và Cloudflare Tunnel cho triển khai.
+- Dịch vụ bên ngoài: SePay (đối soát giao dịch ngân hàng), dịch vụ tạo ảnh VietQR, Firebase Cloud Messaging và Google Gemini.
+### 3.1.3. Quy trình thực hiện
+Quá trình thực hiện đề tài gồm các bước chính sau:
+- Bước 1 – Khảo sát và xác định yêu cầu: thu thập nghiệp vụ, xác định ba nhóm người dùng và trợ lý tự động, lập danh sách yêu cầu chức năng và phi chức năng (mục 1.5).
+- Bước 2 – Phân tích: xác định tác nhân, xây dựng biểu đồ use case, đặc tả các use case chính và mô hình hóa luồng xử lý (từ mục 3.2 đến mục 3.7).
+- Bước 3 – Thiết kế: thiết kế kiến trúc hướng dịch vụ, phân chia trách nhiệm và quyền sở hữu dữ liệu cho từng service, thiết kế cơ sở dữ liệu, API và quy tắc nghiệp vụ (từ mục 3.8 đến mục 3.11).
+- Bước 4 – Cài đặt: xây dựng cơ sở dữ liệu, lần lượt các service, gateway và giao diện cho từng vai trò; tích hợp các dịch vụ bên ngoài.
+- Bước 5 – Kiểm thử và nghiệm thu: viết kiểm thử tự động, chạy trong quy trình CI, nghiệm thu thanh toán và thông báo trên môi trường thật, đánh giá kết quả (Chương 4).
+Kết quả của các bước phân tích và thiết kế được trình bày trong các mục tiếp theo của chương này.
+## 3.2. Xác định tác nhân
+Bảng 3.1 trình bày danh sách tác nhân của hệ thống.
+@tab: Bảng 3.1: Danh sách tác nhân của hệ thống
 |Tác nhân|Loại|Mô tả|
 |Ban quản lý|Người dùng|Người có quyền cao nhất, quản trị toàn bộ dữ liệu căn hộ, cư dân, hóa đơn, gửi xe, công việc, thông báo, báo cáo và tài khoản.|
 |Cư dân|Người dùng|Chủ sở hữu, người thuê hoặc thành viên được Ban quản lý xác nhận thuộc căn hộ; chỉ xem và thao tác trên dữ liệu của căn hộ mình.|
@@ -9,26 +30,31 @@
 |Firebase Cloud Messaging|Hệ thống ngoài|Chuyển thông báo đẩy tới trình duyệt và điện thoại.|
 |Google Gemini|Hệ thống ngoài|Mô hình ngôn ngữ lớn dùng để diễn đạt lại câu trả lời của chatbot (tùy chọn).|
 |Bộ lập lịch|Hệ thống|Tác vụ nền chạy định kỳ: quét quá hạn, nhắc hạn, gửi lại sự kiện, đối soát giao dịch.|
-## 3.2. Biểu đồ use case
-### 3.2.1. Biểu đồ use case tổng quát
-@fig: H3_01_usecase_tong_quat|Hình 3.1. Biểu đồ use case tổng quát hệ thống
+## 3.3. Biểu đồ use case
+### 3.3.1. Biểu đồ use case tổng quát
+Biểu đồ use case tổng quát hệ thống được thể hiện trong hình 3.1.
+@fig: H3_01_usecase_tong_quat|Hình 3.1: Biểu đồ use case tổng quát hệ thống
 Biểu đồ use case tổng quát thể hiện ba tác nhân người dùng cùng các hệ thống ngoài tương tác với hệ thống An Cư. Cư dân tập trung vào nhóm chức năng tự phục vụ (thanh toán, gửi yêu cầu, tra cứu); Ban quản lý đảm nhận nhóm chức năng quản trị; kỹ thuật viên tập trung vào xử lý công việc được giao. Bộ lập lịch là tác nhân hệ thống khởi tạo các tác vụ tự động liên quan tới hóa đơn quá hạn.
-### 3.2.2. Chức năng dành cho Ban quản lý
-@fig: H3_02_usecase_bql|Hình 3.2. Biểu đồ use case phân rã chức năng Ban quản lý
+### 3.3.2. Chức năng dành cho Ban quản lý
+Biểu đồ use case phân rã chức năng Ban quản lý được thể hiện trong hình 3.2.
+@fig: H3_02_usecase_bql|Hình 3.2: Biểu đồ use case phân rã chức năng Ban quản lý
 Ban quản lý là người dùng có quyền cao nhất, thực hiện các nhóm chức năng:
 - Quản lý căn hộ: thêm, sửa căn hộ; xem tình trạng ở, cư dân hiện tại, loại hợp đồng và số ngày còn lại.
 - Quản lý cư dân và hợp đồng: thêm, sửa hồ sơ; lập hợp đồng sở hữu hoặc thuê (hệ thống chặn hai hợp đồng hoạt động chồng thời gian trên một căn hộ); xác nhận cư dân thuộc căn hộ.
 - Quản lý hóa đơn: lập hóa đơn tháng và sáu tháng, sửa hóa đơn chưa thanh toán, ghi nhận thu tiền mặt, đối soát chuyển khoản, chạy quét quá hạn thủ công.
 - Quản lý gửi xe, sửa chữa bảo trì, khiếu nại, thông báo, báo cáo, nhân sự và tài khoản, kho kiến thức của trợ lý.
-### 3.2.3. Chức năng dành cho Cư dân
-@fig: H3_03_usecase_cu_dan|Hình 3.3. Biểu đồ use case phân rã chức năng Cư dân
+### 3.3.3. Chức năng dành cho Cư dân
+Biểu đồ use case phân rã chức năng Cư dân được thể hiện trong hình 3.3.
+@fig: H3_03_usecase_cu_dan|Hình 3.3: Biểu đồ use case phân rã chức năng Cư dân
 Cư dân đăng ký tài khoản bằng số căn hộ. Mã căn hộ tự khai chỉ là thông tin tham khảo; cư dân chỉ có quyền với căn hộ khi có hợp đồng còn hiệu lực hoặc được Ban quản lý xác nhận. Sau đó cư dân có thể xem và thanh toán hóa đơn, tải biên nhận, xem xe, gửi yêu cầu sửa chữa, gửi khiếu nại và đơn đăng ký, nhận thông báo và hỏi trợ lý An Cư.
-### 3.2.4. Chức năng dành cho Kỹ thuật viên
-@fig: H3_04_usecase_ktv|Hình 3.4. Biểu đồ use case phân rã chức năng Kỹ thuật viên
+### 3.3.4. Chức năng dành cho Kỹ thuật viên
+Biểu đồ use case phân rã chức năng Kỹ thuật viên được thể hiện trong hình 3.4.
+@fig: H3_04_usecase_ktv|Hình 3.4: Biểu đồ use case phân rã chức năng Kỹ thuật viên
 Kỹ thuật viên chỉ thấy và cập nhật trạng thái các phiếu được giao cho mình, theo thứ tự chờ xử lý, đang xử lý, hoàn thành. Ngoài ra kỹ thuật viên nhập doanh thu gửi xe vãng lai theo ngày và gửi thông báo về các vấn đề phát sinh.
-## 3.3. Đặc tả use case
+## 3.4. Đặc tả use case
 Phần này đặc tả các use case quan trọng nhất của hệ thống.
-@tab: Bảng 3.2. Đặc tả use case Đăng ký tài khoản cư dân
+Đặc tả use case Đăng ký tài khoản cư dân được trình bày trong bảng 3.2.
+@tab: Bảng 3.2: Đặc tả use case Đăng ký tài khoản cư dân
 |Mục|Nội dung|
 |Mã use case|UC01|
 |Tác nhân|Cư dân (chưa có tài khoản)|
@@ -37,7 +63,8 @@ Phần này đặc tả các use case quan trọng nhất của hệ thống.
 |Luồng chính|1. Cư dân chọn Đăng ký. 2. Nhập họ tên (10–50 ký tự), tên đăng nhập (3–20 ký tự), mật khẩu (6–30 ký tự), email @gmail.com, số điện thoại, số căn hộ. 3. Hệ thống kiểm tra dữ liệu và tra cứu căn hộ. 4. Hệ thống tạo tài khoản vai trò cư dân, tạo hồ sơ cư dân, cấp phiên đăng nhập.|
 |Luồng thay thế|3a. Dữ liệu sai định dạng: báo lỗi tại trường tương ứng. 3b. Không tìm thấy căn hộ: báo lỗi. 3c. Tên đăng nhập hoặc email đã tồn tại: báo trùng. 4a. Không tạo được hồ sơ: tài khoản giữ trạng thái khóa, yêu cầu liên hệ Ban quản lý.|
 |Hậu điều kiện|Tài khoản hoạt động; chưa có quyền xem hóa đơn cho tới khi được xác nhận căn hộ.|
-@tab: Bảng 3.3. Đặc tả use case Đăng nhập
+Đặc tả use case Đăng nhập được trình bày trong bảng 3.3.
+@tab: Bảng 3.3: Đặc tả use case Đăng nhập
 |Mục|Nội dung|
 |Mã use case|UC02|
 |Tác nhân|Ban quản lý, Cư dân, Kỹ thuật viên|
@@ -45,7 +72,8 @@ Phần này đặc tả các use case quan trọng nhất của hệ thống.
 |Luồng chính|1. Nhập tên đăng nhập, mật khẩu. 2. Hệ thống kiểm tra băm mật khẩu và trạng thái. 3. Hệ thống cấp JWT hạn 8 giờ. 4. Giao diện hiển thị menu theo vai trò.|
 |Luồng thay thế|2a. Sai thông tin: báo lỗi. 2b. Tài khoản bị khóa: hiển thị lý do khóa. 2c. Sai quá 10 lần trong 5 phút: tạm chặn.|
 |Hậu điều kiện|Người dùng truy cập được chức năng theo vai trò.|
-@tab: Bảng 3.4. Đặc tả use case Lập hóa đơn điện nước hằng tháng
+Đặc tả use case Lập hóa đơn điện nước hằng tháng được trình bày trong bảng 3.4.
+@tab: Bảng 3.4: Đặc tả use case Lập hóa đơn điện nước hằng tháng
 |Mục|Nội dung|
 |Mã use case|UC07|
 |Tác nhân|Ban quản lý|
@@ -53,14 +81,16 @@ Phần này đặc tả các use case quan trọng nhất của hệ thống.
 |Luồng chính|1. Chọn Lập hóa đơn ở tab Hàng tháng. 2. Nhập căn hộ, kỳ (YYYY-MM), hạn thanh toán, điện tiêu thụ (kWh), nước tiêu thụ (m³), đơn giá điện, nước. 3. Giao diện xem trước tổng tiền. 4. Hệ thống tính tiền từng khoản = lượng × đơn giá, làm tròn đến đồng; tổng = tiền điện + tiền nước. 5. Lưu hóa đơn trạng thái chưa thanh toán và gửi thông báo tới căn hộ.|
 |Luồng thay thế|4a. Lượng tiêu thụ quá 3 chữ số thập phân hoặc đơn giá không dương: báo lỗi. 5a. Căn hộ đã có hóa đơn kỳ này: báo trùng.|
 |Hậu điều kiện|Hóa đơn mới xuất hiện với cư dân của căn hộ.|
-@tab: Bảng 3.5. Đặc tả use case Lập hóa đơn dịch vụ sáu tháng
+Đặc tả use case Lập hóa đơn dịch vụ sáu tháng được trình bày trong bảng 3.5.
+@tab: Bảng 3.5: Đặc tả use case Lập hóa đơn dịch vụ sáu tháng
 |Mục|Nội dung|
 |Mã use case|UC08|
 |Tác nhân|Ban quản lý; Parking Service (tính phí gửi xe)|
 |Luồng chính|1. Chọn tab 6 tháng, nhập căn hộ, kỳ (YYYY-H1 hoặc YYYY-H2), hạn, phí dịch vụ chung. 2. Nếu không nhập phí gửi xe, hệ thống hỏi Parking Service: với mỗi xe tính số tháng dương lịch có gửi trong kỳ (dừng trước ngày hủy) nhân phí tháng, cộng 100.000đ phí thẻ nếu xe mới đăng ký trong kỳ. 3. Tổng = phí dịch vụ + phí gửi xe. 4. Lưu hóa đơn, thông báo căn hộ.|
 |Luồng thay thế|2a. Ban quản lý nhập tay phí gửi xe: dùng giá trị đã nhập. 4a. Trùng căn hộ và kỳ: báo trùng.|
 |Hậu điều kiện|Hóa đơn sáu tháng được tạo.|
-@tab: Bảng 3.6. Đặc tả use case Thanh toán hóa đơn qua VietQR
+Đặc tả use case Thanh toán hóa đơn qua VietQR được trình bày trong bảng 3.6.
+@tab: Bảng 3.6: Đặc tả use case Thanh toán hóa đơn qua VietQR
 |Mục|Nội dung|
 |Mã use case|UC10|
 |Tác nhân|Cư dân, SePay|
@@ -68,107 +98,145 @@ Phần này đặc tả các use case quan trọng nhất của hệ thống.
 |Luồng chính|1. Cư dân chọn Thanh toán. 2. Hệ thống tạo phiên 15 phút với nội dung chuyển khoản duy nhất, hiển thị VietQR với số tiền còn thiếu. 3. Cư dân chuyển khoản, chọn Tôi đã chuyển khoản; phiên chuyển sang chờ ngân hàng xác nhận. 4. SePay gọi webhook. 5. Hệ thống xác thực, ghi giao dịch, phân bổ tiền. 6. Khi đủ tiền: tạo một khoản thanh toán thành công, hóa đơn đã thanh toán, gửi thông báo cho cư dân và Ban quản lý, tạo biên nhận.|
 |Luồng thay thế|2a. Thành viên khác đang giữ phiên: chỉ xem trạng thái, không nhận QR. 5a. Webhook gửi lặp: trả kết quả cũ. 5b. Chuyển thiếu: lưu phần đã nhận, QR mới chỉ chứa số còn thiếu. 5c. Chuyển dư hoặc chuyển lần hai: hóa đơn ghi đủ, phần dư vào sổ đối soát. 5d. Sai nội dung: lưu giao dịch chưa xác định để Ban quản lý kiểm tra.|
 |Hậu điều kiện|Hóa đơn được ghi nhận thu đúng một lần.|
-@tab: Bảng 3.7. Đặc tả use case Xử lý hóa đơn quá hạn
+Đặc tả use case Xử lý hóa đơn quá hạn được trình bày trong bảng 3.7.
+@tab: Bảng 3.7: Đặc tả use case Xử lý hóa đơn quá hạn
 |Mục|Nội dung|
 |Mã use case|UC12|
 |Tác nhân|Bộ lập lịch, Kỹ thuật viên|
 |Luồng chính|1. Lúc 00:05 hằng ngày, hệ thống tìm hóa đơn chưa thanh toán có hạn trước hôm nay. 2. Chuyển trạng thái quá hạn; trigger CSDL tạo phiếu tạm ngưng dịch vụ ưu tiên cao. 3. Gửi thông báo quá hạn tới căn hộ và báo cáo tổng hợp tới Ban quản lý. 4. Nhắc hạn các hóa đơn đến hạn trong 3 ngày.|
 |Luồng thay thế|Khi cư dân trả hết nợ quá hạn: phiếu tạm ngưng chưa bắt đầu được đóng với kết quả hủy; phiếu đã bắt đầu hoặc đã xong dẫn tới phiếu khôi phục dịch vụ.|
 |Hậu điều kiện|Không tạo trùng phiếu, không gửi trùng thông báo cho cùng sự kiện.|
-@tab: Bảng 3.8. Đặc tả use case Yêu cầu sửa chữa và xử lý phiếu
+Đặc tả use case Yêu cầu sửa chữa và xử lý phiếu được trình bày trong bảng 3.8.
+@tab: Bảng 3.8: Đặc tả use case Yêu cầu sửa chữa và xử lý phiếu
 |Mục|Nội dung|
 |Mã use case|UC15|
 |Tác nhân|Cư dân, Ban quản lý, Kỹ thuật viên|
 |Luồng chính|1. Cư dân tạo phiếu sửa chữa hoặc bảo trì cho căn hộ của mình. 2. Ban quản lý phân công kỹ thuật viên. 3. Kỹ thuật viên nhận xử lý (đang xử lý). 4. Kỹ thuật viên hoàn thành, hệ thống ghi thời điểm hoàn thành.|
 |Luồng thay thế|1a. Căn hộ không thuộc phạm vi cư dân: từ chối. 3a. Chưa có người được giao: không cho bắt đầu. 3b. Kỹ thuật viên không được giao: từ chối. 4a. Lùi trạng thái hoặc mở lại phiếu đã đóng: từ chối, yêu cầu tạo phiếu mới.|
 |Hậu điều kiện|Lịch sử xử lý phiếu được lưu đầy đủ.|
-@tab: Bảng 3.9. Đặc tả use case Gửi và giải quyết khiếu nại
+Đặc tả use case Gửi và giải quyết khiếu nại được trình bày trong bảng 3.9.
+@tab: Bảng 3.9: Đặc tả use case Gửi và giải quyết khiếu nại
 |Mục|Nội dung|
 |Mã use case|UC16|
 |Tác nhân|Cư dân, Ban quản lý|
 |Luồng chính|1. Cư dân gửi khiếu nại hoặc đơn đăng ký kèm danh mục, nội dung. 2. Ban quản lý mở đơn, nhập phản hồi, chọn trạng thái. 3. Hệ thống lưu phản hồi và gửi thông báo riêng tới đúng người gửi đơn.|
 |Luồng thay thế|2a. Đóng đơn (giải quyết hoặc từ chối) mà không có phản hồi: báo lỗi. 3a. Notification tạm lỗi: phản hồi vẫn lưu, sự kiện được gửi lại sau 30 giây. 3b. Sửa phản hồi của đơn đã đóng: giữ trạng thái, gửi thông báo cập nhật.|
 |Hậu điều kiện|Cư dân cùng căn hộ khác không xem được phản hồi riêng.|
-@tab: Bảng 3.10. Đặc tả use case Hỏi đáp với trợ lý An Cư
+Đặc tả use case Hỏi đáp với trợ lý An Cư được trình bày trong bảng 3.10.
+@tab: Bảng 3.10: Đặc tả use case Hỏi đáp với trợ lý An Cư
 |Mục|Nội dung|
 |Mã use case|UC20|
 |Tác nhân|Ban quản lý, Cư dân, Kỹ thuật viên; Google Gemini|
 |Luồng chính|1. Người dùng nhập câu hỏi. 2. Hệ thống chuẩn hóa, nhận diện ý định, chọn nguồn FAQ hoặc địa điểm phù hợp. 3. Nếu cấu hình LLM, gửi câu hỏi và nguồn để diễn đạt lại, kiểm tra kết quả. 4. Trả câu trả lời kèm nguồn tham chiếu.|
 |Luồng thay thế|2a. Không có nguồn: trả lời chưa có thông tin. 2b. Câu hỏi mơ hồ: hỏi lại. 2c. Hỏi công nợ của chính mình (khi bật): tra Billing bằng JWT, không gửi dữ liệu cho LLM. 3a. LLM lỗi hoặc kết quả không hợp lệ: trả nội dung gốc.|
 |Hậu điều kiện|Câu trả lời không chứa thông tin ngoài kho kiến thức.|
-## 3.4. Biểu đồ hoạt động các chức năng chính
-### 3.4.1. Đăng ký tài khoản cư dân
-@fig: H3_05_hd_dang_ky|Hình 3.5. Biểu đồ hoạt động đăng ký tài khoản cư dân
-Auth Service không tự đọc bảng căn hộ mà gọi Resident Service để kiểm tra. Tài khoản được tạo ở trạng thái khóa, chỉ kích hoạt sau khi Resident Service tạo xong hồ sơ, nhờ đó không xuất hiện tài khoản hoạt động mà thiếu hồ sơ cư dân.
-### 3.4.2. Đăng nhập
-@fig: H3_06_hd_dang_nhap|Hình 3.6. Biểu đồ hoạt động đăng nhập
-### 3.4.3. Ban quản lý xác nhận cư dân thuộc căn hộ
-@fig: H3_07_hd_xac_nhan_can_ho|Hình 3.7. Biểu đồ hoạt động xác nhận cư dân thuộc căn hộ
-Phạm vi căn hộ của cư dân bằng hợp các căn hộ có hợp đồng còn hiệu lực theo ngày thực tế và các căn hộ được Ban quản lý xác nhận. Cách làm này cho phép nhiều thành viên trong một gia đình cùng xem và thanh toán hóa đơn mà không phải lập thêm hợp đồng.
-### 3.4.4. Lập hóa đơn điện nước hằng tháng
-@fig: H3_08_hd_hoa_don_thang|Hình 3.8. Biểu đồ hoạt động lập hóa đơn điện nước hằng tháng
-### 3.4.5. Lập hóa đơn dịch vụ và gửi xe sáu tháng
-@fig: H3_09_hd_hoa_don_6_thang|Hình 3.9. Biểu đồ hoạt động lập hóa đơn dịch vụ và gửi xe sáu tháng
-### 3.4.6. Cư dân thanh toán hóa đơn qua VietQR
-@fig: H3_10_hd_thanh_toan_vietqr|Hình 3.10. Biểu đồ hoạt động thanh toán hóa đơn qua VietQR
-Nút "Tôi đã chuyển khoản" chỉ chuyển phiên sang trạng thái chờ xác nhận; hệ thống không bao giờ đánh dấu hóa đơn đã thanh toán dựa trên thao tác của người dùng mà chỉ dựa trên dữ liệu ngân hàng do SePay gửi về.
-### 3.4.7. Ghi nhận tiền mặt và đối soát chuyển khoản
-@fig: H3_11_hd_ghi_nhan_doi_soat|Hình 3.11. Biểu đồ hoạt động ghi nhận tiền mặt và đối soát chuyển khoản
-### 3.4.8. Xử lý hóa đơn quá hạn và khôi phục dịch vụ
-@fig: H3_12_hd_qua_han|Hình 3.12. Biểu đồ hoạt động xử lý hóa đơn quá hạn và khôi phục dịch vụ
-### 3.4.9. Đăng ký gửi xe tháng
-@fig: H3_13_hd_dang_ky_xe|Hình 3.13. Biểu đồ hoạt động đăng ký gửi xe tháng
-### 3.4.10. Ghi nhận doanh thu gửi xe vãng lai
-@fig: H3_14_hd_vang_lai|Hình 3.14. Biểu đồ hoạt động ghi nhận doanh thu gửi xe vãng lai
-### 3.4.11. Yêu cầu sửa chữa, phân công và xử lý
-@fig: H3_15_hd_sua_chua|Hình 3.15. Biểu đồ hoạt động yêu cầu sửa chữa, phân công và xử lý
-### 3.4.12. Gửi và giải quyết khiếu nại, đơn đăng ký
-@fig: H3_16_hd_khieu_nai|Hình 3.16. Biểu đồ hoạt động gửi và giải quyết khiếu nại
-### 3.4.13. Gửi thông báo chung và riêng
-@fig: H3_17_hd_thong_bao|Hình 3.17. Biểu đồ hoạt động gửi thông báo chung và riêng
-### 3.4.14. Hỏi đáp với trợ lý An Cư
-@fig: H3_18_hd_chatbot|Hình 3.18. Biểu đồ hoạt động hỏi đáp với trợ lý An Cư
-### 3.4.15. Xem báo cáo, thống kê
-@fig: H3_19_hd_bao_cao|Hình 3.19. Biểu đồ hoạt động xem báo cáo, thống kê
-Báo cáo phân biệt hai cách ghi nhận: số phát hành được tính theo kỳ của hóa đơn (kỳ H1 tính vào tháng 1, kỳ H2 tính vào tháng 7), còn số thực thu được tính theo ngày thanh toán thành công. Nhờ vậy Ban quản lý thấy được cả doanh thu phải thu và dòng tiền thực tế.
-## 3.5. Biểu đồ tuần tự
+## 3.5. Biểu đồ hoạt động các chức năng chính
 ### 3.5.1. Đăng ký tài khoản cư dân
-@fig: H3_20_tt_dang_ky|Hình 3.20. Biểu đồ tuần tự đăng ký tài khoản cư dân
-### 3.5.2. Đăng nhập và gọi API có xác thực
-@fig: H3_21_tt_dang_nhap|Hình 3.21. Biểu đồ tuần tự đăng nhập và gọi API có xác thực
-### 3.5.3. Xác nhận cư dân thuộc căn hộ
-@fig: H3_22_tt_xac_nhan_can_ho|Hình 3.22. Biểu đồ tuần tự xác nhận cư dân thuộc căn hộ
+Biểu đồ hoạt động đăng ký tài khoản cư dân được thể hiện trong hình 3.5.
+@fig: H3_05_hd_dang_ky|Hình 3.5: Biểu đồ hoạt động đăng ký tài khoản cư dân
+Auth Service không tự đọc bảng căn hộ mà gọi Resident Service để kiểm tra. Tài khoản được tạo ở trạng thái khóa, chỉ kích hoạt sau khi Resident Service tạo xong hồ sơ, nhờ đó không xuất hiện tài khoản hoạt động mà thiếu hồ sơ cư dân.
+### 3.5.2. Đăng nhập
+Biểu đồ hoạt động đăng nhập được thể hiện trong hình 3.6.
+@fig: H3_06_hd_dang_nhap|Hình 3.6: Biểu đồ hoạt động đăng nhập
+### 3.5.3. Ban quản lý xác nhận cư dân thuộc căn hộ
+Biểu đồ hoạt động xác nhận cư dân thuộc căn hộ được thể hiện trong hình 3.7.
+@fig: H3_07_hd_xac_nhan_can_ho|Hình 3.7: Biểu đồ hoạt động xác nhận cư dân thuộc căn hộ
+Phạm vi căn hộ của cư dân bằng hợp các căn hộ có hợp đồng còn hiệu lực theo ngày thực tế và các căn hộ được Ban quản lý xác nhận. Cách làm này cho phép nhiều thành viên trong một gia đình cùng xem và thanh toán hóa đơn mà không phải lập thêm hợp đồng.
 ### 3.5.4. Lập hóa đơn điện nước hằng tháng
-@fig: H3_23_tt_hoa_don_thang|Hình 3.23. Biểu đồ tuần tự lập hóa đơn điện nước hằng tháng
-### 3.5.5. Lập hóa đơn dịch vụ sáu tháng
-@fig: H3_24_tt_hoa_don_6_thang|Hình 3.24. Biểu đồ tuần tự lập hóa đơn dịch vụ sáu tháng
-### 3.5.6. Thanh toán qua VietQR và webhook SePay
-@fig: H3_25_tt_thanh_toan_sepay|Hình 3.25. Biểu đồ tuần tự thanh toán qua VietQR và webhook SePay
-### 3.5.7. Ghi nhận tiền mặt
-@fig: H3_26_tt_ghi_nhan_tien_mat|Hình 3.26. Biểu đồ tuần tự ghi nhận tiền mặt
-### 3.5.8. Quét hóa đơn quá hạn và khôi phục dịch vụ
-@fig: H3_27_tt_qua_han|Hình 3.27. Biểu đồ tuần tự quét hóa đơn quá hạn và khôi phục dịch vụ
+Biểu đồ hoạt động lập hóa đơn điện nước hằng tháng được thể hiện trong hình 3.8.
+@fig: H3_08_hd_hoa_don_thang|Hình 3.8: Biểu đồ hoạt động lập hóa đơn điện nước hằng tháng
+### 3.5.5. Lập hóa đơn dịch vụ và gửi xe sáu tháng
+Biểu đồ hoạt động lập hóa đơn dịch vụ và gửi xe sáu tháng được thể hiện trong hình 3.9.
+@fig: H3_09_hd_hoa_don_6_thang|Hình 3.9: Biểu đồ hoạt động lập hóa đơn dịch vụ và gửi xe sáu tháng
+### 3.5.6. Cư dân thanh toán hóa đơn qua VietQR
+Biểu đồ hoạt động thanh toán hóa đơn qua VietQR được thể hiện trong hình 3.10.
+@fig: H3_10_hd_thanh_toan_vietqr|Hình 3.10: Biểu đồ hoạt động thanh toán hóa đơn qua VietQR
+Nút "Tôi đã chuyển khoản" chỉ chuyển phiên sang trạng thái chờ xác nhận; hệ thống không bao giờ đánh dấu hóa đơn đã thanh toán dựa trên thao tác của người dùng mà chỉ dựa trên dữ liệu ngân hàng do SePay gửi về.
+### 3.5.7. Ghi nhận tiền mặt và đối soát chuyển khoản
+Biểu đồ hoạt động ghi nhận tiền mặt và đối soát chuyển khoản được thể hiện trong hình 3.11.
+@fig: H3_11_hd_ghi_nhan_doi_soat|Hình 3.11: Biểu đồ hoạt động ghi nhận tiền mặt và đối soát chuyển khoản
+### 3.5.8. Xử lý hóa đơn quá hạn và khôi phục dịch vụ
+Biểu đồ hoạt động xử lý hóa đơn quá hạn và khôi phục dịch vụ được thể hiện trong hình 3.12.
+@fig: H3_12_hd_qua_han|Hình 3.12: Biểu đồ hoạt động xử lý hóa đơn quá hạn và khôi phục dịch vụ
 ### 3.5.9. Đăng ký gửi xe tháng
-@fig: H3_28_tt_dang_ky_xe|Hình 3.28. Biểu đồ tuần tự đăng ký gửi xe tháng
+Biểu đồ hoạt động đăng ký gửi xe tháng được thể hiện trong hình 3.13.
+@fig: H3_13_hd_dang_ky_xe|Hình 3.13: Biểu đồ hoạt động đăng ký gửi xe tháng
 ### 3.5.10. Ghi nhận doanh thu gửi xe vãng lai
-@fig: H3_29_tt_vang_lai|Hình 3.29. Biểu đồ tuần tự ghi nhận doanh thu gửi xe vãng lai
-### 3.5.11. Yêu cầu sửa chữa, phân công, xử lý
-@fig: H3_30_tt_sua_chua|Hình 3.30. Biểu đồ tuần tự yêu cầu sửa chữa, phân công, xử lý
-### 3.5.12. Khiếu nại và phản hồi
-@fig: H3_31_tt_khieu_nai|Hình 3.31. Biểu đồ tuần tự khiếu nại và phản hồi
-### 3.5.13. Gửi thông báo và push Firebase
-@fig: H3_32_tt_thong_bao|Hình 3.32. Biểu đồ tuần tự gửi thông báo và push Firebase
+Biểu đồ hoạt động ghi nhận doanh thu gửi xe vãng lai được thể hiện trong hình 3.14.
+@fig: H3_14_hd_vang_lai|Hình 3.14: Biểu đồ hoạt động ghi nhận doanh thu gửi xe vãng lai
+### 3.5.11. Yêu cầu sửa chữa, phân công và xử lý
+Biểu đồ hoạt động yêu cầu sửa chữa, phân công và xử lý được thể hiện trong hình 3.15.
+@fig: H3_15_hd_sua_chua|Hình 3.15: Biểu đồ hoạt động yêu cầu sửa chữa, phân công và xử lý
+### 3.5.12. Gửi và giải quyết khiếu nại, đơn đăng ký
+Biểu đồ hoạt động gửi và giải quyết khiếu nại được thể hiện trong hình 3.16.
+@fig: H3_16_hd_khieu_nai|Hình 3.16: Biểu đồ hoạt động gửi và giải quyết khiếu nại
+### 3.5.13. Gửi thông báo chung và riêng
+Biểu đồ hoạt động gửi thông báo chung và riêng được thể hiện trong hình 3.17.
+@fig: H3_17_hd_thong_bao|Hình 3.17: Biểu đồ hoạt động gửi thông báo chung và riêng
 ### 3.5.14. Hỏi đáp với trợ lý An Cư
-@fig: H3_33_tt_chatbot|Hình 3.33. Biểu đồ tuần tự hỏi đáp với trợ lý An Cư
+Biểu đồ hoạt động hỏi đáp với trợ lý An Cư được thể hiện trong hình 3.18.
+@fig: H3_18_hd_chatbot|Hình 3.18: Biểu đồ hoạt động hỏi đáp với trợ lý An Cư
 ### 3.5.15. Xem báo cáo, thống kê
-@fig: H3_34_tt_bao_cao|Hình 3.34. Biểu đồ tuần tự xem báo cáo, thống kê
-## 3.6. Biểu đồ trạng thái
-### 3.6.1. Trạng thái hóa đơn
-@fig: H3_35_tt_hoa_don|Hình 3.35. Biểu đồ trạng thái hóa đơn
+Biểu đồ hoạt động xem báo cáo, thống kê được thể hiện trong hình 3.19.
+@fig: H3_19_hd_bao_cao|Hình 3.19: Biểu đồ hoạt động xem báo cáo, thống kê
+Báo cáo phân biệt hai cách ghi nhận: số phát hành được tính theo kỳ của hóa đơn (kỳ H1 tính vào tháng 1, kỳ H2 tính vào tháng 7), còn số thực thu được tính theo ngày thanh toán thành công. Nhờ vậy Ban quản lý thấy được cả doanh thu phải thu và dòng tiền thực tế.
+## 3.6. Biểu đồ tuần tự
+### 3.6.1. Đăng ký tài khoản cư dân
+Biểu đồ tuần tự đăng ký tài khoản cư dân được thể hiện trong hình 3.20.
+@fig: H3_20_tt_dang_ky|Hình 3.20: Biểu đồ tuần tự đăng ký tài khoản cư dân
+### 3.6.2. Đăng nhập và gọi API có xác thực
+Biểu đồ tuần tự đăng nhập và gọi API có xác thực được thể hiện trong hình 3.21.
+@fig: H3_21_tt_dang_nhap|Hình 3.21: Biểu đồ tuần tự đăng nhập và gọi API có xác thực
+### 3.6.3. Xác nhận cư dân thuộc căn hộ
+Biểu đồ tuần tự xác nhận cư dân thuộc căn hộ được thể hiện trong hình 3.22.
+@fig: H3_22_tt_xac_nhan_can_ho|Hình 3.22: Biểu đồ tuần tự xác nhận cư dân thuộc căn hộ
+### 3.6.4. Lập hóa đơn điện nước hằng tháng
+Biểu đồ tuần tự lập hóa đơn điện nước hằng tháng được thể hiện trong hình 3.23.
+@fig: H3_23_tt_hoa_don_thang|Hình 3.23: Biểu đồ tuần tự lập hóa đơn điện nước hằng tháng
+### 3.6.5. Lập hóa đơn dịch vụ sáu tháng
+Biểu đồ tuần tự lập hóa đơn dịch vụ sáu tháng được thể hiện trong hình 3.24.
+@fig: H3_24_tt_hoa_don_6_thang|Hình 3.24: Biểu đồ tuần tự lập hóa đơn dịch vụ sáu tháng
+### 3.6.6. Thanh toán qua VietQR và webhook SePay
+Biểu đồ tuần tự thanh toán qua VietQR và webhook SePay được thể hiện trong hình 3.25.
+@fig: H3_25_tt_thanh_toan_sepay|Hình 3.25: Biểu đồ tuần tự thanh toán qua VietQR và webhook SePay
+### 3.6.7. Ghi nhận tiền mặt
+Biểu đồ tuần tự ghi nhận tiền mặt được thể hiện trong hình 3.26.
+@fig: H3_26_tt_ghi_nhan_tien_mat|Hình 3.26: Biểu đồ tuần tự ghi nhận tiền mặt
+### 3.6.8. Quét hóa đơn quá hạn và khôi phục dịch vụ
+Biểu đồ tuần tự quét hóa đơn quá hạn và khôi phục dịch vụ được thể hiện trong hình 3.27.
+@fig: H3_27_tt_qua_han|Hình 3.27: Biểu đồ tuần tự quét hóa đơn quá hạn và khôi phục dịch vụ
+### 3.6.9. Đăng ký gửi xe tháng
+Biểu đồ tuần tự đăng ký gửi xe tháng được thể hiện trong hình 3.28.
+@fig: H3_28_tt_dang_ky_xe|Hình 3.28: Biểu đồ tuần tự đăng ký gửi xe tháng
+### 3.6.10. Ghi nhận doanh thu gửi xe vãng lai
+Biểu đồ tuần tự ghi nhận doanh thu gửi xe vãng lai được thể hiện trong hình 3.29.
+@fig: H3_29_tt_vang_lai|Hình 3.29: Biểu đồ tuần tự ghi nhận doanh thu gửi xe vãng lai
+### 3.6.11. Yêu cầu sửa chữa, phân công, xử lý
+Biểu đồ tuần tự yêu cầu sửa chữa, phân công, xử lý được thể hiện trong hình 3.30.
+@fig: H3_30_tt_sua_chua|Hình 3.30: Biểu đồ tuần tự yêu cầu sửa chữa, phân công, xử lý
+### 3.6.12. Khiếu nại và phản hồi
+Biểu đồ tuần tự khiếu nại và phản hồi được thể hiện trong hình 3.31.
+@fig: H3_31_tt_khieu_nai|Hình 3.31: Biểu đồ tuần tự khiếu nại và phản hồi
+### 3.6.13. Gửi thông báo và push Firebase
+Biểu đồ tuần tự gửi thông báo và push Firebase được thể hiện trong hình 3.32.
+@fig: H3_32_tt_thong_bao|Hình 3.32: Biểu đồ tuần tự gửi thông báo và push Firebase
+### 3.6.14. Hỏi đáp với trợ lý An Cư
+Biểu đồ tuần tự hỏi đáp với trợ lý An Cư được thể hiện trong hình 3.33.
+@fig: H3_33_tt_chatbot|Hình 3.33: Biểu đồ tuần tự hỏi đáp với trợ lý An Cư
+### 3.6.15. Xem báo cáo, thống kê
+Biểu đồ tuần tự xem báo cáo, thống kê được thể hiện trong hình 3.34.
+@fig: H3_34_tt_bao_cao|Hình 3.34: Biểu đồ tuần tự xem báo cáo, thống kê
+## 3.7. Biểu đồ trạng thái
+### 3.7.1. Trạng thái hóa đơn
+Biểu đồ trạng thái hóa đơn được thể hiện trong hình 3.35.
+@fig: H3_35_tt_hoa_don|Hình 3.35: Biểu đồ trạng thái hóa đơn
 Hóa đơn chỉ được sửa khi còn ở trạng thái chưa thanh toán và chưa phát hành mã chuyển khoản; sau khi đã phát hành QR, chỉ hạn thanh toán được phép thay đổi để tránh lệch số tiền với mã QR cư dân có thể đã lưu.
-### 3.6.2. Trạng thái phiên thanh toán VietQR
-@fig: H3_36_tt_phien_thanh_toan|Hình 3.36. Biểu đồ trạng thái phiên thanh toán VietQR
-### 3.6.3. Trạng thái phiếu sửa chữa, bảo trì
-@fig: H3_37_tt_phieu_cong_viec|Hình 3.37. Biểu đồ trạng thái phiếu sửa chữa, bảo trì
-### 3.6.4. Trạng thái khiếu nại, đơn đăng ký
-@fig: H3_38_tt_khieu_nai|Hình 3.38. Biểu đồ trạng thái khiếu nại, đơn đăng ký
+### 3.7.2. Trạng thái phiên thanh toán VietQR
+Biểu đồ trạng thái phiên thanh toán VietQR được thể hiện trong hình 3.36.
+@fig: H3_36_tt_phien_thanh_toan|Hình 3.36: Biểu đồ trạng thái phiên thanh toán VietQR
+### 3.7.3. Trạng thái phiếu sửa chữa, bảo trì
+Biểu đồ trạng thái phiếu sửa chữa, bảo trì được thể hiện trong hình 3.37.
+@fig: H3_37_tt_phieu_cong_viec|Hình 3.37: Biểu đồ trạng thái phiếu sửa chữa, bảo trì
+### 3.7.4. Trạng thái khiếu nại, đơn đăng ký
+Biểu đồ trạng thái khiếu nại, đơn đăng ký được thể hiện trong hình 3.38.
+@fig: H3_38_tt_khieu_nai|Hình 3.38: Biểu đồ trạng thái khiếu nại, đơn đăng ký

@@ -1,4 +1,4 @@
-#! CHƯƠNG 1: TỔNG QUAN ĐỀ TÀI
+#! CHƯƠNG 1. TỔNG QUAN ĐỀ TÀI
 ## 1.1. Thực trạng công tác quản lý chung cư
 Ban quản lý chung cư là bộ phận chịu trách nhiệm vận hành tòa nhà thay mặt chủ đầu tư hoặc Ban quản trị. Công việc hằng ngày của bộ phận này gồm nhiều nhóm nghiệp vụ khác nhau:
 - Quản lý căn hộ và cư dân: lưu thông tin căn hộ (mã căn, tòa, tầng, diện tích), chủ sở hữu, người thuê, thời hạn hợp đồng thuê và trạng thái căn hộ đang ở hay còn trống.
@@ -65,7 +65,7 @@ Hệ thống phục vụ ba nhóm người dùng chính và một trợ lý tự
 - Cho biết vị trí các địa điểm quan trọng trong chung cư (văn phòng Ban quản lý, phòng camera, hiệu thuốc, bãi xe…).
 - Trả lời từ kho kiến thức do Ban quản lý quản lý; có thể dùng mô hình ngôn ngữ lớn để diễn đạt lại nhưng không tự tạo thông tin ngoài nguồn.
 ### 1.5.2. Yêu cầu phi chức năng
-- Bảo mật: mật khẩu được băm, xác thực bằng JWT có thời hạn, tài khoản bị khóa mất quyền ngay lập tức; phân quyền theo vai trò và theo căn hộ; khóa bí mật chỉ nằm ở máy chủ; webhook thanh toán phải có API Key.
+- Bảo mật: mật khẩu được băm, xác thực bằng JSON Web Token (JWT) có thời hạn, tài khoản bị khóa mất quyền ngay lập tức; phân quyền theo vai trò và theo căn hộ; khóa bí mật chỉ nằm ở máy chủ; webhook thanh toán phải có API Key.
 - Toàn vẹn dữ liệu: một căn hộ chỉ có một hóa đơn mỗi kỳ và mỗi loại; mỗi hóa đơn chỉ có một khoản thanh toán thành công; số tiền là số nguyên VND không âm; ràng buộc được kiểm tra ở cả API và cơ sở dữ liệu.
 - Tin cậy: sự kiện giữa các service được lưu trong outbox và gửi lại khi service đích tạm lỗi; mỗi sự kiện có mã định danh để xử lý đúng một lần.
 - Khả năng bảo trì và mở rộng: mỗi service là một ứng dụng độc lập có tài liệu OpenAPI, health check và container riêng.
@@ -79,4 +79,17 @@ Hệ thống được xây dựng dưới dạng ứng dụng web, triển khai 
 - Không tự tính biểu giá điện bậc thang, thuế hay phí phạt chậm trả; Ban quản lý nhập đơn giá áp dụng.
 - Biên nhận là chứng từ nội bộ, không thay thế hóa đơn điện tử theo quy định thuế.
 ### 1.6.2. Phương pháp thực hiện
-Đề tài được thực hiện theo các bước: khảo sát và mô tả yêu cầu; thiết kế cơ sở dữ liệu gốc với các bảng, view và trigger; xây dựng lần lượt các service Auth, Resident, Billing, Parking, Maintenance, Notification, Complaint và Chatbot; xây dựng giao diện cho ba vai trò; tích hợp SePay, Firebase và Gemini; viết kiểm thử tự động và thiết lập quy trình CI/CD; cuối cùng nghiệm thu thanh toán bằng giao dịch thật và thông báo đẩy trên thiết bị.
+Đề tài được thực hiện theo các bước: khảo sát và mô tả yêu cầu; thiết kế cơ sở dữ liệu gốc với các bảng, view và trigger; xây dựng lần lượt các service Auth, Resident, Billing, Parking, Maintenance, Notification, Complaint và Chatbot; xây dựng giao diện cho ba vai trò; tích hợp SePay, Firebase và Gemini; viết kiểm thử tự động và thiết lập quy trình tích hợp và chuyển giao liên tục (CI/CD); cuối cùng nghiệm thu thanh toán bằng giao dịch thật và thông báo đẩy trên thiết bị.
+## 1.7. Đối tượng nghiên cứu và ý nghĩa của đề tài
+### 1.7.1. Đối tượng nghiên cứu
+Đối tượng nghiên cứu của đề tài gồm:
+- Quy trình nghiệp vụ quản lý vận hành chung cư: quản lý căn hộ, cư dân và hợp đồng; lập hóa đơn, thu phí và đối soát; gửi xe; sửa chữa, bảo trì; khiếu nại; thông báo và báo cáo.
+- Các tác nhân tham gia hệ thống: Ban quản lý, cư dân (chủ sở hữu, người thuê, thành viên hộ gia đình) và kỹ thuật viên.
+- Kiến trúc hướng dịch vụ và các kỹ thuật bảo đảm tính nhất quán khi nhiều dịch vụ cùng tham gia một nghiệp vụ, như mẫu outbox, khóa chống trùng và giao dịch tuần tự.
+- Các dịch vụ bên ngoài được tích hợp: chuẩn VietQR, dịch vụ đối soát SePay, Firebase Cloud Messaging và mô hình ngôn ngữ lớn Gemini.
+### 1.7.2. Ý nghĩa khoa học
+Về mặt khoa học, đề tài vận dụng quy trình phân tích và thiết kế hướng đối tượng với UML vào một bài toán nghiệp vụ cụ thể, từ khảo sát yêu cầu, đặc tả use case đến thiết kế kiến trúc, cơ sở dữ liệu và giao diện lập trình. Đề tài cũng minh họa cách hiện thực các nguyên tắc của kiến trúc hướng dịch vụ như ranh giới dịch vụ rõ ràng, quyền sở hữu dữ liệu theo dịch vụ, giao tiếp qua hợp đồng API và xử lý lỗi khi gọi dịch vụ khác.
+Bên cạnh đó, đề tài phân tích và xử lý các tình huống khó trong thanh toán trực tuyến như webhook bị gửi lặp, nhiều người cùng thanh toán một hóa đơn, chuyển thiếu, chuyển dư hoặc tiền về sau khi phiên thanh toán hết hạn. Cách tiếp cận dựa trên ràng buộc dữ liệu, khóa chống trùng (idempotency key) và sổ giao dịch đối soát có thể tham khảo cho các hệ thống thu phí tương tự. Việc kết hợp truy xuất kho kiến thức với mô hình ngôn ngữ lớn cũng cho thấy một cách giảm rủi ro mô hình tự tạo thông tin không có trong nguồn.
+### 1.7.3. Ý nghĩa thực tiễn
+Về mặt thực tiễn, hệ thống có thể hỗ trợ Ban quản lý các chung cư quy mô vừa số hóa công việc hằng ngày, giảm thời gian lập hóa đơn, đối soát chuyển khoản và tổng hợp báo cáo. Cư dân có một kênh thống nhất để xem hóa đơn, thanh toán, gửi yêu cầu và nhận thông báo, đồng thời có thể tự tra cứu nội quy, mức phí qua trợ lý An Cư thay vì gọi điện hoặc lên văn phòng.
+Mã nguồn được tổ chức thành các dịch vụ độc lập, có tài liệu API, bộ kiểm thử tự động và cấu hình triển khai bằng Docker, nên có thể được dùng làm nền tảng để mở rộng thêm chức năng hoặc làm tài liệu tham khảo khi học về phân tích thiết kế hệ thống và kiến trúc hướng dịch vụ.
