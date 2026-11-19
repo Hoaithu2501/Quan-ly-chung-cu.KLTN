@@ -13,7 +13,6 @@ from werkzeug.security import generate_password_hash
 
 from conftest import TEST_SEPAY_KEY, bank_webhook
 from scripts import backup_db, init_db
-from scripts.ci.prepare_database import prepare
 from shared import firebase_push
 from shared.ratelimit import SlidingWindow
 from shared.web import APIError

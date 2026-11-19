@@ -13,7 +13,6 @@ def write_test_env(destination):
         "JWT_SECRET": secrets.token_urlsafe(48),
         "SERVICE_TOKEN": secrets.token_urlsafe(48),
         "SEPAY_WEBHOOK_API_KEY": secrets.token_urlsafe(48),
-        "PAYMENT_MODE": "sepay",
         "SEPAY_ENV": "test",
         "SEPAY_API_TOKEN": "",
         "SEPAY_BANK_ACCOUNT_ID": "",

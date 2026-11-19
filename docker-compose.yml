@@ -49,7 +49,9 @@ x-service: &service
   volumes:
     - qlcc-data:/app/data
     - qlcc-generated:/app/generated:ro
-  restart: unless-stopped
+  # "always" also brings the system back when Docker Desktop is quit and reopened, which
+  # "unless-stopped" does not. "docker compose down" still stops it for good.
+  restart: always
   networks: [qlcc]
   depends_on:
     db-init:
@@ -90,7 +92,7 @@ services:
       - qlcc-data:/app/data
       - ./backups:/backups
     command: ["python", "scripts/backup_db.py", "--loop", "--output", "/backups"]
-    restart: unless-stopped
+    restart: always
     networks: [qlcc]
     depends_on:
       db-init:

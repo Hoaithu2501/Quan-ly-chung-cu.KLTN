@@ -54,8 +54,6 @@ class SePayPayments:
         missing = [key for key in names if not os.getenv(key, "").strip()]
         issues = []
         environment = os.getenv("SEPAY_ENV", "test").strip()
-        if os.getenv("PAYMENT_MODE", "sepay").strip() != "sepay":
-            issues.append("PAYMENT_MODE phải là sepay")
         if environment not in ("test", "live"):
             issues.append("SEPAY_ENV phải là test hoặc live")
         key = os.getenv("SEPAY_WEBHOOK_API_KEY", "")
