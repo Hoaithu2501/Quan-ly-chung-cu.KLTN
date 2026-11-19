@@ -27,7 +27,7 @@ TEST_SEPAY_KEY = "integration-sepay-key-at-least-32-characters"
 def configure_sepay(monkeypatch):
     """Only isolated test credentials; no real bank/provider network is needed."""
     settings = {
-        "PAYMENT_MODE": "sepay", "SEPAY_ENV": "test", "SEPAY_BANK_CODE": "VCB",
+        "SEPAY_ENV": "test", "SEPAY_BANK_CODE": "VCB",
         "SEPAY_BANK_NAME": "Vietcombank", "SEPAY_ACCOUNT_NUMBER": "0123456789",
         "SEPAY_ACCOUNT_NAME": "BQL TEST", "SEPAY_WEBHOOK_API_KEY": TEST_SEPAY_KEY,
         "SEPAY_WEBHOOK_URL": "https://example.test/api/billing/sepay/webhook",

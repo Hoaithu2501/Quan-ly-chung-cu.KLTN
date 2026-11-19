@@ -52,7 +52,7 @@ Kiểm thử trình duyệt (tùy chọn, cần Chrome/Edge hoặc Chromium củ
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 $env:RUN_BROWSER_TESTS='1'
-.\.venv\Scripts\python.exe -m pytest tests/test_browser.py -q
+.\.venv\Scripts\python.exe -m pytest tests/test_browser.py tests/test_bug_sheet_browser.py -q
 Remove-Item Env:RUN_BROWSER_TESTS
 ```
 

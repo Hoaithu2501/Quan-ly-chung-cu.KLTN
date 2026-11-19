@@ -652,16 +652,14 @@ def test_local_simulation_endpoint_is_removed(billing):
     assert client.post(f"/api/billing/orders/{order['order_id']}/simulate", json={}, headers=headers("resident")).status_code == 404
 
 
-def test_absent_mode_defaults_to_sepay_test_and_rejects_unsupported_modes(billing, monkeypatch):
+def test_sepay_is_the_only_mode_and_an_old_payment_mode_setting_is_ignored(billing, monkeypatch):
     module, app, _, _ = billing
-    monkeypatch.delenv("PAYMENT_MODE")
+    monkeypatch.setenv("PAYMENT_MODE", "demo")  # Left over in an older .env file.
     assert module.payment_mode() == "sepay"
-    for month, mode in enumerate(("demo", "sandbox", "production"), start=1):
-        monkeypatch.setenv("PAYMENT_MODE", mode)
-        assert module.payment_configuration()["ready"] is False
-        item = invoice(app.test_client(), period=f"2099-{month:02}")
-        response = app.test_client().post(f"/api/billing/invoices/monthly/{item['invoice_id']}/checkout", json={}, headers=headers("resident"))
-        assert response.status_code == 503
+    assert module.payment_configuration()["ready"] is True
+    item = invoice(app.test_client())
+    response = app.test_client().post(f"/api/billing/invoices/monthly/{item['invoice_id']}/checkout", json={}, headers=headers("resident"))
+    assert response.status_code == 201 and response.json["mode"] == "sepay"
 
 
 SEPAY_ACCOUNT_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"

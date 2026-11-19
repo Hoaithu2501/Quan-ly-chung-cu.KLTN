@@ -52,11 +52,11 @@ jobs:
           node --check frontend/firebase-messaging-sw.js
           node --test tests/test_firebase_worker.cjs
       - name: Backend and integration tests
-        run: python -m pytest tests --ignore=tests/test_browser.py -q --junitxml=test-results/backend.xml
+        run: python -m pytest tests --ignore=tests/test_browser.py --ignore=tests/test_bug_sheet_browser.py -q --junitxml=test-results/backend.xml
       - name: Browser acceptance tests
         env:
           RUN_BROWSER_TESTS: '1'
-        run: python -m pytest tests/test_browser.py -q --junitxml=test-results/browser.xml
+        run: python -m pytest tests/test_browser.py tests/test_bug_sheet_browser.py -q --junitxml=test-results/browser.xml
       - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

@@ -91,7 +91,6 @@ def main(argv=None):
         parser.error("--gateway phải là origin HTTP(S), không có thông tin đăng nhập hoặc đường dẫn.")
     billing = load_billing()
     config = billing.payment_configuration()
-    print("PAYMENT_MODE:", config["mode"])
     print("SEPAY_ENV:", config["environment"])
     print("Cấu hình:", config["message"])
     print("API đối soát:", "Đã cấu hình" if config["reconciliation_enabled"] else "Chưa cấu hình (chỉ nhận webhook)")

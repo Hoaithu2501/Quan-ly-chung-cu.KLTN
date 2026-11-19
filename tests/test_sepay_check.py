@@ -35,7 +35,7 @@ def test_default_check_is_offline_and_never_exposes_keys(check, monkeypatch, cap
     monkeypatch.setattr(check.requests, "post", lambda *a, **k: pytest.fail("must not create bank transfers"))
     assert check.main([]) == 0
     output = capsys.readouterr().out
-    assert "sepay" in output and "test" in output
+    assert "SEPAY_ENV: test" in output
     assert TEST_SEPAY_KEY not in output
 
 

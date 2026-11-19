@@ -6,7 +6,7 @@ File này đọc trực tiếp trong VS Code bằng Ctrl+Shift+V.
 
 **Lần đầu dùng SePay Test Mode, không chuyển tiền thật.**
 
-- Đặt PAYMENT_MODE=sepay và SEPAY_ENV=test.
+- Đặt SEPAY_ENV=test.
 - Tạo tài khoản ngân hàng mới trong SePay Test, webhook JSON/API Key và URL tunnel HTTPS.
 - Điền thông tin vào .env, nạp lại Billing; xem [hướng dẫn thiết lập](GETTING_STARTED.md#6-kết-nối-sepay-và-firebase).
 - Dùng hóa đơn riêng cho việc demo. Thanh toán Test vẫn cập nhật trạng thái hóa đơn trong database ứng dụng, nên không dùng hóa đơn công nợ thật đang vận hành.

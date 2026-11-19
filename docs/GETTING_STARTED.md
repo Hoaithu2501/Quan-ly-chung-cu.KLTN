@@ -70,6 +70,8 @@ Gateway đọc giao diện trực tiếp từ `./frontend` qua bind mount chỉ 
 
 Không chạy đồng thời bản Python và Docker trên cùng bộ cổng. Dừng container bằng `docker compose down`; dữ liệu Docker vẫn nằm trong volume. Không thêm `-v` nếu cần giữ dữ liệu.
 
+**Tự chạy lại:** các container tự bật lại mỗi khi Docker khởi động. Để hệ thống tự chạy sau khi bật máy, vào Docker Desktop → Settings → General và bật **Start Docker Desktop when you sign in to your computer**. Muốn tắt hẳn hệ thống, dùng `docker compose down`; lệnh `docker compose stop` chỉ dừng đến lần Docker khởi động sau.
+
 **Sao lưu:** container `backup` tạo mỗi ngày một bản đã kiểm tra tại `backups/QLCC-auto-*.db` và giữ 14 bản gần nhất. Sao lưu thủ công bất cứ lúc nào bằng `docker compose exec backup python scripts/backup_db.py --output /backups`. `backups/` chứa dữ liệu cá nhân và mật khẩu đã băm, không đưa lên Git.
 
 Khôi phục một bản sao lưu (thay `TEN-BAN-SAO-LUU.db`):
