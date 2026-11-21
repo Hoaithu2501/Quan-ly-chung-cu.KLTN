@@ -40,7 +40,7 @@ Biểu đồ use case phân rã chức năng Ban quản lý được thể hiệ
 @fig: H3_02_usecase_bql|Hình 3.2: Biểu đồ use case phân rã chức năng Ban quản lý
 Ban quản lý là người dùng có quyền cao nhất, thực hiện các nhóm chức năng:
 - Quản lý căn hộ: thêm, sửa căn hộ; xem tình trạng ở, cư dân hiện tại, loại hợp đồng và số ngày còn lại.
-- Quản lý cư dân và hợp đồng: thêm, sửa hồ sơ; lập hợp đồng sở hữu hoặc thuê (hệ thống chặn hai hợp đồng hoạt động chồng thời gian trên một căn hộ); xác nhận cư dân thuộc căn hộ.
+- Quản lý cư dân và hợp đồng: lập hợp đồng sở hữu hoặc thuê cho cư dân đã đăng ký (hệ thống chặn hai hợp đồng hoạt động chồng thời gian trên một căn hộ); xác nhận cư dân thuộc căn hộ; khóa hoặc mở khóa tài khoản căn hộ khi hợp đồng thuê quá hạn.
 - Quản lý hóa đơn: lập hóa đơn tháng và sáu tháng, sửa hóa đơn chưa thanh toán, ghi nhận tiền đã thu, đối soát chuyển khoản, chạy quét quá hạn thủ công. Kỹ thuật viên kế thừa toàn bộ nhóm chức năng này.
 - Quản lý gửi xe (đăng ký, gia hạn, hóa đơn gửi xe bổ sung, duyệt đơn đăng ký gửi xe), sửa chữa bảo trì, khiếu nại, thông báo, báo cáo, tài khoản (đổi vai trò, xem nhật ký thao tác), kho kiến thức của trợ lý.
 ### 3.3.3. Chức năng dành cho Cư dân
@@ -86,7 +86,7 @@ Phần này đặc tả các use case quan trọng nhất của hệ thống.
 |Mục|Nội dung|
 |Mã use case|UC08|
 |Tác nhân|Ban quản lý, Kỹ thuật viên; Parking Service (tính phí gửi xe)|
-|Luồng chính|1. Chọn tab 6 tháng, nhập căn hộ, kỳ (YYYY-H1 hoặc YYYY-H2), hạn, phí dịch vụ chung. 2. Nếu không nhập phí gửi xe, hệ thống hỏi Parking Service: với mỗi xe tính số tháng dương lịch có gửi trong kỳ (dừng trước ngày hủy) nhân phí tháng, cộng 100.000đ phí làm thẻ nếu xe đăng ký mới trong kỳ và biển số chưa từng làm thẻ. 3. Tổng = phí dịch vụ + phí gửi xe. 4. Lưu hóa đơn, thông báo căn hộ.|
+|Luồng chính|1. Chọn tab 6 tháng, nhập căn hộ, kỳ (YYYY-H1 hoặc YYYY-H2), hạn, phí dịch vụ chung. 2. Nếu không nhập phí gửi xe, hệ thống hỏi Parking Service: với mỗi xe cộng phí tháng của các tháng gửi bắt đầu trong kỳ (tháng cuối lẻ sang kỳ sau đã tính thì kỳ sau không thu lại), cộng 100.000đ phí làm thẻ nếu xe chưa từng làm thẻ. 3. Tổng = phí dịch vụ + phí gửi xe. 4. Lưu hóa đơn, thông báo căn hộ.|
 |Luồng thay thế|2a. Người lập nhập tay phí gửi xe: dùng giá trị đã nhập. 4a. Trùng căn hộ và kỳ: báo trùng. 4b. Xe đăng ký sau khi hóa đơn kỳ đã phát hành: Ban quản lý lập hóa đơn gửi xe bổ sung riêng cho xe đó.|
 |Hậu điều kiện|Hóa đơn sáu tháng được tạo.|
 Đặc tả use case Thanh toán hóa đơn qua VietQR được trình bày trong bảng 3.6.
@@ -120,7 +120,7 @@ Phần này đặc tả các use case quan trọng nhất của hệ thống.
 |Mã use case|UC16|
 |Tác nhân|Cư dân, Ban quản lý|
 |Luồng chính|1. Cư dân gửi khiếu nại hoặc đơn đăng ký kèm danh mục, nội dung và tệp đính kèm nếu có. 2. Ban quản lý mở đơn, nhập phản hồi, chọn trạng thái. 3. Hệ thống lưu phản hồi và gửi thông báo riêng tới đúng người gửi đơn.|
-|Luồng thay thế|1a. Cư dân hủy yêu cầu khi còn chờ xử lý. 2a. Đóng đơn (giải quyết hoặc từ chối) mà không có phản hồi: báo lỗi. 2b. Duyệt đơn đăng ký gửi xe: hệ thống đăng ký xe cho căn hộ của người gửi đơn và báo biển số hoặc mã xe trong thông báo. 3a. Notification tạm lỗi: phản hồi vẫn lưu, sự kiện được gửi lại sau 30 giây. 3b. Sửa phản hồi của đơn đã đóng: giữ trạng thái, gửi thông báo cập nhật.|
+|Luồng thay thế|1a. Cư dân hủy yêu cầu khi còn chờ xử lý. 2a. Đóng đơn (giải quyết hoặc từ chối) mà không có phản hồi: báo lỗi. 2b. Duyệt đơn đăng ký gửi xe: hệ thống đăng ký xe cho căn hộ của người gửi đơn (biển số đang có đăng ký ở cùng căn hộ thì tự gia hạn) và báo biển số hoặc mã xe trong thông báo. 3a. Notification tạm lỗi: phản hồi vẫn lưu, sự kiện được gửi lại sau 30 giây. 3b. Sửa phản hồi của đơn đã đóng: giữ trạng thái, gửi thông báo cập nhật.|
 |Hậu điều kiện|Cư dân cùng căn hộ khác không xem được phản hồi riêng.|
 Đặc tả use case Hỏi đáp với trợ lý An Cư được trình bày trong bảng 3.10.
 @tab: Bảng 3.10: Đặc tả use case Hỏi đáp với trợ lý An Cư
@@ -142,6 +142,8 @@ Biểu đồ hoạt động đăng nhập được thể hiện trong hình 3.6.
 Biểu đồ hoạt động xác nhận cư dân thuộc căn hộ được thể hiện trong hình 3.7.
 @fig: H3_07_hd_xac_nhan_can_ho|Hình 3.7: Biểu đồ hoạt động xác nhận cư dân thuộc căn hộ
 Phạm vi căn hộ của cư dân bằng hợp các căn hộ có hợp đồng còn hiệu lực theo ngày thực tế và các căn hộ được Ban quản lý xác nhận. Cách làm này cho phép nhiều thành viên trong một gia đình cùng xem và thanh toán hóa đơn mà không phải lập thêm hợp đồng.
+Thời gian gửi xe tháng tính theo lịch như vé tháng: gửi đến hết ngày trước "ngày này tháng sau" (ví dụ 20/11/2026, 2 tháng thì hết 19/01/2027). Đăng ký mới tối thiểu 2 tháng, gia hạn từ 1 tháng, tối đa đến hết kỳ thu phí sáu tháng chứa ngày bắt đầu. Xe còn hạn được gia hạn nối tiếp; xe đã hết hạn thì đăng ký cũ được đóng và đăng ký mới tính từ hôm nay, không thu lại phí làm thẻ.
+Với hợp đồng thuê, Ban quản lý và từng cư dân của căn hộ nhận thông báo riêng trước 30 ngày và khi hợp đồng hết hạn; một tác vụ định kỳ mỗi giờ trong Resident Service gửi bù, mỗi thông báo chỉ gửi một lần. Khi không còn hợp đồng thuê nào tiếp tục, Ban quản lý có thể khóa tài khoản căn hộ: phiên đăng nhập bị thu hồi ngay, hóa đơn còn nợ vẫn gắn với căn hộ và được thu tại Ban quản lý; mở khóa thì khôi phục ngay liên kết căn hộ.
 ### 3.5.4. Lập hóa đơn điện nước hằng tháng
 Biểu đồ hoạt động lập hóa đơn điện nước hằng tháng được thể hiện trong hình 3.8.
 @fig: H3_08_hd_hoa_don_thang|Hình 3.8: Biểu đồ hoạt động lập hóa đơn điện nước hằng tháng

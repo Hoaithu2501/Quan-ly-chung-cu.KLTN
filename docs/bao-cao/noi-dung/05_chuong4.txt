@@ -14,7 +14,7 @@ Bảng 4.1 trình bày môi trường phát triển và triển khai.
 |Công cụ phát triển|Visual Studio Code, Git, DB Browser for SQLite|
 Các bước chạy hệ thống:
 - Không bắt buộc tạo tệp .env: khi khởi động lần đầu, db-init tự sinh JWT_SECRET và SERVICE_TOKEN. Chỉ cần sao chép .env.example thành .env khi muốn bật SePay, Firebase hoặc LLM.
-- Chạy lệnh docker compose up --build -d (hoặc script start.ps1 trên Windows). Container db-init tạo CSDL và áp dụng migration, sau đó gateway, tám service và container sao lưu khởi động; các container tự khởi động lại khi gặp lỗi hoặc khi máy khởi động lại.
+- Chạy lệnh docker compose up --build -d (hướng dẫn chi tiết trong HUONG_DAN_CHAY.md). Container db-init tạo CSDL và áp dụng migration, sau đó gateway, tám service và container sao lưu khởi động; các container tự khởi động lại khi gặp lỗi hoặc khi máy khởi động lại.
 - Truy cập http://localhost:5000, hoặc http://<địa chỉ IP của máy>:5000 từ thiết bị cùng mạng LAN; tài liệu API của từng service tại http://localhost:500x/docs.
 - Khi cần SePay gọi webhook hoặc dùng điện thoại ở ngoài mạng LAN, bật Tailscale Funnel bằng lệnh tailscale funnel --bg 5000 để có một địa chỉ HTTPS cố định; khai báo địa chỉ này một lần làm URL webhook trên SePay. Qua địa chỉ HTTPS, người dùng có thể thêm ứng dụng vào màn hình chính trên iPhone hoặc Android và nhận thông báo đẩy.
 ## 4.2. Giao diện chung
@@ -35,9 +35,9 @@ Giao diện danh sách căn hộ được minh họa trong hình 4.5.
 @img: Hình 4.5: Danh sách căn hộ|Bảng căn hộ: mã căn, tòa, tầng, diện tích, trạng thái, cư dân hiện tại, hợp đồng, số ngày còn lại; nút thêm, sửa
 ### 4.3.2. Cư dân và hợp đồng
 Giao diện danh sách cư dân và xác nhận căn hộ được minh họa trong hình 4.6.
-@img: Hình 4.6: Danh sách cư dân và xác nhận căn hộ|Tab cư dân với mã căn hộ đã khai, căn hộ đã có quyền và nút Xác nhận căn hộ
+@img: Hình 4.6: Danh sách cư dân và xác nhận căn hộ|Tab cư dân với mã căn hộ đã khai, căn hộ đã có quyền, nút Xác nhận căn hộ, Khóa / Mở khóa tài khoản căn hộ
 Giao diện quản lý hợp đồng được minh họa trong hình 4.7.
-@img: Hình 4.7: Quản lý hợp đồng|Tab hợp đồng: loại sở hữu / thuê, ngày bắt đầu, kết thúc, trạng thái hiệu lực
+@img: Hình 4.7: Quản lý hợp đồng|Tab hợp đồng: tên cư dân đã đăng ký, loại sở hữu / thuê, ngày bắt đầu, kết thúc, trạng thái hiệu lực
 ### 4.3.3. Quản lý hóa đơn
 Giao diện lập hóa đơn điện nước hằng tháng được minh họa trong hình 4.8.
 @img: Hình 4.8: Lập hóa đơn điện nước hằng tháng|Form nhập kWh, m³, đơn giá với phần xem trước tổng tiền
@@ -49,7 +49,7 @@ Giao diện đối soát chuyển khoản được minh họa trong hình 4.11.
 @img: Hình 4.11: Đối soát chuyển khoản|Sổ giao dịch SePay: tiền nhận, đã phân bổ, phần cần xử lý, trạng thái và ghi chú xử lý
 ### 4.3.4. Quản lý gửi xe
 Giao diện đăng ký xe tháng được minh họa trong hình 4.12.
-@img: Hình 4.12: Đăng ký xe tháng|Danh sách xe theo căn hộ với nút Gia hạn, Hóa đơn bổ sung; form đăng ký xe với loại xe, biển số, số tháng cam kết
+@img: Hình 4.12: Đăng ký xe tháng|Danh sách xe theo căn hộ (xe hết hạn ghi "cần gia hạn mới gửi tiếp") với nút Gia hạn, Hóa đơn bổ sung; form đăng ký hiện "Gửi đến hết ngày …"
 Giao diện doanh thu gửi xe vãng lai được minh họa trong hình 4.13.
 @img: Hình 4.13: Doanh thu gửi xe vãng lai|Sổ doanh thu theo ngày và tổng theo tháng
 ### 4.3.5. Sửa chữa, bảo trì và nhân sự
@@ -63,7 +63,7 @@ Giao diện giải quyết khiếu nại, đơn đăng ký được minh họa t
 Giao diện gửi thông báo chung, riêng được minh họa trong hình 4.17.
 @img: Hình 4.17: Gửi thông báo chung, riêng|Form tạo thông báo, chọn đối tượng nhận; danh sách kèm trạng thái đã đọc
 Giao diện báo cáo, thống kê doanh thu được minh họa trong hình 4.18.
-@img: Hình 4.18: Báo cáo, thống kê doanh thu|Thẻ tổng phát hành, đã thu, công nợ; biểu đồ cột theo tháng, quý; nút Xuất CSV
+@img: Hình 4.18: Báo cáo, thống kê doanh thu|Thẻ tổng phát hành, đã thu, thu vé vãng lai, tổng doanh thu, công nợ; biểu đồ cột theo tháng, quý; nút Xuất CSV
 ## 4.4. Giao diện dành cho cư dân
 ### 4.4.1. Thông tin cá nhân
 Giao diện thông tin cá nhân và đổi mật khẩu được minh họa trong hình 4.19.
@@ -104,7 +104,7 @@ Hệ thống được kiểm thử ở ba mức:
 - Kiểm thử đơn vị và nghiệp vụ: gọi trực tiếp ứng dụng Flask bằng test client để kiểm tra công thức tính tiền, phân quyền, chuyển trạng thái và ràng buộc dữ liệu.
 - Kiểm thử tích hợp: fixture service_cluster khởi chạy tám service thật trên các cổng ngẫu nhiên với CSDL tạm, kiểm tra các lời gọi HTTP giữa service, outbox và gửi lại khi service đích lỗi. SePay, FCM và LLM được giả lập để không phát sinh giao dịch hay thông báo thật.
 - Kiểm thử giao diện đầu cuối: Playwright điều khiển trình duyệt Chromium thực hiện thao tác của từng vai trò trên các service thật.
-Mỗi lần đẩy mã lên GitHub, quy trình CI chạy lại toàn bộ kiểm thử trên dữ liệu mẫu tổng hợp (không dùng dữ liệu thật hay khóa bí mật), sau đó dựng thử image Docker.
+Mỗi lần đẩy mã lên GitHub, quy trình CI chạy lại toàn bộ kiểm thử trên dữ liệu mẫu tổng hợp (không dùng dữ liệu thật hay khóa bí mật), sau đó dựng image Docker và chạy thử (smoke test).
 Bảng 4.2 trình bày thống kê bộ kiểm thử tự động.
 @tab: Bảng 4.2: Thống kê bộ kiểm thử tự động
 |Tệp kiểm thử|Số hàm kiểm thử|Phạm vi|
@@ -112,16 +112,16 @@ Bảng 4.2 trình bày thống kê bộ kiểm thử tự động.
 |test_billing_http.py, test_billing_household_regressions.py|3|Thanh toán qua HTTP, nhiều thành viên một căn hộ|
 |test_sepay_check.py|8|Công cụ kiểm tra cấu hình SePay|
 |test_auth_resident.py, test_resident_memberships.py|14|Đăng ký, hồ sơ, đổi mật khẩu, hợp đồng, xác nhận căn hộ|
-|test_domains.py, test_parking.py|11|Gửi xe, sửa chữa, thông báo, khiếu nại liên service|
-|test_complaint_notifications.py|5|Phản hồi khiếu nại, gửi đúng người, gửi lại|
+|test_domains.py, test_parking.py|12|Gửi xe theo lịch, sửa chữa, thông báo, khiếu nại liên service|
+|test_complaint_notifications.py|6|Phản hồi khiếu nại, gửi đúng người, gửi lại, báo yêu cầu mới cho Ban quản lý|
 |test_firebase_push.py, test_firebase_worker.cjs|9 + 2 (Node)|Cấu hình và gửi push FCM HTTP v1, service worker|
 |test_chatbot_*.py (4 tệp)|49|Truy xuất tiếng Việt, LLM giả lập, dữ liệu FAQ, gợi ý câu hỏi, tích hợp|
-|test_database_*.py, test_ci_database.py, test_policy_content.py|9|Toàn vẹn, xuất CSDL, dữ liệu CI, nội quy|
+|test_database_*.py, test_ci_database.py, test_policy_content.py, test_public_database.py|11|Toàn vẹn, xuất CSDL, dữ liệu CI, nội quy, CSDL ẩn danh|
 |test_security_regressions.py|33|Thu hồi phiên khi đổi mật khẩu, đổi vai trò; nhật ký chỉ thêm; giới hạn tần suất; Tailscale Funnel; biểu tượng màn hình chính; sao lưu; chạy không cần .env|
-|test_bug_report_fixes.py, test_bug_sheet_fixes.py, test_bug_sheet_round2.py, test_staff_profile_and_accounts.py|45|Cắt, cấp lại dịch vụ; gia hạn xe; hóa đơn bổ sung; phí thẻ một lần; quá hạn ngay; quyền kỹ thuật viên; hủy yêu cầu; tài khoản nhân sự|
+|test_bug_report_fixes.py, test_bug_sheet_fixes.py, test_bug_sheet_round2.py, test_bug_sheet_round3.py, test_staff_profile_and_accounts.py|57|Cắt, cấp lại dịch vụ; gửi xe theo lịch, gia hạn; phí thẻ một lần; quá hạn ngay; nhắc và khóa theo hợp đồng thuê; quyền kỹ thuật viên; hủy yêu cầu|
 |test_browser.py, test_bug_sheet_browser.py|37|Kiểm thử giao diện đầu cuối theo vai trò|
-|Tổng cộng|268|Nhiều hàm được tham số hóa thành nhiều ca chạy|
-Kết quả chạy lại ngày 19/11/2026 trên mã nguồn mới nhất: phần backend và tích hợp chạy 398 ca kiểm thử (sau khi mở rộng tham số), đạt 398/398 trong khoảng 2 phút; phần kiểm thử giao diện chạy 43 ca, đạt 43/43 trong khoảng 3 phút 40 giây; kiểm thử service worker bằng Node đạt 2/2.
+|Tổng cộng|284|Nhiều hàm được tham số hóa thành nhiều ca chạy|
+Kết quả chạy lại ngày 21/11/2026 trên mã nguồn mới nhất: phần backend và tích hợp chạy 414 ca kiểm thử (sau khi mở rộng tham số), đạt 414/414 trong khoảng 2 phút; phần kiểm thử giao diện chạy 43 ca, đạt 43/43; kiểm thử service worker bằng Node đạt 2/2. Ba bước CI trên GitHub Actions (backend và tích hợp, giao diện, Docker build và smoke test) đều đạt.
 ### 4.6.2. Một số ca kiểm thử tiêu biểu
 Bảng 4.3 trình bày các ca kiểm thử nghiệp vụ tiêu biểu.
 @tab: Bảng 4.3: Các ca kiểm thử nghiệp vụ tiêu biểu
@@ -161,8 +161,8 @@ Ngoài kiểm thử tự động, hệ thống được nghiệm thu với các 
 - Hệ thống vận hành ổn định hơn: các container tự khởi động lại, CSDL được sao lưu hằng ngày, phiên đăng nhập bị thu hồi khi đổi mật khẩu hoặc vai trò, thao tác quan trọng được ghi nhật ký chỉ thêm; người dùng truy cập được qua mạng LAN hoặc Tailscale Funnel và cài ứng dụng lên màn hình chính điện thoại.
 ### 4.7.2. Hạn chế
 - Tám service dùng chung một tệp SQLite nên chưa độc lập lưu trữ vật lý và bị giới hạn một tiến trình ghi; bảng audit_log được nhiều service cùng ghi.
-- Lời gọi nội bộ dùng một khóa bí mật chung cho mọi service; chưa có định danh riêng từng service.
+- Cắt, cấp lại dịch vụ chỉ ghi nhận trạng thái và gửi thông báo, không điều khiển thiết bị điện, nước; hoàn tiền chuyển thừa do Ban quản lý làm ngoài ứng dụng.
 - Bộ lập lịch chạy trong tiến trình Billing nên chưa thể chạy nhiều bản sao Billing.
-- Gửi thông báo đẩy là best-effort, chưa có hàng đợi gửi lại riêng; danh sách chưa phân trang.
-- Chưa có ứng dụng di động gốc; chưa phát hành hóa đơn điện tử theo quy định thuế; chưa tính biểu giá điện bậc thang.
+- JWT hạn 8 giờ, chưa có refresh token và chức năng quên mật khẩu; chưa phân trang phía máy chủ, chưa chạy nhiều bản sao service.
+- Biên nhận (ảnh PNG) là chứng từ nội bộ, chưa phát hành hóa đơn điện tử; chưa có ứng dụng di động gốc, chưa tính biểu giá điện bậc thang.
 - Truy cập từ xa phụ thuộc Tailscale Funnel (đang ở giai đoạn beta) và máy chủ phải bật; giới hạn tần suất đăng nhập lưu trong bộ nhớ tiến trình nên được đặt lại khi Auth khởi động lại.

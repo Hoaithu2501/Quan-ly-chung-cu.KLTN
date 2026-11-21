@@ -38,9 +38,9 @@ Tuy nhiên, các phần mềm thương mại thường có chi phí theo số c�
 Hệ thống phục vụ ba nhóm người dùng chính và một trợ lý tự động:
 Đối với Ban quản lý:
 - Quản lý căn hộ: thêm, sửa căn hộ (mã căn, tòa, tầng, diện tích); xem trạng thái đang ở hoặc còn trống, cư dân hiện tại, loại hợp đồng và số ngày còn lại của hợp đồng thuê.
-- Quản lý cư dân và hợp đồng: thêm, sửa hồ sơ cư dân; lập hợp đồng sở hữu hoặc thuê; xác nhận hoặc gỡ xác nhận cư dân thuộc căn hộ.
+- Quản lý cư dân và hợp đồng: cư dân tự đăng ký, Ban quản lý xác nhận hoặc gỡ xác nhận cư dân thuộc căn hộ; lập hợp đồng sở hữu hoặc thuê cho cư dân đã đăng ký; nhận nhắc hợp đồng thuê sắp hết hạn, đã hết hạn và khóa tài khoản căn hộ khi hợp đồng thuê quá hạn.
 - Quản lý hóa đơn: lập hóa đơn điện nước hằng tháng theo lượng tiêu thụ và đơn giá; lập hóa đơn phí dịch vụ và gửi xe sáu tháng, trong đó phí gửi xe được tự tính theo số xe và số tháng gửi; lập hóa đơn gửi xe bổ sung cho xe đăng ký sau khi đã phát hành hóa đơn kỳ; sửa hóa đơn chưa thanh toán; ghi nhận tiền đã thu; đối soát giao dịch chuyển khoản. Kỹ thuật viên dùng chung bộ quyền quản lý hóa đơn này.
-- Quản lý gửi xe: đăng ký, gia hạn, hủy xe tháng của từng căn hộ (phí làm thẻ chỉ thu một lần cho mỗi biển số); duyệt đơn đăng ký gửi xe của cư dân; ghi nhận doanh thu gửi xe vãng lai theo ngày.
+- Quản lý gửi xe: đăng ký, gia hạn, hủy xe tháng của từng căn hộ (thời gian gửi tính theo lịch như vé tháng, phí làm thẻ chỉ thu một lần cho mỗi xe); duyệt đơn đăng ký gửi xe của cư dân; ghi nhận doanh thu gửi xe vãng lai theo ngày.
 - Quản lý sửa chữa, bảo trì: tạo phiếu, phân công kỹ thuật viên, theo dõi tiến độ.
 - Giải quyết khiếu nại và đơn đăng ký: phản hồi, chuyển trạng thái, cư dân nhận thông báo riêng.
 - Gửi thông báo chung tới toàn bộ cư dân và thông báo riêng tới căn hộ hoặc cư dân.

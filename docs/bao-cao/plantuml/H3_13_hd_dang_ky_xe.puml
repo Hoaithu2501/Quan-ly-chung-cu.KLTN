@@ -6,10 +6,11 @@ start
 :Gửi đơn đăng ký gửi xe
 tại "Khiếu nại & đăng ký";
 |Ban quản lý|
-:Xét duyệt đơn (trong 48 giờ), phản hồi;
-:Vào "Quản lý gửi xe" → "Đăng ký xe";
+:Duyệt đơn (hệ thống tự tạo xe),
+hoặc vào "Quản lý gửi xe" → "Đăng ký xe";
 :Nhập căn hộ, loại xe, biển số,
-số tháng cam kết (≥ 2), ngày bắt đầu;
+ngày bắt đầu, số tháng (mới ≥ 2, gia hạn ≥ 1,
+tối đa đến hết kỳ sáu tháng);
 |Parking Service|
 if (Loại xe hợp lệ?\n(xe đạp, xe máy, xe điện)) then (Không)
   :Từ chối (không nhận ô tô);
@@ -22,14 +23,16 @@ endif
 if (Xe đạp không có biển?) then (Đúng)
   :Cấp mã <căn hộ>-XD-<id>;
 endif
-if (Biển số đang hoạt động bị trùng?) then (Có)
-  :Báo trùng (409);
+if (Biển số đang hoạt động ở cùng căn hộ?) then (Có)
+  :Gia hạn xe đó (còn hạn: nối tiếp;
+  hết hạn: đăng ký mới từ hôm nay);
   stop
 endif
 :Gán phí tháng theo loại xe;
-:Phí thẻ = 0 nếu biển số đã từng có thẻ,
+:Phí thẻ = 0 nếu xe đã từng có thẻ,
 ngược lại 100.000đ;
-:Lưu đăng ký, tính ngày được hủy sớm nhất;
+:Lưu đăng ký, tính ngày hết hạn theo lịch
+("Gửi đến hết ngày …");
 |Cư dân|
 :Xem xe và phí trong mục Gửi xe;
 stop

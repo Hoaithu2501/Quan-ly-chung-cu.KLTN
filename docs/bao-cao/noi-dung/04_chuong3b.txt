@@ -8,9 +8,9 @@ Bảng 3.11 trình bày danh sách service và chức năng.
 |Service|Cổng|Chức năng chính|
 |Gateway|5000|Phục vụ giao diện web, chuyển tiếp /api/* tới service tương ứng, trang trạng thái hệ thống|
 |Auth|5001|Đăng nhập, đăng ký cư dân, JWT, hồ sơ tài khoản, đổi mật khẩu, đổi vai trò tài khoản, nhật ký thao tác, giới hạn tần suất đăng nhập và đăng ký|
-|Resident|5002|Căn hộ, cư dân, hợp đồng, xác nhận cư dân thuộc căn hộ, phạm vi căn hộ của tài khoản|
+|Resident|5002|Căn hộ, cư dân, hợp đồng, xác nhận cư dân thuộc căn hộ, phạm vi căn hộ của tài khoản, nhắc hạn hợp đồng thuê, khóa và mở khóa tài khoản căn hộ|
 |Billing|5003|Hóa đơn tháng và sáu tháng, hóa đơn gửi xe bổ sung, thanh toán VietQR/SePay, ghi nhận tiền đã thu, đối soát, biên nhận, báo cáo, quét quá hạn, cắt và cấp lại dịch vụ theo hóa đơn|
-|Parking|5004|Đăng ký và gia hạn xe tháng, phí gửi xe theo kỳ, phí thẻ một lần cho mỗi biển số, doanh thu vãng lai theo ngày|
+|Parking|5004|Đăng ký và gia hạn xe tháng, phí gửi xe theo kỳ, thời gian gửi theo lịch, phí thẻ một lần cho mỗi xe, doanh thu vãng lai theo ngày|
 |Maintenance|5005|Hồ sơ kỹ thuật viên (đồng bộ theo vai trò tài khoản), phiếu sửa chữa, bảo trì cho căn hộ hoặc khu vực chung|
 |Notification|5006|Thông báo chung, riêng và thông báo cho nhân sự, trạng thái đã đọc, token và gửi push qua FCM HTTP v1|
 |Complaint|5007|Khiếu nại, đơn đăng ký (kèm tệp đính kèm), hủy yêu cầu, phản hồi, duyệt đơn đăng ký gửi xe và gửi lại thông báo phản hồi|
@@ -42,7 +42,7 @@ Toàn bộ hệ thống chạy bằng Docker Compose với một Dockerfile nhi�
 Bảng 3.13 trình bày cấu trúc thư mục mã nguồn.
 @tab: Bảng 3.13: Cấu trúc thư mục mã nguồn
 |Thư mục / tệp|Nội dung|
-|auth-service, resident-service, billing-service, parking-service, maintenance-service, notification-service, complaint-service, chatbot-service|Mỗi thư mục là một service với app.py; Billing và Complaint có thêm scheduler.py, Billing có sepay_payments.py|
+|auth-service, resident-service, billing-service, parking-service, maintenance-service, notification-service, complaint-service, chatbot-service|Mỗi thư mục là một service với app.py; Billing, Complaint và Resident có thêm scheduler.py, Billing có sepay_payments.py|
 |gateway|Ứng dụng gateway chuyển tiếp API và phục vụ giao diện|
 |shared|Hạ tầng dùng chung: kết nối CSDL, xác thực, giới hạn tần suất, nhật ký thao tác, gọi HTTP, kiểm tra dữ liệu, OpenAPI, push FCM, truy xuất chatbot|
 |frontend|index.html, app.js, styles.css (Tailwind), push.js, firebase-messaging-sw.js, manifest.webmanifest và biểu tượng để cài lên màn hình chính, phông chữ và hình ảnh|
@@ -179,7 +179,7 @@ Cấu trúc bảng vehicles (xe gửi tháng) được mô tả trong bảng 3.2
 |vehicle_type|TEXT|bicycle / motorbike / electric_bike|Loại xe|
 |monthly_fee|INTEGER|50.000 / 100.000|Phí tháng|
 |registered_date|TEXT||Ngày bắt đầu gửi|
-|registration_months|INTEGER|≥ 2|Số tháng cam kết|
+|registration_months|INTEGER|≥ 1 (đăng ký mới tối thiểu 2)|Số tháng cam kết|
 |status, cancelled_date|TEXT|active / cancelled|Trạng thái, ngày hủy|
 |card_fee|INTEGER|0 / 100.000|Phí làm thẻ, bằng 0 nếu biển số đã từng làm thẻ|
 |created_at|TEXT||Thời điểm tạo bản ghi, dùng để lập hóa đơn gửi xe bổ sung|
@@ -258,6 +258,7 @@ Bảng 3.32 trình bày tóm tắt các API chính.
 |Auth|GET /api/auth/users; PATCH /api/auth/users/{id}; GET /api/auth/audit-log|Ban quản lý|Xem tài khoản, đổi vai trò (thu hồi phiên cũ), xem nhật ký thao tác|
 |Resident|GET /api/apartments; POST, PATCH /api/apartments|Ba vai trò (đọc); Ban quản lý (ghi)|Xem, quản lý căn hộ|
 |Resident|GET /api/residents/me; POST, DELETE /api/residents/{id}/apartments/{apartment_id}|Cư dân; Ban quản lý|Phạm vi căn hộ, xác nhận cư trú|
+|Resident|POST /api/residents/{id}/lock-apartment, /unlock; nội bộ POST /api/auth/users/status|Ban quản lý; nội bộ|Khóa, mở khóa tài khoản căn hộ khi hợp đồng thuê quá hạn|
 |Resident|GET, POST, PATCH /api/contracts|Ban quản lý|Hợp đồng sở hữu, thuê|
 |Billing|GET, POST, PATCH /api/billing/invoices/{monthly,semiannual}|Ban quản lý, kỹ thuật viên; cư dân (đọc)|Lập, sửa, xem hóa đơn|
 |Billing|POST /api/billing/invoices/{kind}/{id}/pay, /release-payment|Ban quản lý, kỹ thuật viên|Ghi nhận tiền đã thu, giải phóng phiên thanh toán đang chờ|
@@ -280,11 +281,12 @@ Bảng 3.33 trình bày quy tắc nghiệp vụ và nơi kiểm tra.
 |Đăng ký công khai chỉ tạo tài khoản cư dân; tối đa 20 lần đăng ký mỗi giờ từ một địa chỉ; tên đăng nhập là duy nhất, email có thể trùng|Auth|
 |Cư dân chỉ xem hóa đơn, xe, phiếu, thông báo của căn hộ có hợp đồng hiệu lực hoặc được xác nhận|Từng service gọi Resident|
 |Một căn hộ không có hai hợp đồng hoạt động chồng thời gian; hợp đồng thuê bắt buộc có ngày kết thúc|Resident|
+|Hợp đồng chỉ lập cho cư dân đã đăng ký; chỉ khóa tài khoản căn hộ khi hợp đồng thuê đã hết hạn và không còn hợp đồng thuê tiếp tục|Resident, Auth|
 |Mỗi căn hộ chỉ có một hóa đơn cho mỗi kỳ và mỗi loại|SQLite UNIQUE + Billing|
 |Mỗi hóa đơn chỉ có một khoản thanh toán thành công; webhook lặp không cộng tiền lần hai|SQLite partial index + Billing|
 |Chỉ Ban quản lý và kỹ thuật viên ghi nhận tiền đã thu; cư dân không thể tự đánh dấu đã thanh toán, hóa đơn chỉ thành đã thanh toán khi có dữ liệu SePay|Billing|
 |Webhook SePay phải có API Key đúng, đúng tài khoản, ngân hàng, chiều tiền vào|Billing|
-|Phí xe: xe đạp 50.000đ/tháng; xe máy, xe điện 100.000đ/tháng; phí thẻ 100.000đ chỉ thu một lần cho mỗi biển số; cam kết tối thiểu 2 tháng; không nhận ô tô|Parking|
+|Phí xe: xe đạp 50.000đ/tháng; xe máy, xe điện 100.000đ/tháng; phí thẻ 100.000đ thu một lần cho mỗi xe; đăng ký mới tối thiểu 2 tháng, gia hạn từ 1 tháng, tối đa đến hết kỳ sáu tháng; không nhận ô tô|Parking|
 |Mỗi ngày chỉ có một bản ghi doanh thu vãng lai; không ghi ngày tương lai, tiền âm|SQLite UNIQUE + Parking|
 |Kỹ thuật viên thấy mọi phiếu, được nhận phiếu chưa có người phụ trách và chỉ được đổi trạng thái; trạng thái chỉ tiến, không lùi|Maintenance|
 |Đóng khiếu nại bắt buộc có phản hồi; phản hồi chỉ gửi tới người gửi đơn|Complaint, Notification|

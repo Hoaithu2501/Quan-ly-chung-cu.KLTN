@@ -9,8 +9,8 @@ rectangle "Chức năng Ban quản lý" {
   usecase "Thêm / sửa căn hộ" as A1
   usecase "Xem tình trạng ở, hợp đồng\nhiện hành, số ngày còn lại" as A2
   usecase "Quản lý cư dân & hợp đồng" as R
-  usecase "Thêm / sửa hồ sơ cư dân" as R1
-  usecase "Lập / sửa hợp đồng\nsở hữu, thuê" as R2
+  usecase "Khóa / mở khóa tài khoản căn hộ\n(hợp đồng thuê quá hạn)" as R1
+  usecase "Lập / sửa hợp đồng sở hữu, thuê\n(cư dân đã đăng ký)" as R2
   usecase "Xác nhận / gỡ cư dân\nthuộc căn hộ" as R3
   usecase "Quản lý hóa đơn" as I
   usecase "Lập hóa đơn điện nước tháng" as I1

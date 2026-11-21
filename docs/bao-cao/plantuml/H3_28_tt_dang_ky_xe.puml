@@ -10,13 +10,13 @@ A -> UI : Nhập căn hộ, loại xe, biển số, số tháng cam kết
 UI -> PARK : POST /api/parking/vehicles
 PARK -> RES : GET /api/apartments/{id}
 RES --> PARK : 200
-PARK -> PARK : kiểm tra loại xe, biển số, registration_months ≥ 2
-PARK -> DB : tìm biển số từng có thẻ → card_fee = 0 / 100.000
+PARK -> PARK : kiểm tra loại xe, biển số, số tháng (mới ≥ 2, tối đa đến hết kỳ 6 tháng)
+PARK -> DB : tìm xe từng có thẻ (biển số chuẩn hóa) → card_fee = 0 / 100.000
 PARK -> DB : INSERT vehicles
 alt trùng biển số đang hoạt động
   DB --> PARK : vi phạm uq_active_vehicle_plate
   PARK --> UI : 409
 else
-  PARK --> UI : 201 {minimum_end_date, card_fee}
+  PARK --> UI : 201 {ngày hết hạn theo lịch, card_fee}
 end
 @enduml
