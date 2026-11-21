@@ -4459,12 +4459,6 @@ document.addEventListener('click', async (event) => {
         state.noticeFilter = target.dataset.filter;
         await renderPage();
         break;
-      case 'notice-read':
-        target.disabled = true;
-        await post(`/api/notifications/${id}/read`);
-        await renderPage();
-        pollNotifications();
-        break;
       case 'complaint-create':
         requestDrafts = { complaint: {}, registration: {} };
         attachmentPicks = [];

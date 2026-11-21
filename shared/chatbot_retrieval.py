@@ -252,11 +252,6 @@ def _score(question, title, answer="", category=""):
     return min(score, 1.0)
 
 
-def match_score(question, candidate):
-    """Compatibility helper for callers that only have a candidate title."""
-    return _score(question, candidate)
-
-
 def _emergency(question):
     value = normalize(question)
     if any(phrase in value for phrase in ("chay bo", "chay xe", "chay may", "chay chuong trinh")) and not any(

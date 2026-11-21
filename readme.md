@@ -98,24 +98,23 @@ project/
 │   └── db.py             # Helper kết nối database dùng chung
 ├── migrations/           # Thay đổi cấu trúc database, chạy theo thứ tự
 ├── database/QLCC_an_danh.db  # Bản sao dữ liệu thật đã ẩn danh, để xem cấu trúc và dữ liệu (database/README.md)
-└── tests/fixtures/demo.sql  # Dữ liệu mẫu cho database mới và bộ kiểm thử
+├── tests/fixtures/demo.sql  # Dữ liệu mẫu cho database mới và bộ kiểm thử
+└── HUONG_DAN_CHAY.md     # Hướng dẫn chạy cho người mới, cả máy tính và điện thoại
 ```
 
 Các service có công thức build giống hệt nhau, chỉ khác tên, nên dùng chung một `Dockerfile` với tham số `SERVICE` thay vì lặp lại 8 file. Mỗi service vẫn là một image và một container riêng, có cổng riêng, chạy và khởi động lại độc lập.
 
-**Lưu ý quan trọng về database dùng chung:** cả 8 service vẫn trỏ vào **cùng một file SQLite** (qua Docker volume mount), vì hiện tại chưa tách 8 database vật lý riêng. SQLite cho phép nhiều process cùng đọc, nhưng chỉ 1 process ghi tại một thời điểm (khoá ở mức file) — chấp nhận được với quy mô demo/khoá luận (ít người dùng đồng thời), nhưng không phù hợp cho production thật. Nên ghi chú rõ điểm này trong báo cáo như một giới hạn đã biết (known limitation).
+**Lưu ý quan trọng về database dùng chung:** cả 8 service vẫn trỏ vào **cùng một file SQLite** (qua Docker volume mount), vì hiện tại chưa tách 8 database vật lý riêng. SQLite cho phép nhiều process cùng đọc, nhưng chỉ 1 process ghi tại một thời điểm (khoá ở mức file) — chấp nhận được với quy mô demo/khoá luận (ít người dùng đồng thời), nhưng không phù hợp cho production thật. Đây là một giới hạn đã biết (known limitation), xem mục 6.
 
-**Lợi ích của cách này (đúng như bạn muốn):**
+**Lợi ích:**
 - Test từng service độc lập qua Swagger/Postman ở đúng cổng của nó, không cần chạy toàn bộ hệ thống.
-- `docker-compose up` sẽ thấy rõ 8 container riêng biệt — trực quan khi demo trước hội đồng, thể hiện đúng tinh thần "độc lập triển khai" của SOA.
+- `docker compose up` cho thấy rõ 8 container riêng biệt, thể hiện đúng tinh thần "độc lập triển khai" của SOA.
 - Có thể tắt/bật/restart riêng từng service mà không ảnh hưởng service khác.
 
-**Đánh đổi cần biết:** so với cách gọi hàm trực tiếp (modular monolith) đã đề xuất trước đó, cách này tốn thêm công sức ở:
-- Viết thêm lớp gọi HTTP (`requests.get/post`) kèm xử lý lỗi mạng, timeout, retry giữa các service.
-- Mỗi service cần khai báo image, port và network riêng trong `docker-compose.yml`.
+**Đánh đổi:** so với cách gọi hàm trực tiếp trong một ứng dụng (modular monolith), cách này cần thêm:
+- Lớp gọi HTTP (`requests.get/post`) kèm xử lý lỗi mạng, timeout, retry giữa các service.
+- Khai báo image, port và network riêng cho mỗi service trong `docker-compose.yml`.
 - Khi 1 service cần dữ liệu từ nhiều service khác (vd: Billing cần cả Resident lẫn Parking), phải gọi nhiều HTTP request tuần tự → chậm hơn và nhiều điểm có thể lỗi hơn gọi hàm trực tiếp.
-
-Nếu khối lượng công việc này vượt quá thời gian còn lại, có thể cân nhắc làm HTTP thật cho 2-3 service "trọng tâm" (vd Billing, Parking, Auth — nơi thể hiện rõ nghiệp vụ phức tạp nhất) và giữ các service đơn giản còn lại (Chatbot, FAQ...) ở dạng gọi hàm trực tiếp, miễn là nói rõ lý do trong báo cáo.
 
 ## 3. Cơ chế xử lý hoá đơn quá hạn
 
@@ -140,20 +139,20 @@ Dùng thư viện **APScheduler** (Python), chạy ngay trong tiến trình củ
 - CI/CD: GitHub Actions
 - API: REST + OpenAPI (Swagger — mỗi service có Swagger UI riêng để test độc lập)
 - Database: SQLite3 (dùng chung 1 file qua Docker volume — xem lưu ý ở mục 2)
-- Testing: pytest (unit test cho logic tính tiền, integration test cho luồng thanh toán)
-- Container: Docker + Docker Compose (mỗi service 1 container, 1 mạng ảo chung — nên dựng Docker Compose sớm hơn, ngay khi có 2-3 service chạy được, để phát hiện sớm vấn đề network/volume thay vì để dồn vào cuối)
+- Testing: pytest (unit test cho logic tính tiền, integration test cho luồng liên service qua HTTP) và Playwright (test giao diện trên trình duyệt)
+- Container: Docker + Docker Compose (mỗi service 1 container, 1 mạng ảo chung)
 
-**Frontend**: HTML/CSS/JS
+**Frontend**: HTML/CSS/JS, Tailwind CSS; cài được lên màn hình chính điện thoại như một ứng dụng web
 
-**Thanh toán QR**: SePay
+**Thanh toán QR**: VietQR qua SePay (webhook xác nhận tiền về, đối soát tự động)
 
-**Chatbot**: Rule-based (so khớp từ khoá với `faq_knowledge_base`) — không cần AI phức tạp
+**Chatbot**: tra cứu kho `faq_knowledge_base` và danh bạ địa điểm (so khớp từ khoá, hiểu cả tiếng Việt không dấu); tuỳ chọn dùng Gemini để diễn đạt lại câu trả lời, chỉ dựa trên nội dung tìm được
 
-**Tích hợp dịch vụ bên thứ 3**: Firebase (push notification trên trình duyệt cho "Thông báo chung/riêng", thay vì chỉ thấy khi load lại trang)
+**Tích hợp dịch vụ bên thứ 3**: Firebase (push notification trên trình duyệt cho "Thông báo chung/riêng", thay vì chỉ thấy khi load lại trang), Tailscale Funnel (địa chỉ HTTPS cố định cho điện thoại và webhook SePay)
 
 ## 5. Chạy thử
 
-Chỉ cần cài và bật Docker Desktop, không cần tạo file cấu hình hay chạy Cloudflare:
+Chỉ cần cài và bật Docker Desktop, không cần tạo file cấu hình:
 
 ```
 docker compose up --build -d
@@ -167,4 +166,13 @@ Mở http://localhost:5000 và đăng nhập bằng tài khoản mẫu:
 | Cư dân | `resident` | `Resident@12345` |
 | Kỹ thuật viên | `technician` | `Tech@12345` |
 
-Bản chạy thử dùng dữ liệu mẫu. Thanh toán QR, thông báo đẩy và diễn đạt câu trả lời bằng AI chỉ bật khi có thông tin kết nối riêng trong `.env` (xem `docs/GETTING_STARTED.md`); các chức năng còn lại hoạt động bình thường. Cài lên iPhone hoặc Android: xem `docs/CAI_DAT_DIEN_THOAI.md`.
+Bản chạy thử dùng dữ liệu mẫu. Thanh toán QR, thông báo đẩy và diễn đạt câu trả lời bằng AI chỉ bật khi có thông tin kết nối riêng trong `.env`; các chức năng còn lại hoạt động bình thường. Hướng dẫn đầy đủ cho người mới (chạy trên máy tính, mở và cài lên điện thoại, kết nối SePay/Firebase/Gemini, sao lưu dữ liệu, xử lý sự cố): [HUONG_DAN_CHAY.md](HUONG_DAN_CHAY.md).
+
+## 6. Giới hạn đã biết
+
+- Một file SQLite vật lý dùng chung, một tiến trình ghi tại một thời điểm. WAL và timeout giảm xung đột nhưng không biến SQLite thành cơ sở dữ liệu phân tán.
+- Các service trao đổi qua HTTP và outbox; truy vấn ứng dụng không JOIN chéo bảng giữa service.
+- Cắt/cấp lại dịch vụ tại mục Quản lý dịch vụ chỉ ghi nhận trạng thái và gửi thông báo; hệ thống không điều khiển thiết bị điện/nước.
+- Biên nhận (ảnh PNG) là chứng từ nội bộ, chưa tích hợp nhà cung cấp hoá đơn điện tử. Hoàn tiền chuyển thừa do ban quản lý thực hiện ngoài ứng dụng; hệ thống chỉ lưu ghi chú xử lý.
+- JWT có thời hạn 8 giờ; khoá tài khoản, đổi vai trò và đổi mật khẩu có hiệu lực ngay. Chưa có refresh token và chức năng quên mật khẩu.
+- Chưa triển khai phân trang phía máy chủ hoặc hạ tầng nhiều replica.
