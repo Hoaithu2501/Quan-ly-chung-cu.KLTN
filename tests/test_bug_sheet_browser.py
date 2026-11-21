@@ -289,7 +289,7 @@ def test_technician_service_screen_and_guest_update(browser_page):
 def test_technician_invoice_tab_vehicle_lines_and_immediate_overdue(browser_page):
     page, cluster, errors = browser_page
     apartment_id, _, _ = new_resident(cluster, "UI-501", "ui.vehicle.lines")
-    register_vehicle(cluster, apartment_id, plate="29A1-50501", registered="2026-08-15")
+    register_vehicle(cluster, apartment_id, plate="29A1-50501", registered="2026-08-15", months=4)
     for kind, payload in (
         ("semiannual", {"period": "2026-H2", "service_fee": 1000, "due_date": "2099-01-01"}),
         ("monthly", {"period": "2001-01", "electricity_fee": 300, "water_fee": 200, "due_date": "2001-02-01"}),
@@ -314,7 +314,8 @@ def test_technician_invoice_tab_vehicle_lines_and_immediate_overdue(browser_page
     lines = page.locator("#modal[open] .data-table")
     assert lines.count() == 1, page.locator("#modal").inner_text()
     text = lines.inner_text()
-    for part in ("29A1-50501", "4 tháng", "15/08/2026", "15/12/2026", "5 tháng"):
+    # Calendar months from 15 August: to the end of 14 December, all four billed in H2.
+    for part in ("29A1-50501", "4 tháng", "15/08/2026", "14/12/2026", "4 tháng × 100.000"):
         assert part in text, part
     # A technician records money received, as management does.
     page.locator("#modal [data-action=invoice-cash]").click()
