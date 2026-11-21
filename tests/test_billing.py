@@ -42,6 +42,9 @@ def billing(tmp_path, monkeypatch):
                     "apartment_ids": [99] if g.user["user_id"] == 2 else [1]}
         if endpoint.startswith("/api/apartments/"):
             return {"apartment_id": int(endpoint.rsplit("/", 1)[1]), "code": "A101"}
+        if endpoint == "/api/parking/guest-daily":
+            return {"items": [{"parking_date": "2099-02-03", "daily_revenue": 30000},
+                              {"parking_date": "2099-05-10", "daily_revenue": 20000}]}
         if service == "parking":
             return {"items": [{"apartment_id": 1, "monthly_fee": 150000}]}
         return {"ok": True}
@@ -297,6 +300,10 @@ def test_report_distinguishes_billed_and_collected(billing):
     assert report["totals"]["billed_amount"] == 4400000
     assert report["totals"]["collected_amount"] == 0
     assert report["items"][0]["invoice_count"] == 2
+    # Guest parking cash is revenue without an invoice: counted in revenue, never in billed or collected.
+    assert [item["guest_amount"] for item in report["items"]] == [30000, 20000, 0, 0]
+    assert report["totals"]["guest_amount"] == 50000
+    assert report["totals"]["revenue_amount"] == report["totals"]["collected_amount"] + 50000
     assert client.get("/api/billing/reports", headers=headers("resident")).status_code == 403
 
 

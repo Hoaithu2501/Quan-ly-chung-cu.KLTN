@@ -1,6 +1,6 @@
 """Owns apartments, residents, and apartment_contracts."""
 
-from datetime import date
+from datetime import date, timedelta
 import math
 import uuid
 from flask import g
@@ -10,6 +10,33 @@ from shared.db import get_db, placeholders
 from shared.http import call_service
 from shared.domain import local_today, notify
 from shared.web import create_app as base_app, APIError, body, person_name, required, integer, iso_date, run
+
+LEASE_NOTICE_DAYS = 30
+LEASE_LOCK_REASON = "Hợp đồng thuê nhà đã quá hạn, tài khoản đã bị khóa."
+
+
+def vn_date(value):
+    return date.fromisoformat(value).strftime("%d/%m/%Y")
+
+
+def locked_user_ids():
+    """Accounts management locked, for example after a lease ended, no longer count as living anywhere.
+
+    Fetched once per request and before any write, so no HTTP call runs while SQLite is locked.
+    """
+    if "locked_users" not in g:
+        try:
+            users = call_service("auth", "/api/auth/users", internal=True)["items"]
+            g.locked_users = {u["user_id"] for u in users if u["status"] == "locked"}
+        except APIError:
+            # Showing a locked resident for a moment is better than hiding every resident.
+            g.locked_users = set()
+    return g.locked_users
+
+
+def lives_here(person):
+    """A profile without an account cannot be locked, so it always counts."""
+    return not person["user_id"] or person["user_id"] not in locked_user_ids()
 
 
 def text(value, name, max_length=200):
@@ -45,8 +72,11 @@ def assert_single_apartment(db, resident, apartment_id, start=None, end=None):
         raise APIError("Mỗi tài khoản chỉ liên kết một căn hộ. Căn hộ khác cần đăng ký bằng tài khoản riêng.", 409)
 
 
-def contract_resident_by_name(db, typed, contract_type):
-    """A typed name may only ever resolve to one person; names are not unique."""
+def contract_resident_by_name(db, typed):
+    """A typed name may only ever resolve to one person; names are not unique.
+
+    Residents join by registering their own account, so a contract never creates a profile.
+    """
     wanted = text(typed, "Tên cư dân", 120).casefold()
     # casefold here because SQLite's LOWER() only understands ASCII, not Vietnamese.
     matches = [
@@ -55,13 +85,13 @@ def contract_resident_by_name(db, typed, contract_type):
         if row["full_name"].strip().casefold() == wanted
     ]
     if len(matches) > 1:
-        raise APIError("Có nhiều cư dân trùng tên. Hãy chọn đúng cư dân theo mã hồ sơ.", 409)
-    if matches:
-        return matches[0]
-    relation = "owner" if contract_type == "ownership" else "tenant"
-    return db.execute(
-        "INSERT INTO residents(full_name,relation_type) VALUES(?,?)", (str(typed).strip(), relation)
-    ).lastrowid
+        raise APIError("Có nhiều cư dân trùng tên. Hãy nhập kèm mã hồ sơ, ví dụ: Nguyễn Văn A (#12).", 409)
+    if not matches:
+        raise APIError(
+            f"Không tìm thấy cư dân \"{str(typed).strip()}\". Cư dân cần tự đăng ký tài khoản trước khi lập hợp đồng.",
+            404,
+        )
+    return matches[0]
 
 
 def current_contracts(db, resident_id=None):
@@ -87,6 +117,8 @@ def profile(row):
     result["verified_apartment_ids"] = [item["apartment_id"] for item in memberships]
     result["apartment_ids"] = sorted(set(result["contract_apartment_ids"]) | set(result["verified_apartment_ids"]))
     ids = result["apartment_ids"]
+    # Management may then lock the apartment's accounts.
+    result["lease_ended"] = any(lease_over(db, apartment_id) for apartment_id in ids)
     result["apartment_codes"] = (
         [
             r["code"]
@@ -111,47 +143,54 @@ def own_profile():
     return profile(row)
 
 
-def apartment(row):
-    result = dict(row)
-    contracts = (
-        get_db()
-        .execute(
-            "SELECT c.*,r.full_name,r.phone FROM apartment_contracts c JOIN residents r ON r.resident_id=c.resident_id WHERE c.apartment_id=? ORDER BY c.start_date DESC",
-            (row["apartment_id"],),
-        )
-        .fetchall()
-    )
+def occupancy(db, apartment_id):
+    """Who lives here now: the current contract holder, then everyone management confirmed.
+
+    Returns (active contract or None, owner or None, residents). A resident whose account
+    management locked, for example after the lease ended, has moved out.
+    """
     today = local_today().isoformat()
-    current = [
-        c
-        for c in contracts
-        if c["status"] == "active" and c["start_date"] <= today and (not c["end_date"] or c["end_date"] >= today)
-    ]
+    current = db.execute(
+        "SELECT c.*,r.full_name,r.phone,r.user_id,r.relation_type FROM apartment_contracts c "
+        "JOIN residents r ON r.resident_id=c.resident_id WHERE c.apartment_id=? AND c.status='active' "
+        "AND c.start_date<=? AND (c.end_date IS NULL OR c.end_date>=?) ORDER BY c.start_date DESC",
+        (apartment_id, today, today),
+    ).fetchall()
     owner = next((c for c in current if c["contract_type"] == "ownership"), None)
     # While a lease runs the tenant is the occupant, so the lease decides the occupancy details.
     active = next((c for c in current if c["contract_type"] == "rental"), owner)
     # Management can confirm that someone lives here without drawing up a contract.
-    members = (
-        get_db()
-        .execute(
-            "SELECT r.full_name,r.phone,r.relation_type FROM resident_apartment_memberships m "
-            "JOIN residents r ON r.resident_id=m.resident_id WHERE m.apartment_id=? "
-            "ORDER BY m.confirmed_at,m.resident_id",
-            (row["apartment_id"],),
-        )
-        .fetchall()
-    )
-    member = members[0] if members else None
+    members = db.execute(
+        "SELECT r.resident_id,r.full_name,r.phone,r.relation_type,r.user_id FROM resident_apartment_memberships m "
+        "JOIN residents r ON r.resident_id=m.resident_id WHERE m.apartment_id=? "
+        "ORDER BY m.confirmed_at,m.resident_id",
+        (apartment_id,),
+    ).fetchall()
     if owner is None:
         owner = next((m for m in members if m["relation_type"] == "owner"), None)
+    residents, seen = [], set()
+    for person in ([active] if active else []) + list(members):
+        if person["resident_id"] not in seen and lives_here(person):
+            seen.add(person["resident_id"])
+            residents.append(
+                {"resident_id": person["resident_id"], "full_name": person["full_name"], "relation_type": person["relation_type"]}
+            )
+    return active, owner, residents
+
+
+def apartment(row):
+    result = dict(row)
+    active, owner, residents = occupancy(get_db(), row["apartment_id"])
+    first = residents[0] if residents else None
     member_type = None
-    if member:
-        member_type = "ownership" if member["relation_type"] == "owner" else "rental"
+    if first:
+        member_type = "ownership" if first["relation_type"] == "owner" else "rental"
     result.update(
-        status="occupied" if active or member else "vacant",
+        status="occupied" if residents else "vacant",
         owner_name=owner["full_name"] if owner else None,
         owner_phone=owner["phone"] if owner else None,
-        current_resident=active["full_name"] if active else member["full_name"] if member else None,
+        current_residents=residents,
+        current_resident=", ".join(r["full_name"] for r in residents) or None,
         contract_type=active["contract_type"] if active else member_type,
         start_date=active["start_date"] if active else None,
         end_date=active["end_date"] if active else None,
@@ -186,15 +225,145 @@ def visible_apartment(result):
 
 
 def sync_occupancy(db, apartment_id):
-    occupied = (
-        any(c["apartment_id"] == apartment_id for c in current_contracts(db))
-        or db.execute(
-            "SELECT 1 FROM resident_apartment_memberships WHERE apartment_id=? LIMIT 1", (apartment_id,)
-        ).fetchone()
-    )
+    """Callers fetch locked_user_ids() before opening their write transaction."""
+    occupied = bool(occupancy(db, apartment_id)[2])
     db.execute(
         "UPDATE apartments SET status=? WHERE apartment_id=?", ("occupied" if occupied else "vacant", apartment_id)
     )
+
+
+def apartment_accounts(db, apartment_id):
+    """Resident accounts tied to an apartment by confirmation or by any of its contracts."""
+    rows = db.execute(
+        "SELECT r.* FROM residents r WHERE r.user_id IS NOT NULL AND r.resident_id IN ("
+        "SELECT resident_id FROM resident_apartment_memberships WHERE apartment_id=? "
+        "UNION SELECT resident_id FROM apartment_contracts WHERE apartment_id=?) ORDER BY r.resident_id",
+        (apartment_id, apartment_id),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def lease_over(db, apartment_id):
+    """A lease of this apartment ends today or earlier, and no lease continues after today.
+
+    Management hears on the end date, so the accounts can be locked from that day on.
+    """
+    today = local_today().isoformat()
+    ended = db.execute(
+        "SELECT 1 FROM apartment_contracts WHERE apartment_id=? AND contract_type='rental' "
+        "AND (status IN ('expired','terminated') OR end_date<=?) LIMIT 1",
+        (apartment_id, today),
+    ).fetchone()
+    continuing = db.execute(
+        "SELECT 1 FROM apartment_contracts WHERE apartment_id=? AND contract_type='rental' AND status='active' "
+        "AND start_date<=? AND COALESCE(end_date,'9999-12-31')>? LIMIT 1",
+        (apartment_id, today, today),
+    ).fetchone()
+    return bool(ended) and not continuing
+
+
+def lease_renewed(db, contract):
+    """Another running lease for the same tenant and apartment that lasts longer."""
+    return bool(
+        db.execute(
+            "SELECT 1 FROM apartment_contracts WHERE apartment_id=? AND resident_id=? AND contract_id<>? "
+            "AND contract_type='rental' AND status='active' AND COALESCE(end_date,'9999-12-31')>?",
+            (contract["apartment_id"], contract["resident_id"], contract["contract_id"], contract["end_date"]),
+        ).fetchone()
+    )
+
+
+def lease_residents(db, contract):
+    """The accounts living in the leased apartment now, the tenant included; locked ones cannot sign in.
+
+    Callers fetch locked_user_ids() outside any write transaction.
+    """
+    ids = {r["resident_id"] for r in occupancy(db, contract["apartment_id"])[2]} | {contract["resident_id"]}
+    rows = db.execute(
+        f"SELECT resident_id,user_id FROM residents WHERE user_id IS NOT NULL "
+        f"AND resident_id IN ({','.join('?' * len(ids))}) ORDER BY resident_id",
+        sorted(ids),
+    ).fetchall()
+    return [row["resident_id"] for row in rows if row["user_id"] not in locked_user_ids()]
+
+
+def lease_notices(db, contract, ended_on=None):
+    """Management and the residents each get their own notice, 30 days ahead and on the end date.
+
+    Residents are written to one by one, so their notices stay out of management's inbox; every
+    notice has a fixed event id, so each is sent once.
+    """
+    code, name, number, end = contract["code"], contract["full_name"], contract["contract_id"], contract["end_date"]
+    residents = lease_residents(db, contract)
+    if ended_on is None:
+        notify(
+            f"lease-ending-admin:{number}:{end}",
+            target_role="admin",
+            title=f"Căn hộ {code}: hợp đồng thuê sắp hết hạn ({vn_date(end)})",
+            content=f"Hợp đồng thuê #HD{number} của {name} tại căn hộ {code} hết hạn ngày {vn_date(end)}. "
+            "Cư dân của căn hộ đã được nhắc liên hệ Ban quản lý để gia hạn. Nếu cư dân ở tiếp, hãy lập hợp đồng "
+            "gia hạn trong Cư dân & hợp đồng trước ngày này.",
+        )
+        for resident_id in residents:
+            notify(
+                f"lease-ending:{number}:{end}:{resident_id}",
+                target_resident_id=resident_id,
+                title=f"Hợp đồng thuê căn hộ {code} của bạn sắp hết hạn",
+                content=f"Hợp đồng thuê #HD{number} của căn hộ {code} hết hạn ngày {vn_date(end)}. "
+                "Nếu bạn ở tiếp, hãy liên hệ Ban quản lý để gia hạn hợp đồng trước ngày này. Khi hợp đồng hết hạn "
+                "mà chưa gia hạn, Ban quản lý có thể khóa các tài khoản của căn hộ.",
+            )
+        return
+    notify(
+        # Its own prefix: "lease-ended:" ids were used by an earlier wording of this notice.
+        f"lease-ended-admin:{number}:{end}",
+        target_role="admin",
+        title=f"Căn hộ {code}: hợp đồng thuê đã hết hạn",
+        content=f"Hợp đồng thuê #HD{number} của {name} tại căn hộ {code} đã hết hạn ngày {vn_date(ended_on)} "
+        "và chưa được gia hạn. Cư dân của căn hộ đã được thông báo. Nếu cư dân ở tiếp, hãy lập hợp đồng gia hạn; "
+        'nếu không, vào Cư dân & hợp đồng, mở Chi tiết của cư dân và chọn "Khóa tài khoản căn hộ".',
+    )
+    for resident_id in residents:
+        notify(
+            f"lease-ended-residents:{number}:{end}:{resident_id}",
+            target_resident_id=resident_id,
+            title=f"Hợp đồng thuê căn hộ {code} của bạn đã hết hạn",
+            content=f"Hợp đồng thuê #HD{number} của căn hộ {code} đã hết hạn ngày {vn_date(ended_on)}. "
+            "Nếu bạn vẫn ở tiếp, hãy liên hệ Ban quản lý để gia hạn hợp đồng. "
+            "Nếu không gia hạn, Ban quản lý có thể khóa các tài khoản của căn hộ.",
+        )
+
+
+def lease_window(today):
+    return (today - timedelta(days=LEASE_NOTICE_DAYS)).isoformat(), (today + timedelta(days=LEASE_NOTICE_DAYS)).isoformat()
+
+
+def lease_notice(db, contract, today):
+    """What a running lease's end date calls for today: residents hear 30 days before it ends,
+    management and residents on the end date. Every notice has a fixed event id, so each is sent once."""
+    end = contract["end_date"]
+    first, last = lease_window(today)
+    if contract["contract_type"] != "rental" or contract["status"] != "active" or not end or not first <= end <= last:
+        return
+    if lease_renewed(db, contract):
+        return
+    lease_notices(db, contract, None if end > today.isoformat() else end)
+
+
+def lease_reminders(as_of=None):
+    """Hourly. Leases that ended up to 30 days ago are caught up after the server was off."""
+    today = as_of or local_today()
+    db = get_db()
+    rows = db.execute(
+        "SELECT c.*,a.code,r.full_name FROM apartment_contracts c JOIN apartments a ON a.apartment_id=c.apartment_id "
+        "JOIN residents r ON r.resident_id=c.resident_id WHERE c.contract_type='rental' AND c.status='active' "
+        "AND c.end_date BETWEEN ? AND ? ORDER BY c.end_date,c.contract_id",
+        lease_window(today),
+    ).fetchall()
+    db.commit()  # Release the read before notification calls back into this service.
+    for contract in rows:
+        lease_notice(db, contract, today)
+    return len(rows)
 
 
 def create_app():
@@ -313,6 +482,7 @@ def create_app():
         apartment_id = integer(data["apartment_id"], "Căn hộ", 1)
         db, resident = membership_entities(resident_id, apartment_id)
         assert_single_apartment(db, resident, apartment_id)
+        locked_user_ids()
         with db:
             cur = db.execute(
                 "INSERT OR IGNORE INTO resident_apartment_memberships "
@@ -339,6 +509,7 @@ def create_app():
     @require_auth("admin")
     def revoke_resident_apartment(resident_id, apartment_id):
         db, resident = membership_entities(resident_id, apartment_id)
+        locked_user_ids()
         with db:
             removed = db.execute(
                 "DELETE FROM resident_apartment_memberships WHERE resident_id=? AND apartment_id=?",
@@ -398,10 +569,62 @@ def create_app():
         db.commit()
         return profile(db.execute("SELECT * FROM residents WHERE resident_id=?", (resident_id,)).fetchone())
 
-    @app.post("/api/residents")
+    def set_accounts(apartment_ids, user_ids, status):
+        """Auth changes the accounts first; then occupancy follows and the trail is written."""
+        changed = call_service(
+            "auth",
+            "/api/auth/users/status",
+            method="POST",
+            internal=True,
+            json={"user_ids": user_ids, "status": status, "reason": LEASE_LOCK_REASON},
+        )["changed"]
+        g.pop("locked_users", None)
+        locked_user_ids()
+        db = get_db()
+        with db:
+            for user_id in changed:
+                if status == "locked":
+                    record_audit(db, "account_locked", "user", user_id, {"apartment_ids": apartment_ids, "reason": LEASE_LOCK_REASON})
+                else:
+                    record_audit(db, "account_unlocked", "user", user_id, {"apartment_ids": apartment_ids})
+            for apartment_id in apartment_ids:
+                sync_occupancy(db, apartment_id)
+        return changed
+
+    @app.post("/api/residents/<int:resident_id>/lock-apartment")
     @require_auth("admin")
-    def create_resident():
-        return save_resident(body()), 201
+    def lock_apartment_accounts(resident_id):
+        """A lease ended without renewal: lock every resident account of that apartment.
+
+        Anyone who still holds a running contract there, such as the owner, keeps access.
+        """
+        resident = resident_row(resident_id)
+        db = get_db()
+        apartment_id = next((a for a in profile(resident)["apartment_ids"] if lease_over(db, a)), None)
+        if apartment_id is None:
+            raise APIError("Căn hộ của cư dân này chưa hết hạn hợp đồng thuê nên chưa thể khóa tài khoản.", 409)
+        today = local_today().isoformat()
+        holders = {
+            row["resident_id"]
+            for row in db.execute(
+                "SELECT resident_id FROM apartment_contracts WHERE apartment_id=? AND status='active' "
+                "AND start_date<=? AND COALESCE(end_date,'9999-12-31')>?",
+                (apartment_id, today, today),
+            )
+        }
+        accounts = [a["user_id"] for a in apartment_accounts(db, apartment_id) if a["resident_id"] not in holders]
+        changed = set_accounts([apartment_id], accounts, "locked")
+        return {"apartment_id": apartment_id, "locked_user_ids": changed, "resident": profile(resident)}
+
+    @app.post("/api/residents/<int:resident_id>/unlock")
+    @require_auth("admin")
+    def unlock_resident_account(resident_id):
+        """Reopened after the resident met management in person; the apartment links were kept."""
+        resident = resident_row(resident_id)
+        if not resident["user_id"]:
+            raise APIError("Cư dân này chưa có tài khoản.", 409)
+        changed = set_accounts(profile(resident)["apartment_ids"], [resident["user_id"]], "active")
+        return {"unlocked_user_ids": changed, "resident": profile(resident)}
 
     @app.patch("/api/residents/<int:resident_id>")
     @require_auth("admin")
@@ -439,7 +662,8 @@ def create_app():
     def save_contract(data, contract_id=None):
         db = get_db()
         old = None
-        # Taken first: the overlap check and any new resident must share one transaction.
+        locked_user_ids()  # Before the write lock: occupancy depends on it.
+        # Taken first: the overlap check and the write must share one transaction.
         db.execute("BEGIN IMMEDIATE")
         if contract_id:
             old = db.execute("SELECT * FROM apartment_contracts WHERE contract_id=?", (contract_id,)).fetchone()
@@ -448,7 +672,7 @@ def create_app():
         values = dict(old or {})
         values.update(data)
         if data.get("resident_name") and data.get("resident_id") is None:
-            values["resident_id"] = contract_resident_by_name(db, data["resident_name"], values.get("contract_type"))
+            values["resident_id"] = contract_resident_by_name(db, data["resident_name"])
         required(values, "apartment_id", "resident_id", "contract_type", "start_date")
         aid = integer(values["apartment_id"], "Căn hộ", 1)
         rid = integer(values["resident_id"], "Cư dân", 1)
@@ -494,7 +718,21 @@ def create_app():
         if old and old["apartment_id"] != aid:
             sync_occupancy(db, old["apartment_id"])
         db.commit()
-        return dict(db.execute("SELECT * FROM apartment_contracts WHERE contract_id=?", (contract_id,)).fetchone())
+        saved = db.execute(
+            "SELECT c.*,a.code,r.full_name FROM apartment_contracts c JOIN apartments a ON a.apartment_id=c.apartment_id "
+            "JOIN residents r ON r.resident_id=c.resident_id WHERE c.contract_id=?",
+            (contract_id,),
+        ).fetchone()
+        # Notices go out as soon as the contract is saved, not at the next hourly run: ending a lease
+        # by hand, or setting an end date that is near or already past.
+        if old and old["status"] == "active" and status == "expired" and typ == "rental":
+            lease_notices(db, saved, local_today().isoformat())
+        else:
+            lease_notice(db, saved, local_today())
+        result = dict(saved)
+        result.pop("code")
+        result.pop("full_name")
+        return result
 
     @app.post("/api/contracts")
     @require_auth("admin")
@@ -506,9 +744,13 @@ def create_app():
     def update_contract(contract_id):
         return save_contract(body(), contract_id)
 
+    app.extensions["resident_jobs"] = {"leases": lease_reminders}
     return app
 
 
 app = create_app()
 if __name__ == "__main__":
+    from scheduler import start_scheduler
+
+    start_scheduler(app)
     run(app, 5002)

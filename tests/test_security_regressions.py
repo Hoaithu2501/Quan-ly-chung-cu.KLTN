@@ -27,33 +27,36 @@ def new_contract(c, apartment_id, **fields):
         "apartment_id": apartment_id, "contract_type": "ownership", "start_date": "2026-01-01", **fields})
 
 
-def test_contract_for_a_new_resident_is_created(service_cluster):
+def test_contract_by_name_binds_the_registered_resident(service_cluster):
     c = service_cluster
-    response = new_contract(c, make_apartment(c, "RG-NEW"), resident_name="Người Hoàn Toàn Mới")
+    apartment_id = make_apartment(c, "RG-NEW")
+    _, profile = register_resident(c, "RG-NEW", "rg.new")
+    response = new_contract(c, apartment_id, resident_name="cư dân CÙNG căn hộ")
     assert response.status_code == 201, response.text
-    assert c.call("resident", f"/api/residents/{response.json()['resident_id']}").json()["full_name"] == "Người Hoàn Toàn Mới"
+    assert response.json()["resident_id"] == profile["resident_id"]
 
 
 def test_rejected_contract_leaves_no_orphan_resident(service_cluster):
     c = service_cluster
     apartment_id = make_apartment(c, "RG-OVERLAP")
-    assert new_contract(c, apartment_id, resident_name="Chủ Hộ Đầu Tiên").status_code == 201
-    assert new_contract(c, apartment_id, resident_name="Người Bị Từ Chối").status_code == 409
+    _, first = register_resident(c, "RG-OVERLAP", "rg.first")
+    _, second = register_resident(c, "RG-OVERLAP", "rg.second")
+    assert new_contract(c, apartment_id, resident_id=first["resident_id"]).status_code == 201
+    assert new_contract(c, apartment_id, resident_id=second["resident_id"]).status_code == 409
+    # Residents join by registering; a contract never creates one.
+    assert new_contract(c, make_apartment(c, "RG-STRANGER"), resident_name="Người Bị Từ Chối").status_code == 404
     with sqlite3.connect(c.db_path) as db:
         assert db.execute("SELECT COUNT(*) FROM residents WHERE full_name='Người Bị Từ Chối'").fetchone()[0] == 0
 
 
 def test_shared_names_never_bind_a_contract_to_the_wrong_person(service_cluster):
     c = service_cluster
-    ids = []
-    for phone in ("0900000001", "0900000002"):
-        response = c.call("resident", "/api/residents", "POST", json={
-            "full_name": "Trần Thị Trùng Tên", "relation_type": "owner", "phone": phone})
-        assert response.status_code == 201, response.text
-        ids.append(response.json()["resident_id"])
-    saved = new_contract(c, make_apartment(c, "RG-SAME-1"), resident_id=ids[1], resident_name="Trần Thị Trùng Tên")
+    make_apartment(c, "RG-SAME-0")
+    # The helper registers everyone under the same full name.
+    ids = [register_resident(c, "RG-SAME-0", username)[1]["resident_id"] for username in ("same.one", "same.two")]
+    saved = new_contract(c, make_apartment(c, "RG-SAME-1"), resident_id=ids[1], resident_name="Cư dân cùng căn hộ")
     assert saved.status_code == 201 and saved.json()["resident_id"] == ids[1]
-    assert new_contract(c, make_apartment(c, "RG-SAME-2"), resident_name="TRẦN THỊ TRÙNG TÊN").status_code == 409
+    assert new_contract(c, make_apartment(c, "RG-SAME-2"), resident_name="CƯ DÂN CÙNG CĂN HỘ").status_code == 409
 
 
 def awaiting_transfer(c, code, username):

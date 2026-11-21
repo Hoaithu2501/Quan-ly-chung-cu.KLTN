@@ -66,17 +66,33 @@ def test_vehicle_types_rates_plates_and_room_identifiers(service_cluster):
     assert moved.json()["plate_number"].startswith("PARK-102-XD-")
 
 
+def test_registrations_run_in_calendar_months_from_the_start_date(service_cluster):
+    parking = service_cluster.modules["parking"]
+    # Like a monthly ticket: up to the day before the same date; a shorter month's last day stands in.
+    cases = {
+        ("2026-11-20", 2): "2027-01-19",
+        ("2026-07-01", 2): "2026-08-31",
+        ("2026-07-31", 2): "2026-09-29",
+        ("2027-01-31", 1): "2027-02-27",
+        ("2028-01-31", 1): "2028-02-28",
+        ("2027-12-10", 1): "2028-01-09",
+    }
+    for (start, months), end in cases.items():
+        assert parking.registration_end(start, months).isoformat() == end, (start, months)
+
+
 def test_minimum_registration_term_and_cancellation_cannot_be_bypassed(service_cluster, monkeypatch):
     cluster = service_cluster
     apartment_id = create_apartment(cluster, "PARK-TERM")
     parking = cluster.modules["parking"]
-    monkeypatch.setattr(parking, "local_today", lambda: date(2026, 8, 31))
+    monkeypatch.setattr(parking, "local_today", lambda: date(2026, 8, 30))
     for invalid in (0, 1, "one", 2.5, True, 9_000_000_000_000):
         assert create_vehicle(cluster, apartment_id, registration_months=invalid).status_code == 400
     vehicle = create_vehicle(cluster, apartment_id)
     assert vehicle.status_code == 201, vehicle.text
     assert vehicle.json()["registration_months"] == 2
-    assert vehicle.json()["minimum_end_date"] == "2026-09-01"
+    # Calendar months from 1 July, like a monthly ticket: to the end of 31 August.
+    assert vehicle.json()["minimum_end_date"] == "2026-08-31"
     path = f"/api/parking/vehicles/{vehicle.json()['vehicle_id']}"
     assert cluster.call("parking", path, method="PATCH", json={"status": "cancelled"}).status_code == 409
     assert cluster.call("parking", path, method="PATCH", json={"status": "cancelled", "registered_date": "2026-01-01"}).status_code == 400
@@ -88,9 +104,10 @@ def test_minimum_registration_term_and_cancellation_cannot_be_bypassed(service_c
     returning = create_vehicle(cluster, apartment_id, registered_date="2026-09-01")
     assert returning.status_code == 201, returning.text
     assert returning.json()["card_fee"] == 0
-    end_of_month = create_vehicle(cluster, apartment_id, plate_number="PARK-LEAP", registered_date="2027-12-31")
+    # September has no 31st, so its last day stands in: the registration runs to the end of 29/09.
+    end_of_month = create_vehicle(cluster, apartment_id, plate_number="PARK-SHORT", registered_date="2026-07-31")
     assert end_of_month.status_code == 201
-    assert end_of_month.json()["minimum_end_date"] == "2028-02-29"
+    assert end_of_month.json()["minimum_end_date"] == "2026-09-29"
 
 
 def test_semiannual_billing_counts_registered_months_and_card_only_once(service_cluster, monkeypatch):
@@ -99,7 +116,8 @@ def test_semiannual_billing_counts_registered_months_and_card_only_once(service_
     monkeypatch.setattr(cluster.modules["parking"], "local_today", lambda: date(2026, 9, 1))
     electric = create_vehicle(cluster, apartment_id, vehicle_type="electric_bike")
     assert electric.status_code == 201, electric.text
-    bicycle = create_vehicle(cluster, apartment_id, vehicle_type="bicycle", plate_number=None, registered_date="2026-08-01")
+    bicycle = create_vehicle(cluster, apartment_id, vehicle_type="bicycle", plate_number=None,
+                             registered_date="2026-08-01", registration_months=5)
     assert bicycle.status_code == 201, bicycle.text
     cancelled = cluster.call("parking", f"/api/parking/vehicles/{electric.json()['vehicle_id']}", method="PATCH", json={"status": "cancelled"})
     assert cancelled.status_code == 200, cancelled.text
@@ -117,6 +135,11 @@ def test_semiannual_billing_counts_registered_months_and_card_only_once(service_
     assert first["card_fee"] == 200000
     assert first["parking_fee"] == 650000
     assert quote("2026-H2")[0] == first
+    # The bicycle's registration ends with December, so the next period owes nothing until it is renewed.
+    assert quote("2027-H1") == []
+    renewed = cluster.call("parking", f"/api/parking/vehicles/{bicycle.json()['vehicle_id']}/renew", method="POST",
+                           json={"months": 6})
+    assert renewed.status_code == 200, renewed.text
     next_period = quote("2027-H1")[0]
     assert next_period["parking_fee"] == 300000
     assert next_period["card_fee"] == 0

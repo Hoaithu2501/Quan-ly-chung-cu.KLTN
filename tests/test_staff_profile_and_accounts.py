@@ -98,10 +98,13 @@ def test_an_ended_contract_frees_the_account_for_a_new_apartment(service_cluster
 
 def test_residents_without_an_account_are_not_limited(service_cluster):
     c = service_cluster
-    resident = c.call("resident", "/api/residents", "POST", json={"full_name": "Chủ Sở Hữu", "relation_type": "owner"}).json()
+    # Management can no longer add residents, but profiles without an account remain from earlier data.
+    with sqlite3.connect(c.db_path) as db:
+        resident_id = db.execute(
+            "INSERT INTO residents(full_name,relation_type) VALUES ('Chủ Sở Hữu','owner')").lastrowid
     for code in ("FREE-1", "FREE-2"):
         response = c.call("resident", "/api/contracts", "POST", json={
-            "apartment_id": make_apartment(c, code), "resident_id": resident["resident_id"],
+            "apartment_id": make_apartment(c, code), "resident_id": resident_id,
             "contract_type": "ownership", "start_date": "2026-01-01"})
         assert response.status_code == 201, response.text
 

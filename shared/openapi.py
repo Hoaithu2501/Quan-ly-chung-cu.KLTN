@@ -306,6 +306,7 @@ INTERNAL = {
     "/api/residents/provision",
     "/api/notifications/events",
     "/api/maintenance/technicians/accounts/{user_id}",
+    "/api/auth/users/status",
 }
 DUAL_AUTH_GET = {
     "/api/auth/users",
@@ -315,6 +316,7 @@ DUAL_AUTH_GET = {
     "/api/residents/{resident_id}",
     "/api/parking/vehicles",
     "/api/parking/summary",
+    "/api/parking/guest-daily",
 }
 SECURITY_SCHEMES = {
     "BearerAuth": {

@@ -183,6 +183,8 @@ def test_admin_screens_from_the_bug_sheet(browser_page):
 
     visit(page, "maintenance")
     page.locator("[data-action=ticket-create]").click()
+    # Free text for an apartment or a place: no suggestion list, so no dropdown arrow.
+    assert page.locator("#modal-form [name=location]").get_attribute("list") is None
     page.locator("#modal-form [name=location]").fill("Sảnh tòa A")
     page.locator("#modal-form [name=description]").fill("Hỏng đèn sảnh")
     page.locator("#modal-form [type=submit]").click()
@@ -201,6 +203,12 @@ def test_admin_screens_from_the_bug_sheet(browser_page):
     page.locator("[data-action=tab][data-tab=technicians]").click()
     page.locator("[data-action=technician-edit]").first.wait_for()
     assert page.locator("[data-action=technician-create]").count() == 0
+    # The technician's account is shown, never picked from an empty list.
+    page.locator("[data-action=technician-edit]").first.click()
+    page.locator("#modal-form [name=full_name]").wait_for()
+    assert page.locator("#modal-form [name=user_id]").count() == 0
+    assert page.locator("#modal-form select").count() == 1  # Specialty only.
+    page.locator("#modal .modal-header [data-action=close-modal]").click()
     assert not errors, errors
 
 
