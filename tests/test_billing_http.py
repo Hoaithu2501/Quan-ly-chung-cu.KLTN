@@ -21,7 +21,7 @@ def test_real_http_invoice_overdue_payment_and_restoration(service_cluster):
     for kind, fee, plate in (("motorbike", 100000, "HTTP-BILLING"), ("bicycle", 50000, None)):
         response = cluster.call("parking", "/api/parking/vehicles", method="POST", json={
             "apartment_id": apartment_id, "vehicle_type": kind, "monthly_fee": fee,
-            "plate_number": plate, "registered_date": "2001-01-01"})
+            "plate_number": plate, "registered_date": "2001-01-01", "registration_months": 6})
         assert response.status_code == 201, response.text
 
     response = cluster.call("billing", "/api/billing/invoices/semiannual", method="POST", json={

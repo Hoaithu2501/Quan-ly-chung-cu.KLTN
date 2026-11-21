@@ -999,6 +999,19 @@ def create_app():
                 item[row["invoice_type"] + "_collected_amount"] += row["total_amount"]
             else:
                 item["outstanding_amount"] += row["total_amount"]
+        # Guest parking is cash counted per day by Parking; it is revenue but not an invoice.
+        guests = call_service(
+            "parking",
+            "/api/parking/guest-daily",
+            internal=True,
+            params={"from": f"{year}-01-01", "to": f"{year}-12-31"},
+        )["items"]
+        for item in buckets.values():
+            item["guest_amount"] = 0
+        for row in guests:
+            buckets[key(row["parking_date"])]["guest_amount"] += row["daily_revenue"]
+        for item in buckets.values():
+            item["revenue_amount"] = item["collected_amount"] + item["guest_amount"]
         totals = {
             field: sum(row[field] for row in buckets.values())
             for field in next(iter(buckets.values()))
@@ -1014,7 +1027,7 @@ def create_app():
             "items": list(buckets.values()),
             "totals": totals,
             "monthly_breakdown": monthly,
-            "accounting_note": "Phát hành, đã thu và còn phải thu cùng tính theo kỳ của hóa đơn (H1 tháng 1, H2 tháng 7), nên phát hành = đã thu + còn phải thu. Phí vãng lai thuộc Parking Service.",
+            "accounting_note": "Phát hành, đã thu và còn phải thu cùng tính theo kỳ của hóa đơn (H1 tháng 1, H2 tháng 7), nên phát hành = đã thu + còn phải thu. Vé vãng lai không có hóa đơn: tính theo ngày ghi nhận và chỉ cộng vào tổng doanh thu.",
         }
 
     @app.post("/api/billing/overdue/run")

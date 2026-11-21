@@ -389,6 +389,16 @@ function select(name, title, options, value = '', required = true) {
     </div>
   `;
 }
+// A value the user sees but cannot change; the optional hidden input still submits it.
+function fixedField(title, shown, name = '', value = '') {
+  return view`
+    <div class="field">
+      <label>${esc(title)}</label>
+      <input value="${esc(shown)}" readonly disabled aria-label="${esc(title)}" style="background:var(--bg);cursor:not-allowed">
+      ${name ? `<input type="hidden" name="${esc(name)}" value="${esc(value)}">` : ''}
+    </div>
+  `;
+}
 const apartmentOptions = (rows) => rows.map((r) => [r.apartment_id, `${r.code} · Tòa ${r.block || '—'}`]);
 const enumOptions = (values) => values.map((v) => [v, label(v)]);
 const detail = (entries) =>
@@ -946,14 +956,9 @@ function overviewHero() {
     </figure>
   </section>`;
 }
+// Management's overview is long enough already, so only residents and technicians get these.
 function overviewShortcuts() {
-  const entries = admin()
-    ? [
-        ['Căn hộ & cư dân', 'Theo dõi không gian và hồ sơ', 'apartments', 'building'],
-        ['Quản lý hóa đơn', 'Lập hóa đơn và theo dõi các khoản đã thu', 'billing', 'wallet'],
-        ['Sửa chữa & bảo trì', 'Tiếp nhận và điều phối yêu cầu', 'maintenance', 'wrench'],
-      ]
-    : tech()
+  const entries = tech()
       ? [
           ['Công việc kỹ thuật', 'Tiếp nhận và cập nhật tiến độ', 'maintenance', 'wrench'],
           ['Quản lý hóa đơn', 'Theo dõi hóa đơn và các khoản đã thu', 'billing', 'wallet'],
@@ -1395,7 +1400,7 @@ const pages = {
       top +
         warning +
         view`
-          <div class="${admin() ? 'stats-grid grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1280px]:gap-5' : 'stats-grid maintenance-stats'}">${stats}</div>${overviewShortcuts()}<div class="${admin() ? 'dashboard-columns' : 'overview-stack'}">${chart}${billsBlock}</div>
+          <div class="${admin() ? 'stats-grid grid grid-cols-2 gap-3 min-[1280px]:grid-cols-4 min-[1280px]:gap-5' : 'stats-grid maintenance-stats'}">${stats}</div>${admin() ? '' : overviewShortcuts()}<div class="${admin() ? 'dashboard-columns' : 'overview-stack'}">${chart}${billsBlock}</div>
         `,
       steps,
     );
@@ -1436,10 +1441,10 @@ const pages = {
           [
             'Cư dân hiện tại',
             (r) =>
-              view`
-            <span class="primary-cell">${esc(r.current_resident || 'Chưa có cư dân')}</span>
-            <span class="sub-cell">${esc(label(r.contract_type))}</span>
-          `,
+              r.current_residents?.length
+                ? r.current_residents.map((p) => `<span class="primary-cell">${esc(p.full_name)}</span>`).join('') +
+                  `<span class="sub-cell">${esc(label(r.contract_type))}</span>`
+                : '<span class="primary-cell">Chưa có cư dân</span>',
           ],
           [
             'Thời hạn còn lại',
@@ -1514,13 +1519,11 @@ const pages = {
             ['', (r) => button('Cập nhật', 'contract-edit', '', 'link', `data-id="${r.contract_id}"`)],
           ];
     return (
+      // Residents join by registering; management confirms their apartment instead of adding them.
       heading(
         'Cư dân & hợp đồng',
         'Hồ sơ cư dân, lịch sử sở hữu và thuê căn hộ.',
-        button(
-          tab === 'residents' ? 'Thêm cư dân' : 'Tạo hợp đồng',
-          tab === 'residents' ? 'resident-create' : 'contract-create',
-        ),
+        tab === 'residents' ? '' : button('Tạo hợp đồng', 'contract-create'),
       ) +
       tabs('residents', [
         ['residents', 'Hồ sơ cư dân'],
@@ -1765,9 +1768,10 @@ const pages = {
           [
             'Ngày hết hạn',
             (r) =>
-              `${esc(date(r.minimum_end_date))}${r.status === 'active' && r.minimum_end_date && r.minimum_end_date < today() ? '<span class="sub-cell">Đã hết hạn cam kết · cần gia hạn</span>' : ''}`,
+              `${esc(date(r.minimum_end_date))}${r.registration_expired ? '<span class="sub-cell">Đã hết hạn · cần gia hạn mới gửi tiếp</span>' : ''}`,
           ],
-          ['Trạng thái', (r) => badge(r.status)],
+          // A registration that ran out is no longer billed, so it is shown as expired, not active.
+          ['Trạng thái', (r) => badge(r.registration_expired ? 'expired' : r.status)],
           ...(admin()
             ? [
                 [
@@ -1998,15 +2002,19 @@ const pages = {
       ) +
       view`
         <div class="stats-grid maintenance-stats">
+          ${stat('Tổng doanh thu', money(total.revenue_amount), 'Hóa đơn đã thu và vé vãng lai', 'chart', 'blue')}
+
           ${stat('Tổng phát hành', money(total.billed_amount), `${number(total.invoice_count)} hóa đơn`, 'invoice', 'blue')}
-          
-          ${stat('Tổng đã thu', money(total.collected_amount), `${number(total.paid_count)} hóa đơn đã thanh toán`, 'wallet')}
-          
+
+          ${stat('Hóa đơn đã thu', money(total.collected_amount), `${number(total.paid_count)} hóa đơn đã thanh toán`, 'wallet')}
+
           ${stat('Công nợ còn lại', money(total.outstanding_amount), 'Trong năm được chọn', 'clock', 'orange')}
 
           ${stat('Thu điện nước', money(total.monthly_collected_amount), 'Hóa đơn hàng tháng', 'wallet', 'blue')}
 
           ${stat('Thu dịch vụ 6 tháng', money(total.semiannual_collected_amount), 'Dịch vụ chung và gửi xe', 'wallet')}
+
+          ${stat('Thu vé vãng lai', money(total.guest_amount), 'Theo ngày ghi nhận', 'car')}
 
           ${stat('Khiếu nại', number(requestTotal.complaint_count), `${number(requestTotal.registration_count)} đơn đăng ký · ${number(requestTotal.pending_count)} chờ xử lý`, 'message', 'purple')}
           </div>
@@ -2030,14 +2038,19 @@ const pages = {
           </select>
         </div>
         </div>
-        <div class="chart-wrap report-chart">${revenueChart(report.items || [], 280)}</div>
+        <div class="chart-wrap report-chart">${revenueChart(
+          (report.items || []).map((r) => ({ ...r, collected_amount: r.revenue_amount })),
+          280,
+        )}<div class="chart-caption">Tổng doanh thu theo kỳ: hóa đơn đã thu và vé vãng lai · Đơn vị: VNĐ</div></div>
         ${table(
         [
           ['Kỳ báo cáo', (r) => `<span class="primary-cell">${esc(r.period)}</span>`],
+          ['Tổng doanh thu', (r) => `<span class="money">${money(r.revenue_amount)}</span>`],
           ['Đã phát hành', (r) => money(r.billed_amount)],
-          ['Đã thu', (r) => `<span class="money">${money(r.collected_amount)}</span>`],
+          ['Hóa đơn đã thu', (r) => money(r.collected_amount)],
           ['Điện nước đã thu', (r) => money(r.monthly_collected_amount)],
           ['6 tháng đã thu', (r) => money(r.semiannual_collected_amount)],
+          ['Vé vãng lai', (r) => money(r.guest_amount)],
           ['Còn phải thu', (r) => money(r.outstanding_amount)],
           ['Hóa đơn đã thanh toán', (r) => `${number(r.paid_count)} / ${number(r.invoice_count)}`],
           ['Khiếu nại', (r) => number(requestsByPeriod[r.period]?.complaint_count)],
@@ -2338,14 +2351,14 @@ async function apartmentDetail(id) {
 }
 async function residentForm(id) {
   const [users, residents] = await Promise.all([items('/api/auth/users'), items('/api/residents')]);
-  const row = id ? residents.find((r) => r.resident_id === Number(id)) : {};
+  const row = residents.find((r) => r.resident_id === Number(id));
   const eligible = users.filter(
     (u) =>
       ['resident', 'technician', 'admin'].includes(u.role) &&
       (!residents.some((r) => r.user_id === u.user_id) || row.user_id === u.user_id),
   );
   formModal(
-    id ? 'Cập nhật hồ sơ cư dân' : 'Thêm cư dân',
+    'Cập nhật hồ sơ cư dân',
     field('full_name', 'Họ và tên', 'text', row.full_name || '', 'required maxlength="120"') +
       field(
         'registered_apartment_code',
@@ -2373,16 +2386,24 @@ async function residentForm(id) {
         false,
       ),
     (data) => {
-      if (id && !data.user_id) data.user_id = null;
+      if (!data.user_id) data.user_id = null;
       if ('registered_apartment_code' in data && !data.registered_apartment_code) data.registered_apartment_code = null;
-      return saved(id ? patch(`/api/residents/${id}`, data) : post('/api/residents', data));
+      return saved(patch(`/api/residents/${id}`, data));
     },
     'Lưu hồ sơ',
     'Liên kết đúng tài khoản với hồ sơ cư dân. Sau đó xác nhận căn hộ hoặc lập hợp đồng để cư dân xem hóa đơn và sử dụng tiện ích của căn hộ.',
   );
 }
 async function residentDetail(id) {
-  const row = await api(`/api/residents/${id}`);
+  const [row, users] = await Promise.all([api(`/api/residents/${id}`), items('/api/auth/users')]);
+  const account = users.find((u) => u.user_id === row.user_id);
+  // After a lease ends, management locks the apartment's accounts here and reopens them in person.
+  const accountAction =
+    account?.status === 'locked'
+      ? button('Mở khóa tài khoản', 'resident-unlock', 'refresh', 'secondary', `data-id="${id}"`)
+      : account && row.lease_ended
+        ? button('Khóa tài khoản căn hộ', 'resident-lock', 'shield', 'secondary', `data-id="${id}"`)
+        : '';
   openModal(
     row.full_name,
     view`
@@ -2390,6 +2411,8 @@ async function residentDetail(id) {
         ${detail([
       ['Mã cư dân', `#${row.resident_id}`],
       ['Tài khoản', row.user_id ? `#${row.user_id}` : 'Chưa liên kết'],
+      ['Trạng thái tài khoản', account ? label(account.status) : 'Chưa liên kết'],
+      ...(account?.status === 'locked' && account.lock_reason ? [['Lý do khóa', account.lock_reason]] : []),
       ['Họ và tên', row.full_name],
       ['Số điện thoại', row.phone],
       ['CCCD / giấy tờ', row.id_card],
@@ -2406,11 +2429,44 @@ async function residentDetail(id) {
     `,
     view`
       <div class="modal-footer">${button('Đóng', 'close-modal', '', 'secondary')}
+        ${accountAction}
         ${button('Xác nhận căn hộ', 'resident-apartments', 'building', 'secondary', `data-id="${id}"`)}
-        
+
         ${button('Cập nhật', 'resident-edit', 'edit', 'primary', `data-id="${id}"`)}
         </div>
     `,
+  );
+}
+async function residentLock(id) {
+  if (!admin()) throw new Error('Chỉ Ban quản lý được khóa tài khoản.');
+  const row = await api(`/api/residents/${id}`);
+  formModal(
+    'Khóa tài khoản căn hộ',
+    `<div class="field wide">${detail([
+      ['Cư dân', row.full_name],
+      ['Căn hộ', row.apartment_codes?.join(', ') || 'Chưa xác định'],
+    ])}</div>`,
+    () =>
+      saved(
+        post(`/api/residents/${id}/lock-apartment`),
+        'Đã khóa các tài khoản của căn hộ. Căn hộ chuyển sang còn trống.',
+      ),
+    'Khóa tài khoản',
+    'Hợp đồng thuê của căn hộ đã hết hạn và chưa gia hạn. Mọi tài khoản cư dân của căn hộ sẽ bị khóa và đăng xuất ngay; khi đăng nhập, họ thấy thông báo hợp đồng thuê đã quá hạn. Người còn hợp đồng đang hiệu lực với căn hộ, như chủ sở hữu, không bị khóa. Muốn mở lại, cư dân gặp trực tiếp Ban quản lý.',
+  );
+}
+async function residentUnlock(id) {
+  if (!admin()) throw new Error('Chỉ Ban quản lý được mở khóa tài khoản.');
+  const row = await api(`/api/residents/${id}`);
+  formModal(
+    'Mở khóa tài khoản',
+    `<div class="field wide">${detail([
+      ['Cư dân', row.full_name],
+      ['Căn hộ', row.apartment_codes?.join(', ') || 'Chưa xác định'],
+    ])}</div>`,
+    () => saved(post(`/api/residents/${id}/unlock`), 'Đã mở khóa tài khoản. Cư dân có thể đăng nhập lại.'),
+    'Mở khóa',
+    'Chỉ mở khóa sau khi cư dân đã gặp Ban quản lý, ví dụ đã gia hạn hợp đồng thuê. Liên kết căn hộ được giữ nguyên nên cư dân dùng lại được ngay.',
   );
 }
 async function residentApartments(id) {
@@ -2508,16 +2564,14 @@ async function contractForm(id) {
       ? `${r.full_name} (#${r.resident_id})`
       : r.full_name;
   const current = row.resident_id ? residents.find((r) => r.resident_id === row.resident_id) : null;
-  const residentField = view`
-    <div class="field">
-      <label for="field-resident_name">Cư dân <span class="req-star">*</span>
-      </label>
-      <input id="field-resident_name" name="resident_name" list="resident-datalist" value="${esc(current ? residentChoice(current) : '')}" required placeholder="Nhập tên cư dân" autocomplete="off">
-      <datalist id="resident-datalist">
-        ${residents.map((r) => `<option value="${esc(residentChoice(r))}">`).join('')}
-        </datalist>
-    </div>
-  `;
+  // Plain text: the name must belong to a resident who registered an account.
+  const residentField = field(
+    'resident_name',
+    'Cư dân',
+    'text',
+    current ? residentChoice(current) : '',
+    'required maxlength="120" placeholder="Nhập họ tên cư dân đã đăng ký" autocomplete="off"',
+  );
   const statusField = id
     ? select(
         'status',
@@ -2557,16 +2611,17 @@ async function contractForm(id) {
       const candidates = tagged
         ? residents.filter((r) => r.resident_id === Number(tagged[1]))
         : residents.filter((r) => sameName(r.full_name, typed));
-      if (candidates.length > 1 || (tagged && !candidates.length))
-        throw new Error('Có nhiều cư dân trùng tên. Hãy chọn đúng người trong danh sách gợi ý (có kèm mã #).');
-      if (candidates.length) {
-        data.resident_id = candidates[0].resident_id;
-        delete data.resident_name;
-      }
+      if (tagged && !candidates.length) throw new Error(`Không có cư dân mã #${tagged[1]}.`);
+      if (candidates.length > 1)
+        throw new Error('Có nhiều cư dân trùng tên. Hãy nhập kèm mã hồ sơ, ví dụ: Nguyễn Văn A (#12).');
+      if (!candidates.length)
+        throw new Error(`Không tìm thấy cư dân "${typed}". Cư dân cần tự đăng ký tài khoản trước khi lập hợp đồng.`);
+      data.resident_id = candidates[0].resident_id;
+      delete data.resident_name;
       return saved(id ? patch(`/api/contracts/${id}`, data) : post('/api/contracts', data));
     },
     'Lưu hợp đồng',
-    'Một căn hộ chỉ có một hợp đồng hoạt động trong cùng khoảng thời gian. Hợp đồng thuê cần có ngày kết thúc.',
+    'Một căn hộ chỉ có một hợp đồng hoạt động trong cùng khoảng thời gian. Hợp đồng thuê cần có ngày kết thúc. Cư dân phải đã đăng ký tài khoản; nếu trùng tên, nhập kèm mã hồ sơ, ví dụ: Nguyễn Văn A (#12).',
   );
 }
 function utilityFields(row = {}) {
@@ -3266,14 +3321,16 @@ async function vehicleForm(id) {
       ) +
       field(
         'registration_months',
-        'Thời gian cam kết (tháng, tối thiểu 2)',
+        'Số tháng đăng ký (tính cả tháng bắt đầu)',
         'number',
         row.registration_months || 2,
-        `required min="${feePaid ? row.registration_months : 2}" step="1"`,
+        // A one-month renewal stays editable: its own length is the floor, never more than it has.
+        `required min="${feePaid ? row.registration_months : Math.min(row.registration_months || Infinity, parkingWindow(row.registered_date || today()).fewest)}" step="1" aria-describedby="parking-months-help"`,
       ) +
+      `<p id="parking-months-help" class="muted">${id ? `Đăng ký hiện đến hết ngày ${esc(date(row.minimum_end_date))}. Muốn gửi tiếp, dùng Gia hạn.` : ''}</p>` +
       (id ? select('status', 'Trạng thái', enumOptions(['active', 'cancelled']), row.status) : ''),
     (data) => {
-      validateParking(data);
+      validateParking(data, !id);
       return saved(id ? patch(`/api/parking/vehicles/${id}`, data) : post('/api/parking/vehicles', data));
     },
     'Lưu thông tin',
@@ -3283,13 +3340,15 @@ async function vehicleForm(id) {
 }
 function vehicleRenewForm(id) {
   const row = state.data.vehicles.find((r) => r.vehicle_id === Number(id));
+  const w = parkingWindow(renewalStart(row), true);
   formModal(
     `Gia hạn xe ${row.plate_number}`,
     `<div class="field wide">${detail([['Căn hộ', apartmentCode(row.apartment_id)], ['Ngày hết hạn hiện tại', date(row.minimum_end_date)]])}</div>` +
-      field('months', 'Số tháng gia hạn', 'number', '2', 'required min="1" max="120" step="1"'),
+      field('months', 'Số tháng gia hạn', 'number', String(w.fewest), `required min="${w.fewest}" max="${w.most}" step="1"`) +
+      `<p class="muted">${esc(parkingWindowText(w, 'Gia hạn'))}</p>`,
     (data) => saved(post(`/api/parking/vehicles/${id}/renew`, data), 'Đã gia hạn đăng ký gửi xe.'),
     'Gia hạn',
-    'Thời hạn mới được tính từ ngày hết hạn hiện tại; nếu đã quá hạn thì tính từ hôm nay.',
+    'Còn hạn thì phần gia hạn nối tiếp ngay sau ngày hết hạn hiện tại. Đã quá hạn thì đăng ký mới bắt đầu từ hôm nay; những tháng xe không gửi không bị tính phí và không thu lại phí làm thẻ.',
   );
 }
 async function vehicleSupplementForm(id) {
@@ -3401,13 +3460,9 @@ async function ticketForm(id) {
         throw new Error(
           'Tài khoản chưa được Ban quản lý xác nhận liên kết căn hộ. Vui lòng chờ xác nhận trước khi gửi yêu cầu.',
         );
+      // One account, one apartment: shown, not chosen.
       const fields =
-        select(
-          'apartment_id',
-          'Căn hộ',
-          apartments.map((a) => [a.apartment_id, a.code]),
-          apartments[0].apartment_id,
-        ) +
+        fixedField('Căn hộ', apartments[0].code, 'apartment_id', apartments[0].apartment_id) +
         select('type', 'Loại yêu cầu', [
           ['repair', 'Sửa chữa'],
           ['maintenance', 'Bảo trì'],
@@ -3428,10 +3483,7 @@ async function ticketForm(id) {
         'vertical',
       );
     } else {
-      const [apartments, technicians] = await Promise.all([
-        items('/api/apartments'),
-        admin() ? items('/api/maintenance/technicians') : Promise.resolve([]),
-      ]);
+      const technicians = admin() ? await items('/api/maintenance/technicians') : [];
       formModal(
         'Tạo yêu cầu sửa chữa / bảo trì',
         field(
@@ -3439,9 +3491,8 @@ async function ticketForm(id) {
           'Căn hộ / địa điểm',
           'text',
           '',
-          'required maxlength="120" list="apartment-codes" autocomplete="off" placeholder="Ví dụ: A101 hoặc Sảnh tòa A"',
+          'required maxlength="120" autocomplete="off" placeholder="Ví dụ: A101 hoặc Sảnh tòa A"',
         ) +
-          `<datalist id="apartment-codes">${apartments.map((a) => `<option value="${esc(a.code)}">`).join('')}</datalist>` +
           select('type', 'Loại yêu cầu', enumOptions(['repair', 'maintenance'])) +
           select('priority', 'Mức độ ưu tiên', enumOptions(['low', 'medium', 'high']), 'medium') +
           (admin()
@@ -3475,6 +3526,57 @@ const vehicleTypeLabel = (type) => (type === 'electric_bike' ? 'Xe điện (máy
 const parkingPlateHelp =
   'Xe máy và xe điện phải có biển số. Xe điện chưa có biển phải làm biển nhận dạng theo căn hộ (căn hộ - loại xe - số thứ tự xe trong căn hộ. VD: A101-XD-1). Xe đạp được cấp mã khi duyệt đăng ký.';
 const parkingFee = (type) => (type === 'bicycle' ? 50000 : 100000);
+// Same rule as Parking Service: at least 2 months, the starting month included, and every month
+// must begin within the six-month fee period (June or December ends it). June may run seven months;
+// December covers one month, because no registration begins in the next year. Renewing a vehicle
+// already registered may add a single month.
+function parkingWindow(startIso, renewal = false) {
+  const year = Number(String(startIso).slice(0, 4)),
+    month = Number(String(startIso).slice(5, 7)),
+    last = month >= 6 ? 12 : 6,
+    most = last - month + 1;
+  return { fewest: renewal ? 1 : Math.min(2, most), most, last, year, month };
+}
+function parkingWindowText(w, action = 'Đăng ký') {
+  const span = w.fewest === w.most ? `đúng ${w.most} tháng` : `từ ${w.fewest} đến ${w.most} tháng`;
+  return `${action} bắt đầu tháng ${w.month}/${w.year}: chọn ${span} (tính cả tháng bắt đầu; kỳ thu phí kết thúc tháng ${w.last}/${w.year}).`;
+}
+// Same rule as Parking Service: calendar months from the start date, like a monthly ticket.
+// 20/11 for 2 months runs to the end of 19/01; when the month is shorter, its last day stands in
+// for the same day (31/01 + 1 month → 28/02, so the registration runs to the end of 27/02).
+function parkingEnd(startIso, months) {
+  const [year, month, day] = String(startIso).split('-').map(Number),
+    index = year * 12 + month - 1 + months,
+    y = Math.floor(index / 12),
+    m = index % 12,
+    end = new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()));
+  end.setDate(end.getDate() - 1);
+  return end.toLocaleDateString('en-CA');
+}
+// The first day after a registration runs out, or today if it already did: where a renewal starts.
+function renewalStart(row) {
+  const end = new Date(`${row.minimum_end_date}T00:00:00`);
+  end.setDate(end.getDate() + 1);
+  const next = end.toLocaleDateString('en-CA');
+  return next > today() ? next : today();
+}
+// Where a renewal of `months` ends, as Parking Service extends it: a running registration grows,
+// one that already ran out starts again today.
+function renewalEnd(row, months) {
+  return row.minimum_end_date >= today()
+    ? parkingEnd(row.registered_date, row.registration_months + months)
+    : parkingEnd(today(), months);
+}
+// The resident's own running registrations: an application for one of these plates is a renewal.
+let parkingRenewals = [];
+const plateKey = (plate) =>
+  String(plate || '')
+    .toUpperCase()
+    .replace(/[^0-9A-Z]/g, '');
+function parkingRenewal(plate) {
+  const key = plateKey(plate);
+  return key ? parkingRenewals.find((v) => plateKey(v.plate_number) === key) : undefined;
+}
 function updateParkingFields() {
   const form = $('#modal-form'),
     type = form?.elements.vehicle_type?.value;
@@ -3484,13 +3586,50 @@ function updateParkingFields() {
   $('label[for="field-plate_number"]', form).innerHTML =
     `Biển số xe${plate.required ? ' <span class="req-star">*</span>' : ''}`;
   form.elements.monthly_fee.value = parkingFee(type);
+  const start = form.elements.registered_date,
+    months = form.elements.registration_months,
+    help = $('#parking-months-help', form);
+  // A resident applying for a plate already registered to the apartment is renewing it.
+  const renewal = form.elements.apartment_code && parkingRenewal(plate.value);
+  if (renewal && months) {
+    const from = renewalStart(renewal),
+      w = parkingWindow(from, true),
+      chosen = Number(months.value);
+    months.min = w.fewest;
+    months.max = w.most;
+    if (help)
+      help.textContent =
+        `Xe ${renewal.plate_number} đã đăng ký, đơn này là gia hạn nối tiếp từ ngày ${date(from)}. ` +
+        parkingWindowText(w, 'Gia hạn') +
+        (Number.isInteger(chosen) && chosen >= w.fewest && chosen <= w.most
+          ? ` Gửi đến hết ngày ${date(renewalEnd(renewal, chosen))}.`
+          : '');
+    return;
+  }
+  // A saved registration keeps its own limits; Parking Service checks any change.
+  if (!start?.value || !months || start.readOnly) return;
+  const w = parkingWindow(start.value),
+    chosen = Number(months.value);
+  months.min = w.fewest;
+  months.max = w.most;
+  if (help)
+    help.textContent =
+      parkingWindowText(w) +
+      (Number.isInteger(chosen) && chosen >= w.fewest && chosen <= w.most
+        ? ` Gửi đến hết ngày ${date(parkingEnd(start.value, chosen))}.`
+        : '');
 }
-function validateParking(data) {
+function validateParking(data, isNew = true, renewalFrom = null) {
   if (!parkingTypes.some(([value]) => value === data.vehicle_type)) throw new Error('Vui lòng chọn loại xe hợp lệ.');
   if (data.vehicle_type !== 'bicycle' && !data.plate_number?.trim())
     throw new Error('Vui lòng nhập biển số xe máy hoặc xe điện; xe điện chưa có biển cần biển nhận dạng theo căn hộ.');
-  if (!Number.isInteger(data.registration_months) || data.registration_months < 2)
-    throw new Error('Thời gian gửi xe tối thiểu là 2 tháng.');
+  if (!Number.isInteger(data.registration_months) || data.registration_months < 1)
+    throw new Error('Vui lòng nhập số tháng gửi xe.');
+  if (isNew) {
+    const w = renewalFrom ? parkingWindow(renewalFrom, true) : parkingWindow(data.registered_date);
+    if (data.registration_months < w.fewest || data.registration_months > w.most)
+      throw new Error(parkingWindowText(w, renewalFrom ? 'Gia hạn' : 'Đăng ký'));
+  }
   data.monthly_fee = parkingFee(data.vehicle_type);
 }
 function parkingRulesModal() {
@@ -3507,7 +3646,7 @@ function parkingRulesModal() {
       <div class="modal-body">
         <ul style="line-height:2.1;padding-left:20px;font-size:14px;color:var(--ink)">
           <li>
-            <strong>Thời gian gửi xe:</strong> Bắt buộc gửi tối thiểu 2 tháng. Phí gửi xe được thu 6 tháng một lần cùng tiền dịch vụ của tòa nhà.</li>
+            <strong>Thời gian gửi xe:</strong> Tính theo lịch từ ngày bắt đầu, như vé tháng: bắt đầu ngày 20/11, gửi 2 tháng thì được gửi đến hết ngày 19/01. Mỗi lần đăng ký tối thiểu 2 tháng, gia hạn xe đã đăng ký được từ 1 tháng; số tháng tính cả tháng bắt đầu và tối đa đến tháng cuối của kỳ thu phí 6 tháng (tháng 1–6 hoặc tháng 7–12). Đăng ký tháng 6 được chọn đến 7 tháng; đăng ký tháng 12 chỉ 1 tháng. Mỗi tháng gửi được thu trong kỳ có ngày bắt đầu của tháng đó, nên những ngày của tháng cuối lẻ sang kỳ sau đã được tính, kỳ sau không thu thêm. Hết thời gian đăng ký, xe cần được gia hạn mới gửi tiếp. Phí gửi xe được thu 6 tháng một lần cùng tiền dịch vụ của tòa nhà.</li>
           <li>
             <strong>Biểu phí:</strong> Xe đạp: 50.000 VNĐ/xe/tháng. Xe máy: 100.000 VNĐ/xe/tháng. Xe điện (thu phí như xe máy): 100.000 VNĐ/xe/tháng.</li>
           <li>
@@ -3529,8 +3668,13 @@ function parkingRulesModal() {
 async function parkingRequestForm(draft = {}) {
   const version = ++modalVersion,
     route = state.route;
-  const profile = await (state.data.personal || api('/api/residents/me'));
+  const [profile, vehicles] = await Promise.all([
+    state.data.personal || api('/api/residents/me'),
+    // Only to recognise renewals: the form still works if the list cannot be loaded.
+    items('/api/parking/vehicles').catch(() => []),
+  ]);
   if (version !== modalVersion || route !== state.route || !state.user) return;
+  parkingRenewals = vehicles.filter((v) => v.status === 'active' && v.plate_number);
   const aptDefault = profile.apartment_codes?.[0] || profile.registered_apartment_code || '';
   const fields =
     select('vehicle_type', 'Loại xe', parkingTypes, draft.vehicle_type || 'motorbike') +
@@ -3546,11 +3690,12 @@ async function parkingRequestForm(draft = {}) {
     field('registered_date', 'Ngày bắt đầu gửi xe', 'date', draft.registered_date || today(), 'required') +
     field(
       'registration_months',
-      'Thời gian cam kết (tháng, tối thiểu 2)',
+      'Số tháng gửi (tính cả tháng bắt đầu)',
       'number',
       draft.registration_months || 2,
-      'required min="2" step="1"',
+      'required min="1" step="1" aria-describedby="parking-months-help"',
     ) +
+    '<p id="parking-months-help" class="muted"></p>' +
     field('monthly_fee', 'Phí hàng tháng (VNĐ)', 'number', parkingFee(draft.vehicle_type), 'readonly required') +
     field(
       'notes',
@@ -3560,13 +3705,19 @@ async function parkingRequestForm(draft = {}) {
       'maxlength="1000" placeholder="Nhãn hiệu xe, màu sơn hoặc yêu cầu bổ sung…"',
     ) +
     button('Quy định đăng ký gửi xe tại chung cư', 'parking-rules-modal', 'shield', 'link') +
-    '<div class="info-box">Thu phí 6 tháng một lần cùng tiền dịch vụ. Tháng đầu tiên phụ thu 100.000 VNĐ/xe để làm thẻ. Đơn được xem xét và duyệt trong vòng 48h. Mọi thắc mắc vui lòng liên hệ Ban quản lý: <strong>0228913665</strong>.</div>';
+    '<div class="info-box">Thu phí 6 tháng một lần cùng tiền dịch vụ. Xe mới phụ thu 100.000 VNĐ/xe để làm thẻ. Gia hạn xe đã đăng ký: gửi đơn với đúng biển số hoặc mã xe cũ, được gia hạn từ 1 tháng. Đơn được xem xét và duyệt trong vòng 48h. Mọi thắc mắc vui lòng liên hệ Ban quản lý: <strong>0228913665</strong>.</div>';
   formModal(
     'Đơn đăng ký gửi xe',
     fields,
     (data) => {
-      validateParking(data);
-      const content = `Loại xe: ${label(data.vehicle_type)}\nBiển số: ${data.plate_number || 'Cấp mã theo căn hộ khi duyệt'}\nCăn hộ: ${data.apartment_code}\nNgày bắt đầu: ${data.registered_date}\nThời gian cam kết: ${data.registration_months} tháng (tối thiểu 2 tháng)\nPhí gửi xe: ${money(data.monthly_fee)}/xe/tháng\nPhí làm thẻ lần đầu: 100.000 VNĐ/xe trong tháng đầu\nThu phí: 6 tháng một lần cùng tiền dịch vụ\nGhi chú: ${data.notes || 'Không có'}`;
+      const renewal = parkingRenewal(data.plate_number),
+        from = renewal ? renewalStart(renewal) : data.registered_date;
+      validateParking(data, true, renewal ? from : null);
+      const until = renewal
+        ? renewalEnd(renewal, data.registration_months)
+        : parkingEnd(data.registered_date, data.registration_months);
+      // "Thời gian cam kết" stays the label: Complaint Service reads the months from that line.
+      const content = `Loại xe: ${label(data.vehicle_type)}\nBiển số: ${data.plate_number || 'Cấp mã theo căn hộ khi duyệt'}\nCăn hộ: ${data.apartment_code}\nNgày bắt đầu: ${from}\nThời gian cam kết: ${data.registration_months} tháng (${renewal ? 'gia hạn ' : ''}đến hết ngày ${date(until)})\nPhí gửi xe: ${money(data.monthly_fee)}/xe/tháng\nPhí làm thẻ lần đầu: 100.000 VNĐ/xe (xe từng đăng ký không thu lại)\nThu phí: 6 tháng một lần cùng tiền dịch vụ\nGhi chú: ${data.notes || 'Không có'}`;
       return saved(
         post('/api/complaints', { type: 'registration', category: 'Đăng ký gửi xe', content }),
         'Đã gửi đơn đăng ký. Ban quản lý sẽ xem xét trong vòng 48h.',
@@ -3883,15 +4034,11 @@ function personalForm() {
     row = isResident ? state.data.personal || {} : account;
   // Staff accounts may start without contact details, so these stay optional for them.
   const contactRequired = isResident ? 'required ' : '';
-  const fixedField = isResident ? ['Số căn hộ', residentApartmentLabel(row)] : ['Vai trò', roleNames[account.role]];
   formModal(
     'Chỉnh sửa thông tin cá nhân',
-    view`
-      <div class="field">
-        <label>${fixedField[0]}</label>
-        <input value="${esc(fixedField[1])}" readonly disabled aria-label="${fixedField[0]}" style="background:var(--bg);cursor:not-allowed">
-      </div>
-    ` +
+    (isResident
+      ? fixedField('Số căn hộ', residentApartmentLabel(row))
+      : fixedField('Vai trò', roleNames[account.role])) +
       field(
         'username',
         'Tên đăng nhập',
@@ -3977,18 +4124,11 @@ function userForm(id) {
 }
 function technicianForm(id) {
   const row = state.data.technicians.find((t) => t.technician_id === Number(id));
-  const users = state.data.users.filter(
-    (u) =>
-      u.role === 'technician' && (!state.data.technicians.some((t) => t.user_id === u.user_id) || row.user_id === u.user_id),
-  );
+  // The account is the one the technician registered with; it is shown, never reassigned here.
+  const account = state.data.users.find((u) => u.user_id === row.user_id);
   formModal(
     'Cập nhật kỹ thuật viên',
-    select(
-      'user_id',
-      'Tài khoản kỹ thuật viên',
-      users.map((u) => [u.user_id, u.username]),
-      row.user_id || '',
-    ) +
+    fixedField('Tài khoản kỹ thuật viên', account ? account.username : 'Chưa liên kết tài khoản') +
       field('full_name', 'Họ và tên', 'text', row.full_name || '', 'required maxlength="120"') +
       select(
         'specialty',
@@ -4051,10 +4191,12 @@ function exportReport() {
   const rows = [
     [
       'Kỳ báo cáo',
+      'Tổng doanh thu (VNĐ)',
       'Đã phát hành (VNĐ)',
-      'Đã thu (VNĐ)',
+      'Hóa đơn đã thu (VNĐ)',
       'Điện nước đã thu (VNĐ)',
       'Dịch vụ 6 tháng đã thu (VNĐ)',
+      'Vé vãng lai (VNĐ)',
       'Công nợ (VNĐ)',
       'Số hóa đơn',
       'Đã thanh toán',
@@ -4062,10 +4204,12 @@ function exportReport() {
     ],
     ...(report.items || []).map((r) => [
       r.period,
+      r.revenue_amount,
       r.billed_amount,
       r.collected_amount,
       r.monthly_collected_amount,
       r.semiannual_collected_amount,
+      r.guest_amount,
       r.outstanding_amount,
       r.invoice_count,
       r.paid_count,
@@ -4201,11 +4345,14 @@ document.addEventListener('click', async (event) => {
       case 'password-edit':
         passwordForm();
         break;
-      case 'resident-create':
-        await residentForm();
-        break;
       case 'resident-edit':
         await residentForm(id);
+        break;
+      case 'resident-lock':
+        await residentLock(id);
+        break;
+      case 'resident-unlock':
+        await residentUnlock(id);
         break;
       case 'resident-detail':
         await residentDetail(id);
@@ -4456,7 +4603,11 @@ document.addEventListener('input', (event) => {
     updateUtilityPreview();
 });
 document.addEventListener('change', async (event) => {
-  if (event.target.name === 'vehicle_type' && event.target.closest('#modal-form')) updateParkingFields();
+  if (
+    ['vehicle_type', 'plate_number', 'registered_date', 'registration_months'].includes(event.target.name) &&
+    event.target.closest('#modal-form')
+  )
+    updateParkingFields();
   if (event.target.id === 'field-attachments') {
     const picked = [...attachmentPicks, ...event.target.files];
     if (picked.length > 5) toast('Tối đa 5 tệp đính kèm.', true);

@@ -57,6 +57,14 @@ def create_app():
         elif g.user["role"] == "technician":
             query += f" WHERE n.type='general' OR n.created_by=? OR {STAFF_AUDIENCE}"
             args.append(g.user["user_id"])
+        else:
+            # Automatic notices addressed to one resident (a reply to their request, their apartment
+            # confirmed) report what management itself just did, so they stay out of its inbox.
+            # Notices a manager wrote to a resident stay listed.
+            query += (
+                " WHERE n.created_by IS NOT NULL OR NOT EXISTS "
+                "(SELECT 1 FROM notification_resident_audience a WHERE a.notification_id=n.notification_id)"
+            )
         return {
             "items": [dict(r) for r in db.execute(query + " ORDER BY n.created_at DESC,n.notification_id DESC", args)]
         }

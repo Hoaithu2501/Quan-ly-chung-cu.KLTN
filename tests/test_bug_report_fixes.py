@@ -70,7 +70,7 @@ def test_approving_parking_application_registers_vehicle_and_notifies_resident(s
     assert c.call("resident", f"/api/residents/{profile['resident_id']}/apartments", "POST",
                   json={"apartment_id": aid}).status_code == 201
     content = ("Loại xe: Xe đạp\nBiển số: Cấp mã theo căn hộ khi duyệt\nCăn hộ: PARK-APPROVE\n"
-               "Ngày bắt đầu: 2026-11-10\nThời gian cam kết: 3 tháng (tối thiểu 2 tháng)\nGhi chú: Không có")
+               "Ngày bắt đầu: 2026-11-10\nThời gian cam kết: 2 tháng (đến hết ngày 09/01/2027)\nGhi chú: Không có")
     request = c.call("complaint", "/api/complaints", "POST", role="resident", user_id=uid, json={
         "type": "registration", "category": "Đăng ký gửi xe", "content": content})
     assert request.status_code == 201, request.text
@@ -79,7 +79,8 @@ def test_approving_parking_application_registers_vehicle_and_notifies_resident(s
     assert approved.status_code == 200, approved.text
     vehicle = approved.json()["vehicle"]
     assert vehicle["plate_number"] == "PARK-APPROVE-XD-1"
-    assert vehicle["minimum_end_date"] == "2027-02-10"
+    # November allows two months, both beginning this year: to the end of 9 January.
+    assert vehicle["minimum_end_date"] == "2027-01-09"
     vehicles = c.call("parking", "/api/parking/vehicles", role="resident", user_id=uid).json()["items"]
     assert [v["vehicle_id"] for v in vehicles] == [vehicle["vehicle_id"]]
     notices = c.call("notification", "/api/notifications", role="resident", user_id=uid).json()["items"]
@@ -109,7 +110,7 @@ def test_parking_approval_stays_within_the_applicants_own_apartment(service_clus
                       json={"status": "resolved", "response": "Đã duyệt."})
 
     form = ("Loại xe: Xe đạp\nBiển số: Cấp mã theo căn hộ khi duyệt\nCăn hộ: {apartment}\n"
-            "Ngày bắt đầu: 2026-11-10\nThời gian cam kết: 3 tháng\nGhi chú: {note}")
+            "Ngày bắt đầu: 2026-11-10\nThời gian cam kết: 2 tháng\nGhi chú: {note}")
     wrong = form.format(apartment="PARK-OTHER", note="Không có")
     assert c.call("complaint", "/api/complaints", "POST", role="resident", user_id=uid, json={
         "type": "registration", "category": "Đăng ký gửi xe", "content": wrong}).status_code == 403

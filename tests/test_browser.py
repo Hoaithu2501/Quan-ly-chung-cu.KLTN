@@ -401,14 +401,24 @@ def test_parking_registration_rules_preserve_draft_and_submit(browser_page):
     assert not plate.evaluate('(input)=>input.checkValidity()')
     plate.fill('59E1-987.65')
     months=page.locator('#modal-form [name=registration_months]')
-    assert months.get_attribute('min')=='2'
-    months.fill('1')
-    assert months.evaluate('(input)=>input.validity.rangeUnderflow')
-    months.fill('6')
     registered_date=page.locator('#modal-form [name=registered_date]')
     assert registered_date.get_attribute('type')=='date'
     assert registered_date.get_attribute('required') is not None
+    # The allowed months follow the start date: November leaves exactly November and December.
     registered_date.fill('2026-11-01')
+    assert (months.get_attribute('min'),months.get_attribute('max'))==('2','2')
+    # January allows up to six months, the last beginning in June.
+    registered_date.fill('2027-01-01')
+    assert (months.get_attribute('min'),months.get_attribute('max'))==('2','6')
+    assert 'kỳ thu phí kết thúc tháng 6/2027' in page.locator('#parking-months-help').inner_text()
+    months.fill('1')
+    assert months.evaluate('(input)=>input.validity.rangeUnderflow')
+    months.fill('7')
+    assert months.evaluate('(input)=>input.validity.rangeOverflow')
+    months.fill('6')
+    # Calendar months from the start date: 1 January for six months runs to the end of 30 June.
+    months.dispatch_event('change')
+    assert 'Gửi đến hết ngày 30/06/2027' in page.locator('#parking-months-help').inner_text()
     with sqlite3.connect(cluster.db_path) as db:
         apartment_code=db.execute('SELECT code FROM apartments WHERE apartment_id=1').fetchone()[0]
     assert page.locator('#modal-form [name=apartment_code]').input_value()==apartment_code
@@ -1030,17 +1040,24 @@ def test_admin_releases_a_payment_the_bank_never_confirmed(browser_page):
 def test_contract_form_tells_residents_with_the_same_name_apart(browser_page):
     page,cluster,errors=browser_page
     ids=[]
-    for phone in ('0900000011','0900000012'):
-        created=cluster.call('resident','/api/residents',method='POST',json={'full_name':'Phạm Trùng Tên','relation_type':'owner','phone':phone})
-        assert created.status_code==201,created.text
-        ids.append(created.json()['resident_id'])
     apartment=cluster.call('resident','/api/apartments',method='POST',json={'code':'UI-SAME','block':'TEST','floor':1,'area':70}).json()['apartment_id']
+    # Residents join only by registering; two people happen to share a name.
+    for number,phone in ((1,'0900000011'),(2,'0900000012')):
+        created=cluster.call('auth','/api/auth/register',method='POST',json={
+            'username':f'trung.ten{number}','password':'TrungTen!2026','full_name':'Phạm Trùng Tên',
+            'email':f'trungten{number}@gmail.com','phone':phone,'apartment_code':'UI-SAME'})
+        assert created.status_code==201,created.text
+        user_id=created.json()['user']['user_id']
+        ids.append(cluster.call('resident','/api/residents/me',role='resident',user_id=user_id).json()['resident_id'])
     login(page,cluster,'admin')
     visit(page,'residents')
+    assert page.locator('[data-action=resident-create]').count()==0
     page.locator('[data-action=tab][data-tab=contracts]').click()
     page.locator('[data-action=contract-create]').click()
     page.locator('#modal-form [name=apartment_id]').select_option(str(apartment))
     page.locator('#modal-form [name=contract_type]').select_option('ownership')
+    # Plain text: no suggestion list, so no dropdown arrow.
+    assert page.locator('#modal-form [name=resident_name]').get_attribute('list') is None
     page.locator('#modal-form [name=resident_name]').fill('Phạm Trùng Tên')
     page.locator('#modal-form [type=submit]').click()
     page.locator('#modal-form .form-error').get_by_text('Có nhiều cư dân trùng tên',exact=False).wait_for()

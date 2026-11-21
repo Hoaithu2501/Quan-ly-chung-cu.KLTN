@@ -2,12 +2,13 @@
 
 import re
 import secrets
+import sqlite3
 from datetime import datetime, timedelta, timezone
 import jwt
 from flask import g, request
 from werkzeug.security import check_password_hash, generate_password_hash
 from shared.audit import record_audit
-from shared.auth import require_auth, auth_or_internal
+from shared.auth import require_auth, require_internal, auth_or_internal
 from shared.config import secret
 from shared.db import get_db
 from shared.http import call_service
@@ -90,6 +91,17 @@ def session(row):
 
 def user_by_id(user_id):
     return get_db().execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+
+
+USERNAME_TAKEN = "Tên đăng nhập này đã được sử dụng. Vui lòng chọn tên đăng nhập khác."
+
+
+def username_taken(username, except_user_id=0):
+    return bool(
+        get_db()
+        .execute("SELECT 1 FROM users WHERE username=? AND user_id<>?", (username, except_user_id))
+        .fetchone()
+    )
 
 
 def caller_row():
@@ -195,6 +207,8 @@ def create_app():
         full_name = person_name(data["full_name"])
         if data.get("role", "resident") != "resident":
             raise APIError("Đăng ký công khai chỉ dành cho cư dân.", 403)
+        if username_taken(data["username"]):
+            raise APIError(USERNAME_TAKEN, 409)
         apartment_code = data["apartment_code"]
         if not isinstance(apartment_code, str) or not apartment_code.strip() or len(apartment_code.strip()) > 30:
             raise APIError("Số căn hộ không hợp lệ (tối đa 30 ký tự).")
@@ -203,17 +217,21 @@ def create_app():
         if matched is None:
             raise APIError("Không tìm thấy căn hộ. Vui lòng kiểm tra lại số căn hộ.")
         db = get_db()
-        cursor = db.execute(
-            "INSERT INTO users(username,password_hash,email,phone,role,status) VALUES(?,?,?,?,?,?)",
-            (
-                data["username"],
-                generate_password_hash(data["password"]),
-                data.get("email") or None,
-                data.get("phone"),
-                "resident",
-                "locked",
-            ),
-        )
+        try:
+            cursor = db.execute(
+                "INSERT INTO users(username,password_hash,email,phone,role,status) VALUES(?,?,?,?,?,?)",
+                (
+                    data["username"],
+                    generate_password_hash(data["password"]),
+                    data.get("email") or None,
+                    data.get("phone"),
+                    "resident",
+                    "locked",
+                ),
+            )
+        except sqlite3.IntegrityError:
+            # Someone took the name between the check above and this insert.
+            raise APIError(USERNAME_TAKEN, 409)
         user_id = cursor.lastrowid
         db.commit()  # Release SQLite write lock before the other service writes.
         try:
@@ -270,8 +288,8 @@ def create_app():
         username = data.get("username", row["username"])
         if "username" in data:
             validate_username(username)
-        if db.execute("SELECT 1 FROM users WHERE username=? AND user_id<>?", (username, row["user_id"])).fetchone():
-            raise APIError("Tên đăng nhập đã được sử dụng.", 409)
+        if username_taken(username, row["user_id"]):
+            raise APIError(USERNAME_TAKEN, 409)
         email = data.get("email", row["email"])
         # An existing address is left alone, so older accounts can still edit their other details.
         if "email" in data and email != row["email"]:
@@ -370,6 +388,41 @@ def create_app():
             )
             record_audit(db, "account_role_changed", "user", user_id, {"from": row["role"], "to": role})
         return public_user(user_by_id(user_id))
+
+    @app.post("/api/auth/users/status")
+    @require_internal
+    def set_resident_status():
+        """Lock or reopen resident accounts. Resident Service decides which ones and writes the audit trail."""
+        data = body()
+        required(data, "user_ids", "status")
+        status = data["status"]
+        if status not in ("active", "locked"):
+            raise APIError("Trạng thái tài khoản không hợp lệ.")
+        ids = data["user_ids"]
+        if not isinstance(ids, list) or len(ids) > 200:
+            raise APIError("Danh sách tài khoản không hợp lệ.")
+        ids = {integer(value, "user_id", 1) for value in ids}
+        reason = None
+        if status == "locked":
+            reason = data.get("reason")
+            if not isinstance(reason, str) or not reason.strip() or len(reason) > 300:
+                raise APIError("Vui lòng nêu lý do khóa tài khoản.")
+            reason = reason.strip()
+        db = get_db()
+        changed = []
+        with db:
+            for user_id in sorted(ids):
+                row = user_by_id(user_id)
+                # Staff accounts are never locked through an apartment.
+                if row is None or row["role"] != "resident" or row["status"] == status:
+                    continue
+                # Locking also ends every session; reopening needs nothing more than a fresh login.
+                db.execute(
+                    "UPDATE users SET status=?,lock_reason=?,token_version=token_version+? WHERE user_id=?",
+                    (status, reason, 1 if status == "locked" else 0, user_id),
+                )
+                changed.append(user_id)
+        return {"changed": changed}
 
     @app.get("/api/auth/audit-log")
     @require_auth("admin")

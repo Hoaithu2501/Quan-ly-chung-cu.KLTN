@@ -661,7 +661,8 @@ dialog { border-radius:24px; }
   .overview-hero-title { font-size:25px; }
   .overview-hero-kicker { font-size:8px; letter-spacing:1.3px; }
   .overview-hero-actions .button.secondary { display:none; }
-  .overview-shortcuts { grid-template-columns:1fr; gap:10px; }
+  /* .four too: residents have four shortcuts and must stack like the technician's three. */
+  .overview-shortcuts,.overview-shortcuts.four { grid-template-columns:1fr; gap:10px; }
   .overview-shortcut { padding:0; flex-direction:row; }
   .shortcut-media { width:145px; height:auto; min-height:108px; flex-shrink:0; }
   .shortcut-media img { position:absolute; inset:0; }
@@ -957,6 +958,25 @@ dialog { border-radius:24px; }
   .layout-rail .sidebar .support-card button:hover { color:var(--teal); }
   .layout-rail .support-rail { display:flex; flex-direction:column; align-items:center; gap:3px; }
   .layout-rail .sidebar .support-rail svg { color:#fff; border-color:transparent; background:linear-gradient(145deg,#3aa876,#176a4b); }
+  /* Management's wide sidebar shows the assistant exactly as residents and technicians see it:
+     a round green button centred above the label "Trợ lý". */
+  .layout:not(.layout-rail) .sidebar-bottom { padding-top:8px; padding-bottom:12px; border-top:1px solid var(--line); }
+  .layout:not(.layout-rail) .sidebar .support-card { padding:0; border-radius:0; overflow:visible; color:inherit; background:none; box-shadow:none; }
+  .layout:not(.layout-rail) .sidebar .support-card::after,.layout:not(.layout-rail) .sidebar .support-card>svg,.layout:not(.layout-rail) .sidebar .support-card strong,.layout:not(.layout-rail) .sidebar .support-card p,.layout:not(.layout-rail) .support-cta { display:none; }
+  .layout:not(.layout-rail) .sidebar .support-card button { width:100%; justify-content:center; margin:0; color:#516a5c; font-size:11px; font-weight:500; }
+  .layout:not(.layout-rail) .sidebar .support-card button:hover { color:var(--teal); }
+  .layout:not(.layout-rail) .support-rail { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .layout:not(.layout-rail) .sidebar .support-rail svg { flex-shrink:0; width:38px; height:38px; padding:9px; border-radius:50%; color:#fff; background:linear-gradient(145deg,#3aa876,#176a4b); transition:transform .25s var(--ease),box-shadow .25s var(--ease); }
+  .layout:not(.layout-rail) .sidebar .support-card button:hover svg { transform:translateY(-1px); box-shadow:0 8px 14px -8px #1a7350a6; }
+}
+/* Phones open the same sidebar for every role, so the assistant is the same round button there too. */
+@media (max-width:700px) {
+  .sidebar-bottom { padding-top:8px; padding-bottom:calc(12px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line); }
+  .sidebar .support-card { padding:0; border-radius:0; overflow:visible; color:inherit; background:none; box-shadow:none; }
+  .sidebar .support-card::after,.sidebar .support-card>svg,.sidebar .support-card strong,.sidebar .support-card p,.support-cta { display:none; }
+  .sidebar .support-card button { width:100%; justify-content:center; margin:0; color:#516a5c; font-size:12px; font-weight:500; }
+  .support-rail { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .sidebar .support-rail svg { flex-shrink:0; width:38px; height:38px; padding:9px; border-radius:50%; color:#fff; background:linear-gradient(145deg,#3aa876,#176a4b); }
 }
 @media (min-width:701px) and (max-height:920px) {
   .layout-rail .sidebar { --rail-dot:32px; }

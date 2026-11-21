@@ -51,8 +51,9 @@ def test_service_invoice_detail_lists_each_vehicle_with_its_months_and_dates(ser
     early = vehicle(c, apartment_id, "29A1-81818", registered="2026-08-15", months=4).json()
     base = c.call("billing", "/api/billing/invoices/semiannual", "POST", json={
         "apartment_id": apartment_id, "period": "2026-H2", "service_fee": 1000, "due_date": "2099-01-01"}).json()
-    # August to December at 100.000 each, plus the first card.
-    assert base["parking_fee"] == 600_000
+    # August to November, the four registered months, at 100.000 each, plus the first card.
+    # December is not billed: the registration runs out on 14 December unless it is renewed.
+    assert base["parking_fee"] == 500_000
     # Recorded on the dates it would have happened: vehicle in August, invoice a few days later.
     with sqlite3.connect(c.db_path) as db:
         db.execute("UPDATE vehicles SET created_at='2026-08-15 08:00:00' WHERE vehicle_id=?", (early["vehicle_id"],))
@@ -66,8 +67,8 @@ def test_service_invoice_detail_lists_each_vehicle_with_its_months_and_dates(ser
     line = lines[0]
     assert line["plate_number"] == "29A1-81818" and line["vehicle_type"] == "motorbike"
     assert line["registration_months"] == 4 and line["registered_date"] == "2026-08-15"
-    assert line["minimum_end_date"] == "2026-12-15"
-    assert line["months"] == 5 and line["monthly_fee"] == 100_000 and line["card_fee"] == 100_000
+    assert line["minimum_end_date"] == "2026-12-14"
+    assert line["months"] == 4 and line["monthly_fee"] == 100_000 and line["card_fee"] == 100_000
     extra = c.call("billing", f"/api/billing/vehicle-billing/{late['vehicle_id']}/supplement", "POST",
                    json={"due_date": "2099-02-01"})
     assert extra.status_code == 201, extra.text

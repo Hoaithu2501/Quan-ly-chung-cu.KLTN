@@ -8,18 +8,20 @@ Người sử dụng trực tiếp là ban quản lý chung cư, với 3 nhóm u
 
 ### Ban quản lý chung cư
 - Chỉnh sửa thông tin cá nhân
-- Quản lý căn hộ (thông tin chủ sở hữu, thông tin căn hộ, trạng thái trống/đã ở, tình trạng sở hữu: thuê bao nhiêu lâu, thời gian còn lại). Chủ sở hữu và người thuê được lưu song song trên cùng một căn hộ
+- Quản lý căn hộ (thông tin chủ sở hữu, thông tin căn hộ, trạng thái trống/đã ở, tình trạng sở hữu: thuê bao nhiêu lâu, thời gian còn lại). Chủ sở hữu và người thuê được lưu song song trên cùng một căn hộ; cột cư dân hiện tại liệt kê mọi người đang ở
+- Cư dân tự đăng ký tài khoản; ban quản lý xác nhận căn hộ cho tài khoản đó, không thêm cư dân thủ công. Hợp đồng chỉ lập cho cư dân đã đăng ký
+- Hợp đồng thuê: cư dân được nhắc trước 1 tháng khi sắp hết hạn; đến ngày hết hạn mà chưa gia hạn, ban quản lý nhận thông báo và có thể khoá mọi tài khoản cư dân của căn hộ (căn hộ chuyển sang còn trống). Tài khoản bị khoá thấy lý do khi đăng nhập; ban quản lý mở khoá lại khi cư dân đến gặp trực tiếp
 - Quản lý hoá đơn dịch vụ hàng tháng (điện, nước, có cổng thanh toán nhanh qua QR code)
 - Quản lý hoá đơn dịch vụ chung 6 tháng/lần (dịch vụ chung, gửi xe theo hộ gia đình)
 - Quản lý dịch vụ gửi xe (khách vãng lai gửi theo lượt chỉ cần nhập tổng tiền mỗi ngày, không đi sâu)
 - Gửi thông báo chung tới tất cả cư dân
 - Gửi thông báo riêng tới từng căn hộ, qua các tài khoản đã liên kết với căn hộ đó
 - Giải quyết khiếu nại, đơn đăng ký (nhận đơn, phản hồi và phê duyệt). Khi khiếu nại cần kỹ thuật xử lý, ban quản lý tạo phiếu sửa chữa và phân công kỹ thuật viên
-- Báo cáo, thống kê (doanh thu dịch vụ hàng tháng và 6 tháng, biểu đồ theo tháng/quý, số lượng khiếu nại)
+- Báo cáo, thống kê (doanh thu dịch vụ hàng tháng và 6 tháng, vé gửi xe vãng lai, biểu đồ theo tháng/quý, số lượng khiếu nại)
 - Quản lý nhân sự kỹ thuật (phân công task cho kỹ thuật viên). Tài khoản chỉ đổi vai trò; danh sách kỹ thuật viên tự cập nhật theo vai trò
 - Cập nhật chính sách ở chung cư; chatbot dùng ngay nội dung vừa thêm, sửa hoặc xoá
 
-**Quy định gửi xe:** chỉ quản lý xe đạp, xe máy và xe điện; ô tô gửi ở bãi ngoài, không kiểm soát. Mỗi căn hộ không giới hạn số xe. Thời gian đăng ký tối thiểu 2 tháng. Phí tháng: xe đạp 50.000 đ, xe máy và xe điện 100.000 đ. Phí gửi xe của kỳ 6 tháng là tổng của `phí 1 tháng × số tháng xe thực gửi trong kỳ` theo từng xe; xe đăng ký mới đóng thêm 100.000 đ làm thẻ một lần; xe từng đăng ký (cùng biển số, hoặc mã xe đạp cũ) đã có thẻ nên không đóng lại.
+**Quy định gửi xe:** chỉ quản lý xe đạp, xe máy và xe điện; ô tô gửi ở bãi ngoài, không kiểm soát. Mỗi căn hộ không giới hạn số xe. Thời gian gửi tính theo lịch từ ngày bắt đầu, như vé tháng: bắt đầu 20/11, 2 tháng thì gửi đến hết 19/01 (tháng không có ngày đó thì lấy ngày cuối tháng: 31/01 + 1 tháng gửi đến hết 27/02). Mỗi lần đăng ký tối thiểu 2 tháng (gia hạn xe đã đăng ký được từ 1 tháng); số tháng tính cả tháng bắt đầu và tối đa đến tháng cuối của kỳ thu phí 6 tháng (tháng 1–6 hoặc 7–12); đăng ký tháng 6 được chọn đến 7 tháng, đăng ký tháng 12 chỉ 1 tháng. Hết thời gian đăng ký, xe ngừng tính phí và cần gia hạn mới gửi tiếp. Phí tháng: xe đạp 50.000 đ, xe máy và xe điện 100.000 đ. Phí gửi xe của kỳ 6 tháng là tổng của `phí 1 tháng × số tháng gửi bắt đầu trong kỳ` theo từng xe, nên những ngày của tháng cuối lẻ sang kỳ sau không bị thu lại; xe đăng ký mới đóng thêm 100.000 đ làm thẻ một lần; xe từng đăng ký (cùng biển số, hoặc mã xe đạp cũ) đã có thẻ nên không đóng lại.
 
 ### Cư dân
 - Chỉnh sửa thông tin cá nhân
@@ -95,6 +97,7 @@ project/
 ├── shared/
 │   └── db.py             # Helper kết nối database dùng chung
 ├── migrations/           # Thay đổi cấu trúc database, chạy theo thứ tự
+├── database/QLCC_an_danh.db  # Bản sao dữ liệu thật đã ẩn danh, để xem cấu trúc và dữ liệu (database/README.md)
 └── tests/fixtures/demo.sql  # Dữ liệu mẫu cho database mới và bộ kiểm thử
 ```
 

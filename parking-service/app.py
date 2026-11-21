@@ -34,18 +34,52 @@ def known_plates(db, exclude_id=0):
     return plates
 
 
-def minimum_end_date(registered, months):
-    start = date.fromisoformat(registered)
+def month_start(start, months):
+    """The same day `months` calendar months later, or that month's last day when it is shorter
+    (31/01 + 1 month = 28/02). Always inside calendar month start.month + months."""
     year, month = divmod(start.year * 12 + start.month - 1 + months, 12)
+    return date(year, month + 1, min(start.day, calendar.monthrange(year, month + 1)[1]))
+
+
+def registration_end(registered, months):
+    """Calendar months from the start date, like a monthly ticket: 20/11 for 2 months runs to the end of 19/01."""
     try:
-        return date(year, month + 1, min(start.day, calendar.monthrange(year, month + 1)[1]))
+        return month_start(date.fromisoformat(str(registered)), months) - timedelta(days=1)
     except (ValueError, OverflowError):
         raise APIError("Thời gian đăng ký không hợp lệ.")
 
 
+def registration_window(start, renewal=False):
+    """(fewest, most) months a registration starting in this month may cover.
+
+    At least 2 months, and every month must begin within the six-month fee period (January-June
+    or July-December), where all of them are billed: the days of the last month that run into the
+    next period are paid for already. June is the last month of H1, so a June registration may
+    run seven months; nothing begins in the next year, so a December registration is one month.
+    Renewing a vehicle already registered may add a single month.
+    """
+    last = 12 if start.month >= 6 else 6
+    longest = last - start.month + 1
+    return (1 if renewal else min(2, longest)), longest
+
+
+def check_window(start, months, action="Đăng ký", renewal=False):
+    fewest, most = registration_window(start, renewal)
+    if not fewest <= months <= most:
+        last = 12 if start.month >= 6 else 6
+        span = f"đúng {most} tháng" if fewest == most else f"từ {fewest} đến {most} tháng"
+        raise APIError(
+            f"{action} bắt đầu tháng {start.month}/{start.year} được chọn {span} "
+            f"(tính cả tháng bắt đầu; kỳ thu phí kết thúc tháng {last}/{start.year})."
+        )
+
+
 def vehicle_result(row):
     result = dict(row)
-    result["minimum_end_date"] = minimum_end_date(result["registered_date"], result["registration_months"]).isoformat()
+    end = registration_end(result["registered_date"], result["registration_months"])
+    # The API name is kept: it is the date the registration runs out.
+    result["minimum_end_date"] = end.isoformat()
+    result["registration_expired"] = result["status"] == "active" and end < local_today()
     return result
 
 
@@ -102,8 +136,16 @@ def create_app():
         if kind in ("motorbike", "electric_bike") and not plate:
             raise APIError("Xe máy và xe điện cần có biển số.")
         registered = iso_date(merged.get("registered_date", local_today().isoformat()), "registered_date")
-        months = integer(merged.get("registration_months", 2), "registration_months", min_value=2)
-        earliest_end = minimum_end_date(registered, months)
+        months = integer(merged.get("registration_months", 2), "registration_months", min_value=1)
+        start = date.fromisoformat(registered)
+        if not old:
+            check_window(start, months)
+        elif months != old["registration_months"]:
+            # Renewals may have taken an older registration past its first period; only growing it is limited.
+            fewest, most = registration_window(start)
+            if months < fewest or (months > old["registration_months"] and months > most):
+                check_window(start, months, "Đăng ký")
+        earliest_end = registration_end(registered, months)
         status = enum(merged.get("status", "active"), ("active", "cancelled"), "status")
         cancelled = (old or {}).get("cancelled_date")
         if not old and status != "active":
@@ -122,7 +164,9 @@ def create_app():
             cancelled = local_today().isoformat()
         if plate and status == "active":
             if known_plates(get_db(), (old or {}).get("vehicle_id", 0)).get(plate_key(plate)) == "active":
-                raise APIError("Biển số này đã có đăng ký đang hoạt động.", 409)
+                raise APIError(
+                    "Biển số này đã có đăng ký đang hoạt động. Nếu đăng ký đó đã hết hạn, hãy dùng Gia hạn.", 409
+                )
         return {
             "apartment_id": apartment_id,
             "plate_number": plate,
@@ -182,25 +226,49 @@ def create_app():
     @app.post("/api/parking/vehicles/<int:vehicle_id>/renew")
     @require_auth("admin")
     def renew_vehicle(vehicle_id):
+        """Renewing follows the registration rules for the month the extra time starts.
+
+        Before the registration runs out, the extra months follow straight on. After it ran out,
+        the months in between are not owed, so the old registration closes on its end date and
+        a new one starts today with the same plate and card (no second card fee).
+        """
         data = body()
         required(data, "months")
         added = integer(data["months"], "months", min_value=1)
-        if added > 120:
-            raise APIError("Mỗi lần gia hạn tối đa 120 tháng.")
         db = get_db()
         with db:
             db.execute("BEGIN IMMEDIATE")
             vehicle = one(db, "vehicles", "vehicle_id", vehicle_id)
             if vehicle["status"] != "active":
                 raise APIError("Đăng ký đã hủy không thể gia hạn. Hãy tạo đăng ký mới.", 409)
-            registered = date.fromisoformat(vehicle["registered_date"])
-            # A commitment that already lapsed is extended from today, not from its old end date.
-            base = max(minimum_end_date(vehicle["registered_date"], vehicle["registration_months"]), local_today())
-            months = (base.year - registered.year) * 12 + base.month - registered.month
-            if minimum_end_date(vehicle["registered_date"], months) < base:
-                months += 1
-            db.execute("UPDATE vehicles SET registration_months=? WHERE vehicle_id=?", (months + added, vehicle_id))
-        return vehicle_result(one(db, "vehicles", "vehicle_id", vehicle_id))
+            end = registration_end(vehicle["registered_date"], vehicle["registration_months"])
+            today = local_today()
+            if end >= today:
+                check_window(end + timedelta(days=1), added, "Gia hạn", renewal=True)
+                db.execute(
+                    "UPDATE vehicles SET registration_months=registration_months+? WHERE vehicle_id=?", (added, vehicle_id)
+                )
+                renewed_id = vehicle_id
+            else:
+                check_window(today, added, "Gia hạn", renewal=True)
+                db.execute(
+                    "UPDATE vehicles SET status='cancelled',cancelled_date=? WHERE vehicle_id=?",
+                    ((end + timedelta(days=1)).isoformat(), vehicle_id),
+                )
+                values = {
+                    key: vehicle[key] for key in ("apartment_id", "plate_number", "vehicle_type", "monthly_fee")
+                }
+                values.update(
+                    registered_date=today.isoformat(),
+                    registration_months=added,
+                    status="active",
+                    card_fee=0,
+                    created_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                )
+                renewed_id = db.execute(
+                    f"INSERT INTO vehicles({','.join(values)}) VALUES ({placeholders(values)})", list(values.values())
+                ).lastrowid
+        return vehicle_result(one(db, "vehicles", "vehicle_id", renewed_id))
 
     @app.patch("/api/parking/vehicles/<int:vehicle_id>")
     @require_auth("admin")
@@ -235,6 +303,7 @@ def create_app():
             first_month = 1 if half == 1 else 7
             start = date(year, first_month, 1)
             end = date(year, first_month + 5, calendar.monthrange(year, first_month + 5)[1])
+            first_index = year * 12 + first_month - 1
             query, args = "SELECT * FROM vehicles WHERE registered_date<=?", [end.isoformat()]
             query += apartment_filter(args)
             if request.args.get("vehicle_id"):
@@ -243,13 +312,19 @@ def create_app():
             totals = {}
             for row in get_db().execute(query, args):
                 registered = date.fromisoformat(row["registered_date"])
-                last_day = (
-                    date.fromisoformat(row["cancelled_date"]) - timedelta(days=1) if row["cancelled_date"] else end
+                registered_until = registration_end(row["registered_date"], row["registration_months"])
+                cancelled = date.fromisoformat(row["cancelled_date"]) if row["cancelled_date"] else None
+                # Each registered month is billed in the period it begins in, so the days a last month
+                # runs into the next period are never billed twice. Months after a cancellation are not owed.
+                registered_index = registered.year * 12 + registered.month - 1
+                months = sum(
+                    1
+                    for k in range(row["registration_months"])
+                    if first_index <= registered_index + k <= first_index + 5
+                    and (cancelled is None or month_start(registered, k) < cancelled)
                 )
-                active_start, active_end = max(start, registered), min(end, last_day)
-                if active_start > active_end:
+                if not months:
                     continue
-                months = (active_end.year - active_start.year) * 12 + active_end.month - active_start.month + 1
                 card_fee = row["card_fee"] if start <= registered <= end else 0
                 total = totals.setdefault(
                     row["apartment_id"],
@@ -273,9 +348,7 @@ def create_app():
                         "status": row["status"],
                         "registered_date": row["registered_date"],
                         "registration_months": row["registration_months"],
-                        "minimum_end_date": minimum_end_date(
-                            row["registered_date"], row["registration_months"]
-                        ).isoformat(),
+                        "minimum_end_date": registered_until.isoformat(),
                         "cancelled_date": row["cancelled_date"],
                         "created_at": row["created_at"],
                         "monthly_fee": row["monthly_fee"],
@@ -298,7 +371,7 @@ def create_app():
         }
 
     @app.get("/api/parking/guest-daily")
-    @require_auth("admin", "technician")
+    @auth_or_internal("admin", "technician")
     def guest_daily():
         query, args = "SELECT * FROM guest_parking_daily WHERE 1=1", []
         for parameter, operator in (("from", ">="), ("to", "<=")):

@@ -278,10 +278,10 @@ def test_service_cut_and_restore_follow_the_invoice(service_cluster):
                 if row["invoice_id"] == invoice and row["invoice_type"] == "monthly"]
 
 
-def register_vehicle(c, apartment_id, plate="29A1-22222", registered="2026-11-09"):
+def register_vehicle(c, apartment_id, plate="29A1-22222", registered="2026-11-09", months=2):
     created = c.call("parking", "/api/parking/vehicles", "POST", json={
         "apartment_id": apartment_id, "vehicle_type": "motorbike", "plate_number": plate,
-        "registered_date": registered, "registration_months": 4})
+        "registered_date": registered, "registration_months": months})
     assert created.status_code == 201, created.text
     return created.json()
 
@@ -289,16 +289,18 @@ def register_vehicle(c, apartment_id, plate="29A1-22222", registered="2026-11-09
 def test_vehicle_commitment_can_shrink_until_paid_and_can_be_renewed(service_cluster):
     c = service_cluster
     apartment_id = make_apartment(c, "VEH-101")
-    vehicle = register_vehicle(c, apartment_id)
+    # January to April; the first half-year allows up to June.
+    vehicle = register_vehicle(c, apartment_id, registered="2027-01-10", months=4)
     route = f"/api/parking/vehicles/{vehicle['vehicle_id']}"
     shorter = c.call("parking", route, "PATCH", json={"registration_months": 3})
     assert shorter.status_code == 200, shorter.text
     assert c.call("parking", route, "PATCH", json={"registration_months": 1}).status_code == 400
+    # March is the last month; renewing adds April and May, still inside the first half-year.
     renewed = c.call("parking", route + "/renew", "POST", json={"months": 2})
     assert renewed.status_code == 200 and renewed.json()["registration_months"] == 5
     assert c.call("parking", route + "/renew", "POST", role="resident", json={"months": 2}).status_code == 403
     created = c.call("billing", "/api/billing/invoices/semiannual", "POST", json={
-        "apartment_id": apartment_id, "period": "2026-H2", "service_fee": 1000, "due_date": "2099-01-01"})
+        "apartment_id": apartment_id, "period": "2027-H1", "service_fee": 1000, "due_date": "2099-01-01"})
     assert created.status_code == 201, created.text
     assert created.json()["parking_fee"] > 0
     assert c.call("billing", f"/api/billing/invoices/semiannual/{created.json()['invoice_id']}/pay", "POST",
@@ -312,7 +314,10 @@ def test_lapsed_commitment_is_renewed_from_today(service_cluster):
     c = service_cluster
     apartment_id = make_apartment(c, "VEH-OLD")
     vehicle = register_vehicle(c, apartment_id, plate="29A1-33333", registered="2020-01-15")
-    renewed = c.call("parking", f"/api/parking/vehicles/{vehicle['vehicle_id']}/renew", "POST", json={"months": 2}).json()
+    with c.apps["parking"].app_context():
+        fewest, _ = c.modules["parking"].registration_window(c.modules["parking"].local_today())
+    renewed = c.call("parking", f"/api/parking/vehicles/{vehicle['vehicle_id']}/renew", "POST",
+                     json={"months": fewest}).json()
     assert renewed["minimum_end_date"] > "2026-01-01"
 
 

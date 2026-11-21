@@ -68,9 +68,45 @@ def enqueue_reply(complaint):
         f"Phản hồi của Ban quản lý:\n{excerpt}\n\n"
         "Bạn vào Khiếu nại & đăng ký, mở yêu cầu này để xem đầy đủ phản hồi.",
     }
+    enqueue(identifier, payload)
+
+
+def enqueue(complaint_id, payload):
+    """Saved with the change itself; dispatch_outbox delivers it and retries after outages."""
     get_db().execute(
         "INSERT INTO complaint_outbox(event_id,complaint_id,payload) VALUES (?,?,?)",
-        (payload["event_id"], identifier, json.dumps(payload, ensure_ascii=False)),
+        (payload["event_id"], complaint_id, json.dumps(payload, ensure_ascii=False)),
+    )
+
+
+def enqueue_for_management(complaint, resident_name, cancelled=False):
+    """Management hears about every new request, parking applications included, and every cancellation."""
+    identifier = complaint["complaint_id"]
+    if complaint["category"] == PARKING_CATEGORY:
+        kind = "đơn đăng ký gửi xe"
+    elif complaint["type"] == "registration":
+        kind = "đơn đăng ký" + (f" {complaint['category']}" if complaint["category"] else "")
+    else:
+        kind = "góp ý / khiếu nại" + (f" về {complaint['category']}" if complaint["category"] else "")
+    who = resident_name or f"Cư dân #{complaint['resident_id']}"
+    if cancelled:
+        title = f"Cư dân đã huỷ yêu cầu #YC{identifier}"
+        content = f"{who} đã huỷ {kind} #YC{identifier} trước khi Ban quản lý xử lý."
+    else:
+        title = f"Yêu cầu mới #YC{identifier}: {kind[0].upper()}{kind[1:]}"
+        excerpt = complaint["content"][:500] + ("…" if len(complaint["content"]) > 500 else "")
+        content = (
+            f"{who} vừa gửi {kind}.\n{excerpt}\n\nVào Khiếu nại & đăng ký, mở yêu cầu #YC{identifier} để xử lý."
+        )
+    enqueue(
+        identifier,
+        {
+            "event_id": f"complaint:{'cancelled' if cancelled else 'created'}:{identifier}",
+            "type": "private",
+            "target_role": "admin",
+            "title": title,
+            "content": content,
+        },
     )
 
 
@@ -172,11 +208,40 @@ def register_vehicle(complaint):
             "Hãy xác nhận căn hộ ở Cư dân & hợp đồng trước khi duyệt.",
             409,
         )
+    if data["plate_number"]:
+        # The same plate still registered to this apartment: the application is a renewal.
+        registered = call_service(
+            "parking",
+            "/api/parking/vehicles",
+            params={"apartment_id": apartment["apartment_id"], "status": "active"},
+        )["items"]
+        match = next((v for v in registered if plate_key(v["plate_number"]) == plate_key(data["plate_number"])), None)
+        if match:
+            renewed = call_service(
+                "parking",
+                f"/api/parking/vehicles/{match['vehicle_id']}/renew",
+                method="POST",
+                json={"months": data["registration_months"]},
+            )
+            return renewed, True
     payload = {key: data[key] for key in ("vehicle_type", "registered_date", "registration_months")}
     payload["apartment_id"] = apartment["apartment_id"]
     if data["plate_number"]:
         payload["plate_number"] = data["plate_number"]
-    return call_service("parking", "/api/parking/vehicles", method="POST", json=payload)
+    return call_service("parking", "/api/parking/vehicles", method="POST", json=payload), False
+
+
+def plate_key(plate):
+    """Same normalisation as Parking: 29A1-111.11 and 29a1 11111 are one plate."""
+    return re.sub(r"[^0-9A-Z]", "", str(plate or "").upper())
+
+
+def deliver_now(app):
+    """A delivery failure never undoes the change just committed; the scheduler retries."""
+    try:
+        dispatch_outbox()
+    except Exception:
+        app.logger.warning("Change saved; notification delivery will retry.")
 
 
 def create_app():
@@ -258,17 +323,21 @@ def create_app():
                 raise APIError("Chỉ được đăng ký gửi xe cho căn hộ của tài khoản này.", 403)
         attachments = attachment_values(data.get("attachments"))
         db = get_db()
-        cursor = db.execute(
-            "INSERT INTO complaints(resident_id,type,category,content,attachments) VALUES (?,?,?,?,?)",
-            (resident_id, kind, category, content, attachments),
-        )
-        db.commit()
-        return complaint_result(one(db, "complaints", "complaint_id", cursor.lastrowid)), 201
+        with db:
+            cursor = db.execute(
+                "INSERT INTO complaints(resident_id,type,category,content,attachments) VALUES (?,?,?,?,?)",
+                (resident_id, kind, category, content, attachments),
+            )
+            created = one(db, "complaints", "complaint_id", cursor.lastrowid)
+            enqueue_for_management(created, profile.get("full_name"))
+        deliver_now(app)
+        return complaint_result(created), 201
 
     @app.post("/api/complaints/<int:complaint_id>/cancel")
     @require_auth("resident")
     def cancel_complaint(complaint_id):
-        resident_id = resident_profile()["resident_id"]
+        profile = resident_profile()
+        resident_id = profile["resident_id"]
         db = get_db()
         with db:
             db.execute("BEGIN IMMEDIATE")
@@ -283,6 +352,8 @@ def create_app():
                 "UPDATE complaints SET status='cancelled',resolved_at=CURRENT_TIMESTAMP WHERE complaint_id=?",
                 (complaint_id,),
             )
+            enqueue_for_management(row, profile.get("full_name"), cancelled=True)
+        deliver_now(app)
         return complaint_result(one(db, "complaints", "complaint_id", complaint_id))
 
     @app.patch("/api/complaints/<int:complaint_id>")
@@ -301,11 +372,11 @@ def create_app():
             and current["status"] not in CLOSED
         ):
             # Parking writes the same SQLite file, so it runs before this service locks it.
-            vehicle = register_vehicle(current)
+            vehicle, renewed = register_vehicle(current)
             note = (
-                f"Phương tiện đã được duyệt: {vehicle['plate_number']} "
+                f"Phương tiện đã được {'gia hạn' if renewed else 'duyệt'}: {vehicle['plate_number']} "
                 f"(hiệu lực từ {vehicle['registered_date']} đến {vehicle['minimum_end_date']}). "
-                "Xem tại Quản lý gửi xe › Phương tiện đăng ký."
+                "Xem tại Quản lý gửi xe."
             )
             data["response"] = f"{str(data.get('response') or '').strip()}\n\n{note}".strip()
         with db:
@@ -333,11 +404,7 @@ def create_app():
             updated = one(db, "complaints", "complaint_id", complaint_id)
             if response and response != (old["response"] or "").strip():
                 enqueue_reply(updated)
-        # A delivery failure never undoes the management response just committed.
-        try:
-            dispatch_outbox()
-        except Exception:
-            app.logger.warning("Reply saved; notification delivery will retry.")
+        deliver_now(app)
         result = complaint_result(updated)
         if vehicle:
             result["vehicle"] = vehicle

@@ -18,10 +18,12 @@ def reply(cluster, identifier, **values):
 
 
 def outbox(cluster, identifier):
+    """Reply events only; the notice telling management about a new request is tested elsewhere."""
     with sqlite3.connect(cluster.db_path) as db:
         db.row_factory = sqlite3.Row
         return [dict(row) for row in db.execute(
-            "SELECT * FROM complaint_outbox WHERE complaint_id=? ORDER BY created_at,event_id", (identifier,))]
+            "SELECT * FROM complaint_outbox WHERE complaint_id=? AND event_id LIKE 'complaint:reply:%' "
+            "ORDER BY created_at,event_id", (identifier,))]
 
 
 def notice_ids(cluster, *, role="resident", user_id=3):
@@ -57,7 +59,8 @@ def test_reply_is_private_to_author_even_for_another_resident_in_same_apartment(
     assert updated.json()["response"] == response_text
     [notice_id] = event_notices(cluster, identifier)
     assert notice_id in notice_ids(cluster)
-    assert notice_id in notice_ids(cluster, role="admin", user_id=1)
+    # Management wrote the reply itself: the notice is the resident's alone.
+    assert notice_id not in notice_ids(cluster, role="admin", user_id=1)
     assert notice_id not in notice_ids(cluster, user_id=4)
     assert notice_id not in notice_ids(cluster, user_id=5)
     assert notice_id not in notice_ids(cluster, role="technician", user_id=11)
@@ -75,6 +78,20 @@ def test_reply_is_private_to_author_even_for_another_resident_in_same_apartment(
     with sqlite3.connect(cluster.db_path) as db:
         assert db.execute("SELECT COUNT(*) FROM notification_logs WHERE notification_id=? AND resident_id=1",
                           (notice_id,)).fetchone()[0] == 1
+
+
+def test_management_keeps_its_own_notes_to_a_resident_but_not_the_automatic_ones(service_cluster):
+    cluster = service_cluster
+    written = cluster.call("notification", "/api/notifications", method="POST", json={
+        "type": "private", "target_resident_id": 1, "title": "Nhắc riêng", "content": "Vui lòng liên hệ Ban quản lý."})
+    assert written.status_code == 201, written.text
+    note = written.json()["notification_id"]
+    identifier = create_complaint(cluster)
+    assert reply(cluster, identifier, response="Ban quản lý đã tiếp nhận.").status_code == 200
+    [automatic] = event_notices(cluster, identifier)
+    seen = notice_ids(cluster, role="admin", user_id=1)
+    assert note in seen and automatic not in seen
+    assert {note, automatic} <= notice_ids(cluster)
 
 
 def test_unchanged_replies_do_not_repeat_notifications_but_amended_closed_reply_does(service_cluster):
