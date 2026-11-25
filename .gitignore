@@ -3,8 +3,6 @@ __pycache__/
 .pytest_cache/
 *.pyc
 *.db
-# The anonymized copy for reviewers; scripts/ci/check_repository.py rejects anything else here.
-!database/QLCC_an_danh.db
 *.sqlite
 *.sqlite3
 *.db-shm
