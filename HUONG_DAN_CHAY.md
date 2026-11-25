@@ -65,8 +65,6 @@ Hệ thống gồm 8 service nghiệp vụ (Auth, Resident, Billing, Parking, Ma
 
 ## 3. Đăng nhập và dùng thử
 
-Lần chạy đầu tạo database mới có dữ liệu mẫu và ba tài khoản thử (Ban quản lý, Cư dân, Kỹ thuật viên). Tên đăng nhập và mật khẩu nằm trong bảng **Tài khoản thử** của [readme.md](readme.md).
-
 **Cư dân mới tham gia:**
 
 1. Ở trang đăng nhập, cư dân chọn **Đăng ký tài khoản**, điền thông tin và mã căn hộ, rồi bấm **Tạo tài khoản cư dân**.

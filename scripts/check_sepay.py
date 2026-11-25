@@ -129,7 +129,6 @@ def main(argv=None):
         api_ok = check_api(config, normalized)
         ok = ok and api_ok
     print("Không tạo giao dịch, không ghi nhận thanh toán và không chuyển tiền.")
-    print("Hướng dẫn: docs/TEST_THANH_TOAN_HOA_DON.md")
     return 0 if ok else 1
 
 

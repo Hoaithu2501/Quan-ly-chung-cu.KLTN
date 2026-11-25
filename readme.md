@@ -20,13 +20,6 @@ Hệ thống quản lý chung cư An Cư cho ba nhóm người dùng: **ban qu�
 
 4. Mở **http://localhost:5000** và đăng nhập bằng một tài khoản thử bên dưới.
 
-## Tài khoản thử
-
-| Vai trò | Tài khoản | Mật khẩu |
-|---|---|---|
-| Ban quản lý | `admin` | `Admin@12345` |
-| Cư dân | `resident` | `Resident@12345` |
-| Kỹ thuật viên | `technician` | `Tech@12345` |
 
 Bản chạy thử dùng dữ liệu mẫu. Thanh toán QR, thông báo đẩy và chatbot diễn đạt bằng AI cần khóa kết nối riêng nên được tắt; các chức năng còn lại hoạt động đầy đủ.
 
