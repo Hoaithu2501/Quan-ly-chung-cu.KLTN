@@ -18,8 +18,7 @@ Hệ thống quản lý chung cư An Cư cho ba nhóm người dùng: **ban qu�
    docker compose up --build -d
    ```
 
-4. Mở **http://localhost:5000** và đăng nhập bằng một tài khoản thử bên dưới.
-
+4. Mở **http://localhost:5000** và đăng nhập.
 
 Bản chạy thử dùng dữ liệu mẫu. Thanh toán QR, thông báo đẩy và chatbot diễn đạt bằng AI cần khóa kết nối riêng nên được tắt; các chức năng còn lại hoạt động đầy đủ.
 
