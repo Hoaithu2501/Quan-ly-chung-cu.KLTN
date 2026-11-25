@@ -112,13 +112,6 @@ Không cần cài Python, Node.js hay tạo file cấu hình: Docker lo toàn b�
 2. Ban quản lý vào **Cư dân & hợp đồng**, tìm cư dân đó và chọn **Xác nhận căn hộ**.
 3. Từ lúc này, cư dân xem được hóa đơn, gửi yêu cầu và nhận thông báo của căn hộ.
 
-**Máy chỉ có 8 GB RAM (Windows):** nên giới hạn bộ nhớ của Docker để máy không bị treo. Tạo file `%UserProfile%\.wslconfig` với nội dung dưới, chạy `wsl --shutdown`, rồi mở lại Docker Desktop:
-
-```ini
-[wsl2]
-memory=2GB
-```
-
 **Lệnh thường dùng:**
 
 | Việc cần làm | Lệnh |
@@ -193,7 +186,7 @@ Cấu trúc database cũng đọc được trực tiếp trong các file `migrat
 | Hiện tượng | Cách xử lý |
 |---|---|
 | `docker` báo không kết nối được, hoặc lỗi `500 Internal Server Error` | Docker Desktop chưa chạy hoặc bị treo. Thoát Docker Desktop từ khay hệ thống, mở lại, đợi **Engine running**, rồi chạy `docker compose up -d` |
-| Trang `localhost:5000` tải mãi không xong | Máy thiếu RAM. Đóng bớt ứng dụng, đặt giới hạn bộ nhớ cho Docker (mục 4), rồi khởi động lại Docker Desktop |
+| Trang `localhost:5000` tải mãi không xong | Máy thiếu RAM. Đóng bớt ứng dụng rồi khởi động lại Docker Desktop |
 | Báo cổng 5000 đang được dùng | Một chương trình khác đang dùng cổng 5000. Tắt chương trình đó, hoặc chạy `docker compose down` rồi chạy lại |
 | Một service không `healthy` | Xem nhật ký: `docker compose logs <tên service>` |
 | Điện thoại không mở được `http://<IP>:5000` | Kiểm tra cùng mạng Wi-Fi, đúng IP, tường lửa Windows cho phép Docker Desktop trên mạng Private, mạng không bật cách ly thiết bị |
